@@ -359,8 +359,8 @@ st.download_button("Download JSON results", data=json.dumps(bundle, indent=2), f
 output = io.BytesIO()
 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
     pd.DataFrame([bundle["inputs"]]).to_excel(writer, sheet_name="Inputs", index=False)
-    pd.DataFrame(bundle["anchor_fit"]["results"]).to_excel(writer, sheet_name="AnchorFit", index=False)
-    pd.DataFrame(results).to_excel(writer, sheet_name="Ratings", index=False)
+    pd.DataFrame(bundle["derived"]["anchor_fit"]["results"]).to_excel(writer, sheet_name="AnchorFit", index=False)
+    df_res.to_excel(writer, sheet_name="Ratings", index=False)
     pd.DataFrame(bundle["derived"]["segments"]).to_excel(writer, sheet_name="Segments", index=False)
     pd.DataFrame([bundle["derived"]["lining"]]).to_excel(writer, sheet_name="Lining", index=False)
     pd.DataFrame([bundle["derived"]["rock_cover"]]).to_excel(writer, sheet_name="RockCover", index=False)
