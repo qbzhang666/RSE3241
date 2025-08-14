@@ -1,3 +1,6 @@
+# PHES Design App · Snowy 2.0 & Kidston (Sections 5–9)
+# Run locally:      streamlit run app.py
+# Streamlit Cloud:  push to GitHub → share.streamlit.io → select repo/app.py
 
 import io
 import math
@@ -7,16 +10,24 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
 
-# Optional PDF export
+# Optional exports
+REPORTLAB_OK = True
+DOCX_OK = True
 try:
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas
     from reportlab.lib.units import cm
-    REPORTLAB_OK = True
 except Exception:
     REPORTLAB_OK = False
 
-# ---------------------------- Helpers ----------------------------
+try:
+    from docx import Document
+    from docx.shared import Inches, Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+except Exception:
+    DOCX_OK = False
+
+# --------------------------------- Physics helpers ---------------------------------
 g = 9.81
 rho = 1000.0
 
@@ -77,12 +88,11 @@ def surge_tank_first_cut(Ah, Lh, ratio=4.0):
     Tn = 2*math.pi/omega_n
     return dict(As=As, omega_n=omega_n, Tn=Tn)
 
-# Cavitation / Thoma sigma (first-cut)
 def thoma_sigma_available(H_atm, H_vap, TWL, runner_CL, h_losses_draft, H_net):
     submergence = TWL - runner_CL  # positive if runner below TWL
     return (H_atm - H_vap + submergence - h_losses_draft) / H_net if H_net > 0 else float('nan')
 
-# ---------------------------- UI ----------------------------
+# --------------------------------- UI ---------------------------------
 st.set_page_config(page_title="PHES Design (Snowy & Kidston)", layout="wide")
 st.title("PHES Design App · Snowy 2.0 & Kidston (Sections 5–9)")
 
@@ -106,7 +116,7 @@ with st.sidebar:
     N = st.number_input("Units (N)", 1, 20, int(st.session_state.get("N", 6)), 1)
     st.caption("All units SI; water ρ=1000 kg/m³, g=9.81 m/s².")
 
-# Section 5 – HWL/LWL/TWL & gross head
+# ---------------------------- 5) Levels & rating head ----------------------------
 st.subheader("5) Determination of High & Low Water Level")
 col1, col2 = st.columns(2)
 with col1:
@@ -120,7 +130,7 @@ with col2:
 
 gross_head = HWL_u - TWL_l
 NWL_u = HWL_u - (HWL_u - LWL_u)/3.0
-head_fluct_rate = (LWL_u - TWL_l)/(HWL_u - TWL_l) if (HWL_u - TWL_l) != 0 else float("nan")
+head_fluct_rate = (LWL_u - TWL_l)/(HWL_u - TWL_l) if (HWL_u - TWL_l) != 0 else float('nan')
 
 c1, c2, c3 = st.columns(3)
 c1.metric("Gross head h_gross (m)", f"{gross_head:.1f}")
@@ -132,18 +142,54 @@ with st.expander("Equations"):
     st.latex(r"h_{\text{gross}} = \text{HWL}_{\text{upper}} - \text{TWL}_{\text{lower}}")
     st.latex(r"\text{Head fluctuation rate} = \frac{\text{LWL} - \text{TWL}}{\text{HWL} - \text{TWL}} \ \ (\ge 0.7)")
 
-# Section 6 – Waterway profile + image upload
+# ---------------------------- 6) Waterway profile (image OR data) ----------------------------
 st.subheader("6) Preparation of Waterway Profile")
+
+left, right = st.columns([2,1])
+
+with right:
+    st.markdown("**Option A — Upload a profile image (PNG/JPG)**")
+    uploaded_img = st.file_uploader("Profile/figure image", type=["png","jpg","jpeg"], key="profile_img")
+
+with left:
+    st.markdown("**Option B — Provide chainage–elevation data**")
+    csv_file = st.file_uploader("Upload CSV with columns: Chainage_m, Elevation_m", type=["csv"], key="profile_csv")
+    if csv_file is not None:
+        df_profile = pd.read_csv(csv_file)
+    else:
+        # Starter editable table
+        _default = pd.DataFrame({
+            "Chainage_m": [0, 1000, 2000, 3000, 4000, 5000],
+            "Elevation_m": [1085, 1083, 1076, 1040,  980,   920],
+        })
+        df_profile = st.data_editor(_default, num_rows="dynamic", use_container_width=True, key="profile_editor")
+
+# Plot profile if data present
+profile_fig = None
+if df_profile is not None and {"Chainage_m","Elevation_m"}.issubset(df_profile.columns):
+    ch = df_profile["Chainage_m"].values
+    el = df_profile["Elevation_m"].values
+    profile_fig = plt.figure(figsize=(7,3))
+    plt.plot(ch, el, linewidth=2)
+    plt.xlabel("Chainage (m)")
+    plt.ylabel("Elevation (m)")
+    plt.title("Waterway Long-Section")
+    plt.grid(True, linestyle="--", linewidth=0.5)
+    st.pyplot(profile_fig)
+
+if uploaded_img is not None:
+    st.image(uploaded_img, caption="Uploaded waterway profile image", use_column_width=True)
+
+st.caption("Use either the plotted long-section (data) or the uploaded figure for your report.")
+
+# Runner CL helper / draft head
 h_draft = st.number_input("Draft head below lower LWL (m)", 0.0, 200.0, 5.0, 0.5)
 runner_CL = LWL_u - h_draft
 st.write(f"Runner centreline elevation ≈ **{runner_CL:.1f} m**")
 
-uploaded_img = st.file_uploader("Upload a profile/figure image (PNG/JPG)", type=["png","jpg","jpeg"])
-if uploaded_img is not None:
-    st.image(uploaded_img, caption="Uploaded site/profile image", use_column_width=True)
-
-# Section 7 – Tunnels & Shafts
+# ---------------------------- 7) Pressure tunnels & shafts ----------------------------
 st.subheader("7) Design of Pressure Tunnels & Shafts")
+
 c1, c2, c3, c4 = st.columns(4)
 with c1:
     hs = st.number_input("Hydrostatic head to crown h_s (m)", 0.0, 2000.0, 300.0, 1.0)
@@ -194,7 +240,7 @@ with st.expander("Equations"):
     st.latex(r"\sigma_\theta(r_i)=p_i+\frac{2 p_{\text{ext}} r_e^2}{r_e^2-r_i^2}")
     st.latex(r"p_{\text{ext,req}}=\frac{(f_t-p_i)(r_e^2-r_i^2)}{2 r_e^2}")
 
-# Cavitation / Thoma sigma check (first-cut)
+# Cavitation / Thoma σ
 st.markdown("**Cavitation (Thoma σ) check**")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -206,7 +252,7 @@ with col3:
 with col4:
     sigma_req = st.number_input("σ_required (vendor)", 0.0, 1.0, 0.10, 0.01)
 
-# Section 8 – Head losses and effective head
+# ---------------------------- 8) Head losses & effective head ----------------------------
 st.subheader("8) Head Loss and Effective Head")
 
 st.markdown("**Anchor-fit (site-level) method**")
@@ -223,17 +269,17 @@ with colB:
     P1 = st.number_input("Anchor P1 (MW)", 100.0, 5000.0, float(st.session_state.get("P1", 1000.0)), 10.0)
     P2 = st.number_input("Anchor P2 (MW)", 100.0, 5000.0, float(st.session_state.get("P2", 2000.0)), 10.0)
 
-h_gross = st.number_input("Gross head for rating h_gross (m)", 10.0, 3000.0, float(gross_head), 1.0)
+h_gross_input = st.number_input("Gross head for rating h_gross (m)", 10.0, 3000.0, float(gross_head), 1.0)
 hf1 = st.number_input("h_f at P1 (m)", 0.0, 500.0, hf1_default, 0.1)
 hf2 = st.number_input("h_f at P2 (m)", 0.0, 500.0, hf2_default, 0.1)
 
-k, n = fit_hf_k_n_from_anchors(h_gross, eta_t, [(P1, hf1), (P2, hf2)])
+k, n = fit_hf_k_n_from_anchors(h_gross_input, eta_t, [(P1, hf1), (P2, hf2)])
 st.write(f"Fitted loss curve:  **h_f = k·Q^n**,  k = {k:.6f},  n = {n:.3f}")
 
 ratings = [2000.0, 2200.0, st.number_input("Custom rating P (MW)", 100.0, 5000.0, 1800.0, 10.0)]
 results = []
 for P in ratings:
-    out = solve_Q_hf_net(P, h_gross, eta_t, k, n)
+    out = solve_Q_hf_net(P, h_gross_input, eta_t, k, n)
     results.append({"P_MW": P, **out})
 
 df_res = pd.DataFrame(results)
@@ -290,7 +336,7 @@ df_seg = pd.DataFrame([
 ])
 st.dataframe(df_seg.style.format({"A":"{:.2f}","v":"{:.2f}","hf_fric":"{:.2f}","hf_local":"{:.2f}","hf":"{:.2f}"}), use_container_width=True)
 
-# Velocities summary
+# Velocities
 A_shared = math.pi * D_shared**2 / 4
 A_in  = math.pi * D_pen_in**2 / 4
 A_out = math.pi * D_pen_out**2 / 4
@@ -303,7 +349,7 @@ col1.metric("v_shared (m/s)", f"{v_shared:.2f}")
 col2.metric("v_pen_in (m/s)", f"{v_pen_in:.2f}")
 col3.metric("v_pen_out (m/s)", f"{v_pen_out:.2f}")
 
-# Section 9 – Surge tanks
+# ---------------------------- 9) Surge tanks (first cut) ----------------------------
 st.subheader("9) Headrace & Tailrace Surge Tanks (first cut)")
 Ah = A_shared
 Lh = st.number_input("Headrace length to surge tank L_h (m)", 100.0, 100000.0, 15000.0, 100.0)
@@ -320,10 +366,10 @@ with st.expander("Equations"):
     st.latex(r"\omega_n \approx \sqrt{\frac{g A_h}{L_h A_s}},\quad T_n = \frac{2\pi}{\omega_n}")
 
 # ---------------------------- Downloads ----------------------------
-st.markdown('---')
+st.markdown("---")
 st.subheader("Download results")
 
-# JSON bundle
+# Build bundle
 bundle = {
     "inputs": {
         "eta_t": eta_t, "eta_p": eta_p, "N": N,
@@ -353,11 +399,15 @@ if not df_res.empty:
     sigma_av = thoma_sigma_available(H_atm, H_vap, TWL_l, runner_CL, h_losses_draft, H_net_ref)
     bundle["derived"]["cavitation"] = {"sigma_av": sigma_av, "H_net_ref": H_net_ref}
 
-st.download_button("Download JSON results", data=json.dumps(bundle, indent=2), file_name="phes_results.json", mime="application/json")
+# JSON
+st.download_button("Download JSON results",
+                   data=json.dumps(bundle, indent=2),
+                   file_name="phes_results.json",
+                   mime="application/json")
 
-# Excel export
-output = io.BytesIO()
-with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+# Excel
+excel_bytes = io.BytesIO()
+with pd.ExcelWriter(excel_bytes, engine="xlsxwriter") as writer:
     pd.DataFrame([bundle["inputs"]]).to_excel(writer, sheet_name="Inputs", index=False)
     pd.DataFrame(bundle["derived"]["anchor_fit"]["results"]).to_excel(writer, sheet_name="AnchorFit", index=False)
     df_res.to_excel(writer, sheet_name="Ratings", index=False)
@@ -367,13 +417,14 @@ with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
     pd.DataFrame([bundle["derived"]["surge_first_cut"]]).to_excel(writer, sheet_name="SurgeFirstCut", index=False)
     if "cavitation" in bundle["derived"]:
         pd.DataFrame([bundle["derived"]["cavitation"]]).to_excel(writer, sheet_name="Cavitation", index=False)
+if st.download_button("Download Excel workbook",
+                      data=excel_bytes.getvalue(),
+                      file_name="phes_results.xlsx",
+                      mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
+    pass
 
-st.download_button("Download Excel workbook", data=output.getvalue(),
-                   file_name="phes_results.xlsx",
-                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-# PDF export (simple summary)
-def make_pdf_report(bundle: dict) -> bytes:
+# PDF (ReportLab)
+def make_pdf_report(bdl: dict) -> bytes:
     if not REPORTLAB_OK:
         return b''
     buf = io.BytesIO()
@@ -384,27 +435,27 @@ def make_pdf_report(bundle: dict) -> bytes:
     c.drawString(x, y, "PHES Design Report"); y -= 0.6*cm
     c.setFont("Helvetica", 10)
     lines = [
-        f"Gross head h_gross: {bundle['derived']['gross_head']:.1f} m",
-        f"NWL upper: {bundle['derived']['NWL_upper']:.1f} m",
-        f"Head fluctuation rate: {bundle['derived']['head_fluct_rate']:.3f}",
-        f"Rock cover: C_RV={bundle['derived']['rock_cover']['CRV']:.1f} m, F_RV={bundle['derived']['rock_cover']['FRV']:.2f}, F_RM={bundle['derived']['rock_cover']['FRM']:.2f}",
-        f"Lining: σθ(ri)={bundle['derived']['lining']['sigma_theta_ri']:.2f} MPa, p_ext,req={bundle['derived']['lining']['p_ext_required']:.2f} MPa",
-        f"Anchor-fit: k={bundle['derived']['anchor_fit']['k']:.6f}, n={bundle['derived']['anchor_fit']['n']:.3f}",
+        f"Gross head h_gross: {bdl['derived']['gross_head']:.1f} m",
+        f"NWL upper: {bdl['derived']['NWL_upper']:.1f} m",
+        f"Head fluctuation rate: {bdl['derived']['head_fluct_rate']:.3f}",
+        f"Rock cover: C_RV={bdl['derived']['rock_cover']['CRV']:.1f} m, F_RV={bdl['derived']['rock_cover']['FRV']:.2f}, F_RM={bdl['derived']['rock_cover']['FRM']:.2f}",
+        f"Lining: σθ(ri)={bdl['derived']['lining']['sigma_theta_ri']:.2f} MPa, p_ext,req={bdl['derived']['lining']['p_ext_required']:.2f} MPa",
+        f"Anchor-fit: k={bdl['derived']['anchor_fit']['k']:.6f}, n={bdl['derived']['anchor_fit']['n']:.3f}",
     ]
     for ln in lines:
         c.drawString(x, y, ln); y -= 0.5*cm
     c.drawString(x, y, "Ratings:"); y -= 0.5*cm
-    for r in bundle["derived"]["anchor_fit"]["results"]:
+    for r in bdl["derived"]["anchor_fit"]["results"]:
         c.drawString(x+0.5*cm, y, f"P={r['P_MW']:.0f} MW  Q={r['Q']:.1f} m3/s  hf={r['hf']:.1f} m  h_net={r['h_net']:.1f} m"); y -= 0.5*cm
         if y < 2*cm: c.showPage(); y = height - 2*cm
     c.drawString(x, y, "Segments (first rating):"); y -= 0.5*cm
-    for seg in bundle["derived"]["segments"]:
+    for seg in bdl["derived"]["segments"]:
         c.drawString(x+0.5*cm, y, f"{seg['segment']}: v={seg['v']:.2f} m/s, hf={seg['hf']:.2f} m"); y -= 0.5*cm
         if y < 2*cm: c.showPage(); y = height - 2*cm
-    if "cavitation" in bundle["derived"]:
-        cav = bundle["derived"]["cavitation"]
+    if "cavitation" in bdl["derived"]:
+        cav = bdl["derived"]["cavitation"]
         c.drawString(x, y, f"Cavitation (Thoma): σ_av={cav['sigma_av']:.3f} @ H_net={cav['H_net_ref']:.1f} m"); y -= 0.5*cm
-    c.drawString(x, y, f"Surge first-cut: A_s={bundle['derived']['surge_first_cut']['As']:.1f} m2, T_n={bundle['derived']['surge_first_cut']['Tn']:.1f} s")
+    c.drawString(x, y, f"Surge first-cut: A_s={bdl['derived']['surge_first_cut']['As']:.1f} m2, T_n={bdl['derived']['surge_first_cut']['Tn']:.1f} s")
     c.showPage(); c.save()
     return buf.getvalue()
 
@@ -414,4 +465,66 @@ if REPORTLAB_OK:
 else:
     st.info("Install reportlab to enable PDF export:  pip install reportlab")
 
-st.caption("Tip: use presets for quick starts (Snowy/Kidston), then refine inputs. Validate with surge/transient tools (e.g., HEC‑ResSim) and vendor data.")
+# DOCX (python-docx)
+def make_docx_report(bdl: dict) -> bytes:
+    if not DOCX_OK:
+        return b""
+    doc = Document()
+    doc.add_heading("PHES Design Report", level=1)
+    p = doc.add_paragraph()
+    p.add_run("Gross head h_gross: ").bold = True; p.add_run(f"{bdl['derived']['gross_head']:.1f} m")
+    p = doc.add_paragraph()
+    p.add_run("NWL upper: ").bold = True; p.add_run(f"{bdl['derived']['NWL_upper']:.1f} m")
+    p = doc.add_paragraph()
+    p.add_run("Head fluctuation rate: ").bold = True; p.add_run(f"{bdl['derived']['head_fluct_rate']:.3f}")
+    p = doc.add_paragraph()
+    p.add_run("Rock cover: ").bold = True
+    p.add_run(f"C_RV={bdl['derived']['rock_cover']['CRV']:.1f} m, F_RV={bdl['derived']['rock_cover']['FRV']:.2f}, F_RM={bdl['derived']['rock_cover']['FRM']:.2f}")
+    p = doc.add_paragraph()
+    p.add_run("Lining: ").bold = True
+    p.add_run(f"σθ(ri)={bdl['derived']['lining']['sigma_theta_ri']:.2f} MPa, p_ext,req={bdl['derived']['lining']['p_ext_required']:.2f} MPa")
+    p = doc.add_paragraph()
+    p.add_run("Anchor-fit: ").bold = True
+    p.add_run(f"k={bdl['derived']['anchor_fit']['k']:.6f}, n={bdl['derived']['anchor_fit']['n']:.3f}")
+
+    doc.add_heading("Ratings", level=2)
+    table = doc.add_table(rows=1, cols=4)
+    hdr_cells = table.rows[0].cells
+    hdr_cells[0].text = 'P (MW)'; hdr_cells[1].text = 'Q (m³/s)'; hdr_cells[2].text = 'h_f (m)'; hdr_cells[3].text = 'h_net (m)'
+    for r in bdl['derived']['anchor_fit']['results']:
+        row_cells = table.add_row().cells
+        row_cells[0].text = f"{r['P_MW']:.0f}"
+        row_cells[1].text = f"{r['Q']:.1f}"
+        row_cells[2].text = f"{r['hf']:.1f}"
+        row_cells[3].text = f"{r['h_net']:.1f}"
+
+    doc.add_heading("Segments (first rating)", level=2)
+    table2 = doc.add_table(rows=1, cols=3)
+    h2 = table2.rows[0].cells
+    h2[0].text = 'Segment'; h2[1].text = 'v (m/s)'; h2[2].text = 'h_f (m)'
+    for seg in bdl["derived"]["segments"]:
+        row = table2.add_row().cells
+        row[0].text = seg['segment']
+        row[1].text = f"{seg['v']:.2f}"
+        row[2].text = f"{seg['hf']:.2f}"
+
+    if "cavitation" in bdl["derived"]:
+        doc.add_heading("Cavitation (Thoma)", level=2)
+        c = bdl["derived"]["cavitation"]
+        doc.add_paragraph(f"σ_available = {c['sigma_av']:.3f} @ H_net={c['H_net_ref']:.1f} m")
+
+    doc.add_heading("Surge first-cut", level=2)
+    doc.add_paragraph(f"A_s={bdl['derived']['surge_first_cut']['As']:.1f} m², T_n={bdl['derived']['surge_first_cut']['Tn']:.1f} s")
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+if DOCX_OK:
+    docx_bytes = make_docx_report(bundle)
+    st.download_button("Download Word (DOCX) report", data=docx_bytes, file_name="phes_report.docx",
+                       mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+else:
+    st.info("Install python-docx to enable Word export:  pip install python-docx")
+
+st.caption("Use the profile data (Option B) to auto-plot the long-section if no image is available. Validate final design with transient modelling and vendor data.")
