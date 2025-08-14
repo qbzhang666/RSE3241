@@ -11,3 +11,4 @@ scikit-learn
 seaborn
 matplotlib>=3.7  # From 3.5 → 3.7 (style system overhaul)
 seaborn>=0.12    # From 0.11 → 0.12 (style registry fixes)
+reportlab
