@@ -242,8 +242,16 @@ results_basic = pd.DataFrame({
     "Design Velocity (m/s)": [Q_design_total/A_pen, v_design],
     "Max Velocity (m/s)": [Q_max_total/A_pen, v_max]
 })
-st.dataframe(results_basic.style.format("{:.2f}"), use_container_width=True)
-
+# Format only numeric columns to avoid ValueError when strings are present
+if not results_basic.empty:
+    num_cols = results_basic.select_dtypes(include="number").columns
+    st.dataframe(
+        results_basic.style.format({c: "{:.2f}" for c in num_cols}),
+        use_container_width=True
+    )
+else:
+    st.info("No results to display yet.")
+    
 # Velocity validation
 st.subheader("Velocity Validation (USBR guidance)")
 colv1, colv2 = st.columns(2)
