@@ -33,7 +33,7 @@ with col2:
     max_power = st.number_input("Maximum Power (MW)", value=600.0, key="p_max")
 
 # =====================================
-# Head Loss Parameters (CORRECTED)
+# Head Loss Parameters (FULLY CORRECTED)
 # =====================================
 st.subheader("Head Loss Parameters")
 col1, col2 = st.columns(2)
@@ -44,23 +44,25 @@ with col2:
     K_sum = st.number_input("Total Local Loss Coefficients (ΣK)", value=4.5, key="k_sum")
     auto_hf = st.checkbox("Calculate losses automatically", key="auto_hf")
 
-# Initialize variables
-hf_design = 25.0  # Default values
+# Initialize variables with default values
+hf_design = 25.0  
 hf_max = 40.0
 
 if auto_hf:
-    # Need to calculate Q_design and Q_max first
+    # First calculate with default head losses to get initial Q estimates
     h_net_design_temp = (HWL_u - TWL_l) - hf_design
     h_net_min_temp = (LWL_u - HWL_l) - hf_max
     
-    Q_design_total = (design_power * 1e6) / (rho * g * h_net_design_temp * eta_t)
-    Q_max_total = (max_power * 1e6) / (rho * g * h_net_min_temp * eta_t)
-    Q_design = Q_design_total / N_penstocks
-    Q_max = Q_max_total / N_penstocks
+    Q_design_total_temp = (design_power * 1e6) / (rho * g * h_net_design_temp * eta_t)
+    Q_max_total_temp = (max_power * 1e6) / (rho * g * h_net_min_temp * eta_t)
+    Q_design_temp = Q_design_total_temp / N_penstocks
+    Q_max_temp = Q_max_total_temp / N_penstocks
     
-    v_design = Q_design / (math.pi*(D_pen/2)**2)
-    v_max = Q_max / (math.pi*(D_pen/2)**2)
+    # Now calculate velocities
+    v_design = Q_design_temp / (math.pi*(D_pen/2)**2)
+    v_max = Q_max_temp / (math.pi*(D_pen/2)**2)
     
+    # Finally calculate head losses
     hf_design = (f * L_penstock/D_pen + K_sum) * (v_design**2)/(2*g)
     hf_max = (f * L_penstock/D_pen + K_sum) * (v_max**2)/(2*g)
     
