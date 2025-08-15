@@ -310,25 +310,27 @@ with col2:
     steel_stress = hoop_stress * (D/(2*t)) / (reinforcement_ratio/100)
     crack_width = 0.1 * (steel_stress/steel_yield) * (cover + 10)  # Simplified model
     
-    # Visualization
+    # Visualization - CORRECTED AXES PER REQUEST
     fig = go.Figure()
     
-    # Add stress distribution
+    # Add stress distribution (swap axes)
     r = np.linspace(r_i, r_i + t, 50)
+    distance = r - r_i  # Distance from inner surface (mm)
     sigma_theta = (internal_pressure * r_i**2) / (r**2) * ((r_i + t)**2 + r_i**2) / ((r_i + t)**2 - r_i**2)
     sigma_r = -internal_pressure * r_i**2 / r**2 * (1 - (r_i + t)**2 / r_i**2)
     
+    # Plot with distance on x-axis, stress on y-axis
     fig.add_trace(go.Scatter(
-        x=sigma_theta, 
-        y=r - r_i, 
+        x=distance, 
+        y=sigma_theta, 
         mode='lines',
         name='Hoop Stress',
         line=dict(color='royalblue', width=3)
     ))
     
     fig.add_trace(go.Scatter(
-        x=sigma_r, 
-        y=r - r_i, 
+        x=distance, 
+        y=sigma_r, 
         mode='lines',
         name='Radial Stress',
         line=dict(color='crimson', width=3, dash='dot')
@@ -336,8 +338,8 @@ with col2:
     
     fig.update_layout(
         title='Stress Distribution Through Lining Thickness',
-        xaxis_title='Stress (MPa)',
-        yaxis_title='Distance from Inner Surface (mm)',
+        xaxis_title='Distance from Inner Surface (mm)',
+        yaxis_title='Stress (MPa)',
         legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
         height=400
     )
@@ -380,7 +382,7 @@ with col2:
         st.markdown("- Use smaller diameter bars")
     else:
         st.success("Design meets stress and cracking requirements")
-
+        
 # ======================== RESULTS SUMMARY ========================
 st.header("📝 Design Summary")
 
