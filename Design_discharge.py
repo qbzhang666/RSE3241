@@ -87,21 +87,24 @@ v_design = Q_design / A_pen
 v_max = Q_max / A_pen
 
 # =====================================
-# Section 4: Results Display
+# =====================================
+# Section 4: Results Display (Corrected)
 # =====================================
 results = pd.DataFrame({
     "Parameter": ["Total System", "Per Penstock"],
     "Design Discharge (m³/s)": [Q_design_total, Q_design],
     "Max Discharge (m³/s)": [Q_max_total, Q_max],
-    "Velocity (m³/s)": ["-", v_max]
+    "Velocity (m/s)": ["-", v_max]  # Changed unit to m/s for consistency
 })
 
-st.dataframe(results.style.format({
+# Corrected formatting
+format_dict = {
     "Design Discharge (m³/s)": "{:.2f}",
     "Max Discharge (m³/s)": "{:.2f}",
-    "Velocity (m³/s)": "{:.2f}" if not isinstance(v, str) else v
-    for v in results["Velocity (m³/s)"]
-}), use_container_width=True)
+    "Velocity (m/s)": lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x
+}
+
+st.dataframe(results.style.format(format_dict), use_container_width=True)
 
 # Velocity check
 st.subheader("Velocity Validation")
