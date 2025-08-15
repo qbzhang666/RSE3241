@@ -8,7 +8,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
 from io import BytesIO
-import base64
 
 # ======================== CONSTANTS & PHYSICS ========================
 G = 9.80665  # Standard gravity (m/s²)
@@ -97,6 +96,11 @@ h_net = h_gross - h_loss
 submergence = 10  # Runner below tailwater (m)
 thoma = thoma_sigma(ATM_PRESSURE/9.80665, VAP_PRESSURE/9.80665, submergence, 2.0, h_net)
 
+# Structural parameters
+pressure_head = h_gross * 0.8  # 80% of max head
+thickness = 0.05 * penstock_dia  # Initial lining thickness
+hoop_stress = (pressure_head * RHO * G * penstock_dia) / (2 * thickness)
+
 # ======================== VISUALIZATION ========================
 st.header("📊 System Performance")
 fig = make_subplots(rows=1, cols=2, specs=[[{"type": "bar"}, {"type": "scatter"}]],
@@ -170,12 +174,7 @@ with col1:
 
 with col2:
     st.subheader("Structural")
-    pressure_head = h_gross * 0.8  # 80% of max head
     st.metric("Max Internal Pressure", f"{pressure_head/100:.1f} MPa")
-    
-    # Steel lining stress calculation
-    thickness = 0.05 * penstock_dia
-    hoop_stress = (pressure_head * RHO * G * penstock_dia) / (2 * thickness)
     st.metric("Hoop Stress in Lining", f"{hoop_stress/1e6:.1f} MPa", 
               "Within limits" if hoop_stress/1e6 < 200 else "High")
 
@@ -241,6 +240,147 @@ with col2:
     )
     st.plotly_chart(fig, use_container_width=True)
 
+# ======================== STRESS AND CRACKING ANALYSIS ========================
+st.header("📏 Stress and Cracking Analysis")
+
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    st.subheader("Material Properties")
+    concrete_grade = st.selectbox("Concrete Grade", ["C25", "C30", "C35", "C40"], index=1)
+    steel_grade = st.selectbox("Reinforcement Grade", ["400 MPa", "500 MPa"], index=1)
+    
+    # Material properties based on selection
+    concrete_props = {
+        "C25": {
+            "compressive_strength": 25, 
+            "tensile_strength": 2.6, 
+            "elastic_modulus": 31000
+        },
+        "C30": {
+            "compressive_strength": 30, 
+            "tensile_strength": 2.9, 
+            "elastic_modulus": 33000
+        },
+        "C35": {
+            "compressive_strength": 35, 
+            "tensile_strength": 3.2, 
+            "elastic_modulus": 34000
+        },
+        "C40": {
+            "compressive_strength": 40, 
+            "tensile_strength": 3.5, 
+            "elastic_modulus": 35000
+        }
+    }
+    
+    steel_props = {
+        "400 MPa": {"yield_strength": 400},
+        "500 MPa": {"yield_strength": 500}
+    }
+    
+    # Get properties
+    comp_strength = concrete_props[concrete_grade]["compressive_strength"]
+    tens_strength = concrete_props[concrete_grade]["tensile_strength"]
+    E_concrete = concrete_props[concrete_grade]["elastic_modulus"]
+    steel_yield = steel_props[steel_grade]["yield_strength"]
+    
+    # Display properties
+    st.metric("Concrete Compressive Strength (f\u2091\u1D63)", f"{comp_strength} MPa")
+    st.metric("Concrete Tensile Strength (f\u2091\u1D63\u209C)", f"{tens_strength} MPa")
+    st.metric("Steel Yield Strength (f\u1D64\u1D67)", f"{steel_yield} MPa")
+    
+    st.subheader("Reinforcement")
+    reinforcement_ratio = st.slider("Reinforcement Ratio ρ (%)", 0.5, 5.0, 1.5, 0.1)
+    cover = st.slider("Concrete Cover (mm)", 30, 100, 50, 5)
+
+with col2:
+    st.subheader("Stress Analysis")
+    
+    # Calculate stresses
+    internal_pressure = (pressure_head * RHO * G) / 1e6  # Convert to MPa
+    D = penstock_dia * 1000  # mm
+    t = thickness  # mm
+    r_i = D/2  # internal radius (mm)
+    
+    # Hoop stress (Lame's equation)
+    hoop_stress = (internal_pressure * r_i) / t
+    
+    # Crack width calculation
+    steel_stress = hoop_stress * (D/(2*t)) / (reinforcement_ratio/100)
+    crack_width = 0.1 * (steel_stress/steel_yield) * (cover + 10)  # Simplified model
+    
+    # Visualization
+    fig = go.Figure()
+    
+    # Add stress distribution
+    r = np.linspace(r_i, r_i + t, 50)
+    sigma_theta = (internal_pressure * r_i**2) / (r**2) * ((r_i + t)**2 + r_i**2) / ((r_i + t)**2 - r_i**2)
+    sigma_r = -internal_pressure * r_i**2 / r**2 * (1 - (r_i + t)**2 / r_i**2)
+    
+    fig.add_trace(go.Scatter(
+        x=sigma_theta, 
+        y=r - r_i, 
+        mode='lines',
+        name='Hoop Stress',
+        line=dict(color='royalblue', width=3)
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=sigma_r, 
+        y=r - r_i, 
+        mode='lines',
+        name='Radial Stress',
+        line=dict(color='crimson', width=3, dash='dot')
+    ))
+    
+    fig.update_layout(
+        title='Stress Distribution Through Lining Thickness',
+        xaxis_title='Stress (MPa)',
+        yaxis_title='Distance from Inner Surface (mm)',
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        height=400
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Results table
+    results = {
+        "Parameter": ["Internal Pressure", "Hoop Stress", "Steel Stress", 
+                      "Crack Width", "Safety Factor (Cracking)"],
+        "Value": [
+            f"{internal_pressure:.2f} MPa", 
+            f"{hoop_stress:.1f} MPa",
+            f"{steel_stress:.1f} MPa",
+            f"{crack_width:.3f} mm",
+            f"{tens_strength/hoop_stress:.2f}"
+        ],
+        "Status": [
+            "Design",
+            "✅ Safe" if hoop_stress < 0.4*comp_strength else "⚠️ High",
+            "✅ Below Yield" if steel_stress < 0.8*steel_yield else "⚠️ Near Yield",
+            "✅ Acceptable" if crack_width < 0.3 else "⚠️ Excessive",
+            "✅ Adequate" if tens_strength/hoop_stress > 1.5 else "⚠️ Insufficient"
+        ]
+    }
+    
+    df_stress = pd.DataFrame(results)
+    st.dataframe(df_stress, hide_index=True, use_container_width=True)
+    
+    # Recommendations
+    st.subheader("Recommendations")
+    if hoop_stress > 0.4*comp_strength:
+        st.warning("High hoop stress detected. Consider:")
+        st.markdown("- Increase lining thickness")
+        st.markdown("- Use higher grade concrete")
+    elif crack_width > 0.3:
+        st.warning("Excessive crack width predicted. Consider:")
+        st.markdown("- Increase reinforcement ratio")
+        st.markdown("- Decrease bar spacing")
+        st.markdown("- Use smaller diameter bars")
+    else:
+        st.success("Design meets stress and cracking requirements")
+
 # ======================== RESULTS SUMMARY ========================
 st.header("📝 Design Summary")
 
@@ -304,6 +444,15 @@ Max Internal Pressure: {pressure_head/100:.2f} MPa
 Hoop Stress: {hoop_stress/1e6:.1f} MPa
 Thoma Cavitation Coefficient: {thoma:.3f}
 Rock Cover Safety Factor: {overburden/min_cover:.2f}
+
+STRESS AND CRACKING ANALYSIS
+----------------------------
+Concrete Grade: {concrete_grade}
+Reinforcement Grade: {steel_grade}
+Reinforcement Ratio: {reinforcement_ratio}%
+Concrete Cover: {cover} mm
+Calculated Crack Width: {crack_width:.3f} mm
+Safety Factor: {tens_strength/hoop_stress:.2f}
 """
 
 # Download buttons
@@ -329,6 +478,9 @@ with col2:
             "Unit": ["kg/m³", "m/s²", "-", "-"]
         })
         calc_data.to_excel(writer, sheet_name="Constants", index=False)
+        
+        # Add stress analysis sheet
+        df_stress.to_excel(writer, sheet_name="Stress Analysis", index=False)
     
     st.download_button(
         label="Download Data (Excel)",
