@@ -131,7 +131,7 @@ st.header("Design Equations")
 
 with st.expander("Show Design Equations"):
     st.markdown("""
-    ### 2.1 Total Discharge Calculation
+    ### Total Discharge Calculation
     $$
     Q_{\\text{total}} = \\frac{P \\times 10^6}{\\rho \\cdot g \\cdot h_{\\text{net}} \\cdot \\eta_t}
     $$
@@ -142,21 +142,21 @@ with st.expander("Show Design Equations"):
     - $g$: Gravitational acceleration (9.8 m/s²)
     - $\\eta_t$: Turbine efficiency (e.g., 0.85 for 85%)
     
-    ### 2.2 Per-Penstock Discharge
+    ### Per-Penstock Discharge
     $$
     Q_{\\text{penstock}} = \\frac{Q_{\\text{total}}}{N_{\\text{penstocks}}}
     $$
     **Where:**
     - $N_{\\text{penstocks}}$: Number of penstocks
     
-    ### 2.3 Flow Velocity Validation
+    ### Flow Velocity Validation
     $$
     v = \\frac{Q_{\\text{penstock}}}{A} = \\frac{4 Q_{\\text{penstock}}}{\\pi D^2}
     $$
     **Industry Standard (USBR):**
     - Recommended velocity range: **4–6 m/s** (balances efficiency and material erosion)
     
-    ### 2.4 Head Loss (Darcy-Weisbach)
+    ### Head Loss (Darcy-Weisbach)
     $$
     h_f = \\frac{f L v^2}{D \\cdot 2g}
     $$
