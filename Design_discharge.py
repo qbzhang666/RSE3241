@@ -225,7 +225,7 @@ fig.add_trace(
 fig.add_trace(
     go.Scatter(
         x=Q_range,
-        y=(P_range*1e6)/(rho*g*(Q_range/N_penstocks)*100,
+        y=(P_range*1e6)/(rho*g*(Q_range/N_penstocks))*100,
         name="System Efficiency (%)",
         line=dict(color="purple", width=2, dash="dot"),
         hovertemplate="<b>%{x:.1f} m³/s</b><br>Eff: %{y:.1f}%",
