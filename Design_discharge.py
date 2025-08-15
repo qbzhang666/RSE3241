@@ -12,7 +12,7 @@ st.set_page_config(layout="wide")
 st.title("Pumped Hydro Storage Penstock Design")
 
 # =====================================
-# Section 1: Input Parameters (CORRECTED)
+# Section 1: Input Parameters
 # =====================================
 st.header("1. System Parameters")
 col1, col2 = st.columns(2)
@@ -33,7 +33,7 @@ with col2:
     max_power = st.number_input("Maximum Power (MW)", value=600.0, key="p_max")
 
 # =====================================
-# Head Loss Parameters (FULLY CORRECTED)
+# Head Loss Parameters
 # =====================================
 st.subheader("Head Loss Parameters")
 col1, col2 = st.columns(2)
@@ -42,7 +42,7 @@ with col1:
     f = st.number_input("Friction Factor", value=0.015, min_value=0.01, max_value=0.03, key="friction")
 with col2:
     K_sum = st.number_input("Total Local Loss Coefficients (ΣK)", value=4.5, key="k_sum")
-    auto_hf = st.checkbox("Calculate losses automatically", key="auto_hf")
+    auto_hf = st.checkbox("Calculate losses automatically", value=True, key="auto_hf")
 
 # Initialize variables with default values
 hf_design = 25.0  
@@ -71,51 +71,49 @@ if auto_hf:
 else:
     hf_design = st.number_input("Design Head Loss (m)", value=25.0, key="hf_design")
     hf_max = st.number_input("Max Head Loss (m)", value=40.0, key="hf_max")
+
+# =====================================
+# Section 2: Design Equations (as LaTeX in Streamlit)
+# =====================================
+st.header("2. Design Equations")
+
+with st.expander("Show Design Equations"):
+    st.markdown("""
+    ### 2.1 Total Discharge Calculation
+    $$
+    Q_{\\text{total}} = \\frac{P \\times 10^6}{\\rho \\cdot g \\cdot h_{\\text{net}} \\cdot \\eta_t}
+    $$
+    **Where:**
+    - $P$: Power (MW)
+    - $h_{\\text{net}} = \\Delta H - h_f$: Net head (Gross head $\\Delta H$ minus head loss $h_f$) (m)
+    - $\\rho$: Water density (1000 kg/m³)
+    - $g$: Gravitational acceleration (9.81 m/s²)
+    - $\\eta_t$: Turbine efficiency (e.g., 0.85 for 85%)
     
-\section*{2. Design Equations}
-
-\subsection*{2.1 Total Discharge Calculation}
-\[
-Q_{\text{total}} = \frac{P \times 10^6}{\rho \cdot g \cdot h_{\text{net}} \cdot \eta_t}
-\]
-\textbf{Where:}
-\begin{itemize}
-    \item \( P \): Power (MW)
-    \item \( h_{\text{net}} = \Delta H - h_f \): Net head (Gross head \(\Delta H\) minus head loss \(h_f\)) (m)
-    \item \( \rho \): Water density (assumed 1000 kg/m\(^3\))
-    \item \( g \): Gravitational acceleration (9.81 m/s\(^2\))
-    \item \( \eta_t \): Turbine efficiency (decimal, e.g., 0.85 for 85\%)
-\end{itemize}
-
-\subsection*{2.2 Per-Penstock Discharge}
-\[
-Q_{\text{penstock}} = \frac{Q_{\text{total}}}{N_{\text{penstocks}}}
-\]
-\textbf{Where:}
-\begin{itemize}
-    \item \( N_{\text{penstocks}} \): Number of penstocks
-\end{itemize}
-
-\subsection*{2.3 Flow Velocity Validation}
-\[
-v = \frac{Q_{\text{penstock}}}{A} = \frac{4 Q_{\text{penstock}}}{\pi D^2}
-\]
-\textbf{Industry Standard (USBR):}
-\begin{itemize}
-    \item Recommended velocity range: \textbf{4–6 m/s} (balances efficiency and material erosion)
-\end{itemize}
-
-\subsection*{2.4 Head Loss (Darcy-Weisbach)}
-\[
-h_f = \frac{f L v^2}{D \cdot 2g}
-\]
-\textbf{Where:}
-\begin{itemize}
-    \item \( f \): Friction factor (0.015 for concrete)
-    \item \( L \): Penstock length (m)
-    \item \( D \): Penstock diameter (m)
-    \item \( v \): Flow velocity (m/s)
-\end{itemize}
+    ### 2.2 Per-Penstock Discharge
+    $$
+    Q_{\\text{penstock}} = \\frac{Q_{\\text{total}}}{N_{\\text{penstocks}}}
+    $$
+    **Where:**
+    - $N_{\\text{penstocks}}$: Number of penstocks
+    
+    ### 2.3 Flow Velocity Validation
+    $$
+    v = \\frac{Q_{\\text{penstock}}}{A} = \\frac{4 Q_{\\text{penstock}}}{\\pi D^2}
+    $$
+    **Industry Standard (USBR):**
+    - Recommended velocity range: **4–6 m/s** (balances efficiency and material erosion)
+    
+    ### 2.4 Head Loss (Darcy-Weisbach)
+    $$
+    h_f = \\frac{f L v^2}{D \\cdot 2g}
+    $$
+    **Where:**
+    - $f$: Friction factor (0.015 for concrete)
+    - $L$: Penstock length (m)
+    - $D$: Penstock diameter (m)
+    - $v$: Flow velocity (m/s)
+    """)
 
 # =====================================
 # Section 3: Calculations
@@ -138,91 +136,37 @@ v_design = Q_design / A_pen
 v_max = Q_max / A_pen
 
 # =====================================
-# =====================================
-# Section 4: Results Display (Corrected)
+# Section 4: Results Display
 # =====================================
 results = pd.DataFrame({
     "Parameter": ["Total System", "Per Penstock"],
     "Design Discharge (m³/s)": [Q_design_total, Q_design],
     "Max Discharge (m³/s)": [Q_max_total, Q_max],
-    "Velocity (m/s)": ["-", v_max]  # Changed unit to m/s for consistency
+    "Design Velocity (m/s)": [Q_design_total/A_pen, v_design],
+    "Max Velocity (m/s)": [Q_max_total/A_pen, v_max]
 })
 
-# Corrected formatting
-format_dict = {
+st.dataframe(results.style.format({
     "Design Discharge (m³/s)": "{:.2f}",
     "Max Discharge (m³/s)": "{:.2f}",
-    "Velocity (m/s)": lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x
-}
-
-st.dataframe(results.style.format(format_dict), use_container_width=True)
-
-# Velocity check
-st.subheader("Velocity Validation")
-st.latex(f"v_{{max}} = {v_max:.2f} \, \text{{m/s}}")
-
-if v_max > 6.0:
-    st.error(f"**Exceeds recommended limit (6 m/s, USBR)**")
-    st.markdown("""
-    **Mitigation Options:**
-    - Increase diameter (current: {D_pen} m)
-    - Add more penstocks (current: {N_penstocks})
-    - Reduce max power (current: {max_power} MW)
-    """)
-elif v_max > 4.0:
-    st.success("Within recommended range (4-6 m/s)")
-else:
-    st.warning("Low velocity (<4 m/s) - May lead to uneconomic design")
+    "Design Velocity (m/s)": "{:.2f}",
+    "Max Velocity (m/s)": "{:.2f}"
+}), use_container_width=True)
 
 # =====================================
+# Section 5: Velocity Validation
 # =====================================
-# Section 5: Design Standards & References
-# =====================================
-st.header("4. Industry Design Standards")
-st.subheader("Penstock Velocity Limits")
+st.header("4. Velocity Validation")
 
-standards_data = [
-    {
-        "Organization": "US Bureau of Reclamation (USBR)",
-        "Recommendation": "4–6 m/s for concrete-lined penstocks",
-        "Application": "General hydropower projects",
-        "Source": "Engineering Monograph No. 20 (1987)"
-    },
-    {
-        "Organization": "International Commission on Large Dams (ICOLD)",
-        "Recommendation": "< 7 m/s for steel penstocks",
-        "Application": "Cavitation prevention",
-        "Source": "Bulletin on Hydropower Intakes (2015)"
-    },
-    {
-        "Organization": "ASME (American Society of Mechanical Engineers)",
-        "Recommendation": "5–8 m/s (peaks), < 6 m/s (continuous)",
-        "Application": "Mechanical design standards",
-        "Source": "Hydropower Technical Guidelines (2019)"
-    },
-    {
-        "Organization": "Practical Hydropower Handbooks",
-        "Recommendation": "3–6 m/s (concrete/steel)",
-        "Application": "Economic design range",
-        "Source": "Various industry publications"
-    }
-]
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("Design Velocity", f"{v_design:.2f} m/s")
+    st.metric("Max Velocity", f"{v_max:.2f} m/s")
 
-# Display as expandable table
-with st.expander("📚 View Full Design Standards"):
-    st.table(pd.DataFrame(standards_data))
-    
-    st.markdown("""
-    ### **Velocity Design Considerations**
-    - **Concrete Penstocks**: 4–6 m/s (USBR)
-    - **Steel Penstocks**: 5–7 m/s (ICOLD)
-    - **Short-term Peaks**: Up to 8 m/s (ASME)
-    - **Economic Range**: 3.5–5.5 m/s (Handbook)
-    """)
-
-# Add to velocity validation section
-st.subheader("Velocity Validation")
-st.latex(f"v_{{max}} = {v_max:.2f} \, \text{{m/s}}")
+with col2:
+    st.markdown("### USBR Standards")
+    st.markdown("- **Recommended range:** 4-6 m/s")
+    st.markdown("- **Absolute maximum:** 7 m/s (short durations)")
 
 if v_max > 7.0:
     st.error("""
@@ -249,14 +193,6 @@ else:
     - Consider smaller diameter for cost savings
     """)
 
-# Add reference links
-st.markdown("""
-### **Official References**
-- [USBR Design Standards No. 3](https://www.usbr.gov/tsc/techreferences/standards.html)
-- [ICOLD Bulletins](https://www.icold-cigb.org/)
-- [ASME Hydropower Standards](https://www.asme.org/)
-""")
-
 # =====================================
 # Section 6: System Curves
 # =====================================
@@ -277,3 +213,13 @@ ax.set_title("System Operating Curve")
 ax.grid(True)
 ax.legend()
 st.pyplot(fig)
+
+# =====================================
+# Section 7: References
+# =====================================
+st.header("6. References")
+st.markdown("""
+- USBR Design Standards No. 3
+- ICOLD Bulletins
+- ASME Hydropower Standards
+""")
