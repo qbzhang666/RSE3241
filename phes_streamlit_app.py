@@ -229,61 +229,75 @@ col2.metric("F_RV (-)", f"{FRV:.2f}")
 col3.metric("F_RM (-)", f"{FRM:.2f}")
 
 # Lining stress analysis
-# Updated Lining Stress Visualization with Proper Scale
+# Corrected Lining Stress Visualization with Realistic Scaling
 st.markdown("**Lining Stress Analysis**")
+
+# Input parameters with validation
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     ri = st.number_input("Inner radius r_i (m)", 0.1, 10.0, 3.15, 0.05)
 with col2:
     t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
 with col3:
-    pi_MPa = st.number_input("Internal pressure p_i (MPa)", 0.0, 10.0, 2.0, 0.1)
+    pi_MPa = st.number_input("Internal pressure p_i (MPa)", 0.0, 100.0, 2.0, 0.1)  # Max 100 MPa
 with col4:
-    pext_manual = st.number_input("External pressure p_ext (MPa)", 0.0, 10.0, 0.0, 0.1)
+    pext_manual = st.number_input("External pressure p_ext (MPa)", 0.0, 100.0, 0.0, 0.1)  # Max 100 MPa
+
 re = ri + t
-ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1)
+ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 100.0, 3.0, 0.1)  # Max 100 MPa
 
-sigma_theta_i = hoop_stress(pi_MPa, pext_manual, ri, re)
-pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
+# Calculate stress with validation
+try:
+    sigma_theta_i = hoop_stress(pi_MPa, pext_manual, ri, re)
+    pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
+    
+    # Create visualization with realistic scaling
+    fig, ax = plt.subplots(figsize=(8, 5))
+    r_extended = np.linspace(ri*1.001, 6.0, 200)
+    sigma_t_extended = hoop_stress(pi_MPa, pext_manual, ri, r_extended)
+    
+    # Validate stress values
+    if np.nanmax(sigma_t_extended) > 1000:  # Unrealistically high stress
+        st.error("Calculated stress exceeds realistic limits (1000 MPa). Please check input parameters.")
+        st.info("Typical concrete lining stresses should be below 100 MPa. Very high stresses may indicate:")
+        st.info("- Excessive internal pressure\n- Insufficient wall thickness\n- Unrealistic material properties")
+    else:
+        # Plot with reasonable scale
+        y_max = min(100, np.nanmax(sigma_t_extended)*1.2)  # Cap at 100 MPa or 20% above max
+        
+        ax.plot(r_extended, sigma_t_extended, 'b-', lw=2.5, label='Hoop Stress')
+        ax.axhline(ft_MPa, color='g', ls='-.', lw=2, label=f'Tensile Strength ({ft_MPa} MPa)')
+        ax.axvline(ri, color='k', ls=':', label=f'Inner Radius ({ri} m)')
+        ax.axvline(re, color='k', ls='--', label=f'Outer Radius ({re} m)')
+        
+        # Highlight overstress region
+        if ft_MPa < y_max:
+            ax.fill_between(r_extended, sigma_t_extended, ft_MPa,
+                          where=(sigma_t_extended > ft_MPa),
+                          color='red', alpha=0.2, label='Overstress Region')
+        
+        ax.set_xlabel('Radius (m)')
+        ax.set_ylabel('Stress (MPa)')
+        ax.set_title('Lining Stress Distribution')
+        ax.set_ylim(0, y_max)
+        ax.grid(True, linestyle='--', alpha=0.3)
+        ax.legend(loc='upper right')
+        plt.tight_layout()
+        st.pyplot(fig)
 
-# Create visualization with proper stress scale
-fig, ax = plt.subplots(figsize=(8, 5))
-r_extended = np.linspace(ri*1.001, 6.0, 200)
-sigma_t_extended = hoop_stress(pi_MPa, pext_manual, ri, r_extended)
+except Exception as e:
+    st.error(f"Error in stress calculation: {str(e)}")
 
-# Plot with y-axis limited to 100 MPa
-ax.plot(r_extended, sigma_t_extended, 'b-', lw=2.5, label='Hoop Stress')
-ax.axhline(ft_MPa, color='g', ls='-.', lw=2, label=f'Tensile Strength ({ft_MPa} MPa)')
-ax.axvline(ri, color='k', ls=':', label=f'Inner Radius ({ri} m)')
-ax.axvline(re, color='k', ls='--', label=f'Outer Radius ({re} m)')
-
-# Highlight overstress region only if stress exceeds 100 MPa
-if sigma_theta_i > 100:
-    ax.fill_between(r_extended, sigma_t_extended, 100, 
-                   where=(sigma_t_extended > 100), 
-                   color='red', alpha=0.2, label='Critical Overstress')
-    ax.set_ylim(0, 110)  # Add 10% buffer above 100 MPa
-else:
-    ax.fill_between(r_extended, sigma_t_extended, ft_MPa,
-                   where=(sigma_t_extended > ft_MPa),
-                   color='red', alpha=0.2, label='Overstress Region')
-    ax.set_ylim(0, max(sigma_t_extended)*1.1)  # Auto-scale with 10% buffer
-
-ax.set_xlabel('Radius (m)')
-ax.set_ylabel('Stress (MPa)')
-ax.set_title('Lining Stress Distribution (Max 100 MPa)')
-ax.grid(True, linestyle='--', alpha=0.3)
-ax.legend(loc='upper right')
-plt.tight_layout()
-st.pyplot(fig)
-
-# Display key metrics
-col1, col2, col3 = st.columns(3)
-col1.metric("σ_θ(r_i) (MPa)", f"{min(sigma_theta_i, 100):.1f}")  # Capped at 100 MPa
-col2.metric("p_ext required (MPa)", f"{pext_req:.2f}")
-status = "✅ OK (no cracking)" if sigma_theta_i <= ft_MPa else "⚠️ Cracking likely"
-col3.metric("Status", status)
-
+# Display key metrics with validation
+if 'sigma_theta_i' in locals():
+    col1, col2, col3 = st.columns(3)
+    col1.metric("σ_θ(r_i) (MPa)", f"{min(sigma_theta_i, 1000):.1f}")  # Cap display at 1000 MPa
+    col2.metric("p_ext required (MPa)", f"{pext_req:.2f}")
+    status = "✅ OK (no cracking)" if sigma_theta_i <= ft_MPa else "⚠️ Cracking likely"
+    col3.metric("Status", status)
+    
+    if sigma_theta_i > 100:
+        st.warning("High stress detected! Typical concrete lining stresses should be below 100 MPa.")
 # ---------------------------- 8) Head losses ----------------------------
 st.subheader("8) Head Loss Analysis")
 
