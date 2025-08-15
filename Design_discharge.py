@@ -145,18 +145,84 @@ ax.legend()
 st.pyplot(fig)
 
 # =====================================
-# Section 6: References
 # =====================================
-st.header("5. Design Standards")
+# Section 6: Design Standards & References
+# =====================================
+st.header("5. Industry Design Standards")
+st.subheader("Penstock Velocity Limits")
+
+standards_data = [
+    {
+        "Organization": "US Bureau of Reclamation (USBR)",
+        "Recommendation": "4–6 m/s for concrete-lined penstocks",
+        "Application": "General hydropower projects",
+        "Source": "Engineering Monograph No. 20 (1987)"
+    },
+    {
+        "Organization": "International Commission on Large Dams (ICOLD)",
+        "Recommendation": "< 7 m/s for steel penstocks",
+        "Application": "Cavitation prevention",
+        "Source": "Bulletin on Hydropower Intakes (2015)"
+    },
+    {
+        "Organization": "ASME (American Society of Mechanical Engineers)",
+        "Recommendation": "5–8 m/s (peaks), < 6 m/s (continuous)",
+        "Application": "Mechanical design standards",
+        "Source": "Hydropower Technical Guidelines (2019)"
+    },
+    {
+        "Organization": "Practical Hydropower Handbooks",
+        "Recommendation": "3–6 m/s (concrete/steel)",
+        "Application": "Economic design range",
+        "Source": "Various industry publications"
+    }
+]
+
+# Display as expandable table
+with st.expander("📚 View Full Design Standards"):
+    st.table(pd.DataFrame(standards_data))
+    
+    st.markdown("""
+    ### **Velocity Design Considerations**
+    - **Concrete Penstocks**: 4–6 m/s (USBR)
+    - **Steel Penstocks**: 5–7 m/s (ICOLD)
+    - **Short-term Peaks**: Up to 8 m/s (ASME)
+    - **Economic Range**: 3.5–5.5 m/s (Handbook)
+    """)
+
+# Add to velocity validation section
+st.subheader("Velocity Validation")
+st.latex(f"v_{{max}} = {v_max:.2f} \, \text{{m/s}}")
+
+if v_max > 7.0:
+    st.error("""
+    ⚠️ **Dangerous Velocity** (Exceeds all standards)
+    - Immediate risk of cavitation and erosion
+    - Urgent design modification required
+    """)
+elif v_max > 6.0:
+    st.warning("""
+    ⚠️ **Above Recommended Limit** (ASME/ICOLD)
+    - Acceptable for short durations (<1 hour/day)
+    - Consider for emergency operations only
+    """)
+elif v_max > 4.0:
+    st.success("""
+    ✓ **Optimal Range** (4–6 m/s)
+    - Meets USBR standards for concrete
+    - Good balance of efficiency and safety
+    """)
+else:
+    st.info("""
+    ℹ️ **Low Velocity** (<4 m/s)
+    - Safe but potentially uneconomic
+    - Consider smaller diameter for cost savings
+    """)
+
+# Add reference links
 st.markdown("""
-- **USBR (1987)**: *Design Standards No. 3 - Hydropower*
-  - Concrete penstocks: 4-6 m/s
-  - Steel penstocks: 5-7 m/s
-  
-- **ASME (2019)**: *Hydropower Technical Guidelines*
-  - Short-term peaks: ≤8 m/s
-  - Continuous operation: ≤6 m/s
-  
-- **Practical Design Handbook**:
-  - Economic velocity range: 3.5-5.5 m/s
+### **Official References**
+- [USBR Design Standards No. 3](https://www.usbr.gov/tsc/techreferences/standards.html)
+- [ICOLD Bulletins](https://www.icold-cigb.org/)
+- [ASME Hydropower Standards](https://www.asme.org/)
 """)
