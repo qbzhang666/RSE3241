@@ -225,58 +225,64 @@ else:
     hf_max = st.number_input("Max Head Loss (m)", value=40.0, key="hf_max")
 
 # =====================================
-# SECTION 4: DESIGN EQUATIONS
+# SECTION 4: DESIGN PRINCIPLES & EQUATIONS
 # =====================================
-st.header("4. Design Principles & Equations")
+st.header("4. Fundamental Design Equations")
 
-tab1, tab2, tab3 = st.tabs(["Hydraulics", "Mechanics", "System Design"])
+tab1, tab2, tab3 = st.tabs(["Hydraulics", "Structural Mechanics", "System Design"])
 
 with tab1:
-    st.subheader("Hydraulic Equations")
+    st.subheader("Hydraulic Principles")
     st.markdown("""
-    #### Continuity and Energy Equations
+    #### Continuity Equation
     $$ Q = A \cdot v $$
-    $$ \frac{P_1}{\rho g} + \frac{v_1^2}{2g} + z_1 = \frac{P_2}{\rho g} + \frac{v_2^2}{2g} + z_2 + h_f $$
+    
+    #### Bernoulli's Energy Equation
+    $$ \\frac{P_1}{\\rho g} + \\frac{v_1^2}{2g} + z_1 = \\frac{P_2}{\\rho g} + \\frac{v_2^2}{2g} + z_2 + h_f $$
     
     #### Power Calculation
-    $$ P = \rho \cdot g \cdot Q \cdot H_{net} \cdot \eta_t $$
+    $$ P = \\rho \\cdot g \\cdot Q \\cdot H_{\\text{net}} \\cdot \\eta_t $$
     
     #### Darcy-Weisbach Head Loss
-    $$ h_f = f \frac{L}{D} \frac{v^2}{2g} + \sum K \frac{v^2}{2g} $$
+    $$ h_f = \\left( f \\frac{L}{D} + \\sum K \\right) \\frac{v^2}{2g} $$
     """)
     
-    st.image("https://engineeringlibrary.org/reference/darcy-weisbach-equation-fluid-mechanics-nasa", 
-             caption="Darcy-Weisbach friction factor diagram", width=400)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Moody_diagram.jpg/800px-Moody_diagram.jpg", 
+             caption="Darcy-Weisbach friction factor diagram (Moody Chart)", 
+             width=500)
 
 with tab2:
     st.subheader("Structural Mechanics")
     st.markdown("""
     #### Hoop Stress in Pressure Tunnels
-    $$ \sigma_\theta = \frac{(p_i r_i^2 - p_e r_e^2) + (p_i - p_e) \frac{r_i^2 r_e^2}{r^2}}{r_e^2 - r_i^2} $$
+    $$ \\sigma_\\theta = \\frac{p_i (r^2 + r_i^2) - 2p_e r^2}{r^2 - r_i^2} $$
     
-    #### Rock Support Requirements
-    $$ C_{RV} = \frac{h_s \cdot \gamma_w}{\gamma_R} $$
-    $$ F_{RV} = \frac{C_{RV} \cdot \gamma_R \cdot \cos \alpha}{h_s \cdot \gamma_w} $$
+    #### Minimum Cover Depth (Snowy Formula)
+    $$ C_{RV} = \\frac{h_s \\cdot \\gamma_w}{\\gamma_R} $$
+    
+    #### Norwegian Stability Criterion
+    $$ F_{RV} = \\frac{C_{RV} \\cdot \\gamma_R \\cdot \\cos \\alpha}{h_s \\cdot \\gamma_w} $$
+    
+    Where:
+    - $F_{RV} > 1.5$ for stable rock conditions
+    - $F_{RV} > 2.0$ for fractured rock
     """)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Critical Cover Depth", f"{snowy_vertical_cover(300):.1f} m", "For 300m head")
-    with col2:
-        st.metric("Safety Factor", f"{norwegian_FRV(50, 300, 20):.2f}", "α=20°")
 
 with tab3:
     st.subheader("System Design Principles")
     st.markdown("""
     #### Surge Tank Sizing
-    $$ A_s = 4 \cdot A_h $$
-    $$ T_n = 2\pi \sqrt{\frac{L_h \cdot A_s}{g \cdot A_h}} $$
+    $$ A_s = k \\cdot A_h $$
+    $$ T_n = 2\\pi \\sqrt{\\frac{L_h A_s}{g A_h}} $$
     
     #### Head Loss Curve Fitting
-    $$ h_f = k \cdot Q^n $$
+    $$ h_f = k \\cdot Q^n $$
+    
+    Where:
+    - $k$: System loss coefficient
+    - $n$: Flow exponent (1.85-2.0)
+    - $k = 4$ for conservative design
     """)
-    st.metric("Typical Surge Tank Period", "60-90 seconds", "For stable operation")
-
 # =====================================
 # SECTION 5: CALCULATION RESULTS
 # =====================================
