@@ -118,7 +118,7 @@ with st.sidebar:
     st.caption("All units SI; water ρ=1000 kg/m³, g=9.81 m/s².")
 
 # ---------------------------- 5) Levels & rating head ----------------------------
-st.subheader("5) Reservoir Levels & Head Analysis")
+st.subheader("5) Determination of High & Low Water Level")
 col1, col2 = st.columns(2)
 with col1:
     st.markdown("**Upper reservoir**")
@@ -133,26 +133,55 @@ with col2:
 gross_head = HWL_u - TWL_l
 NWL_u = HWL_u - (HWL_u - LWL_u)/3.0
 head_fluct_rate = (LWL_u - TWL_l)/(HWL_u - TWL_l) if (HWL_u - TWL_l) != 0 else float('nan')
-max_head = HWL_u - TWL_l
+max_head = HWL_u - LWL_l
 min_head = LWL_u - HWL_l
 
-# Visualization
-fig_reservoir, ax = plt.subplots(figsize=(8, 6))
-ax.bar(['Upper Reservoir'], [HWL_u - LWL_u], bottom=LWL_u, color='#3498DB', alpha=0.7)
-ax.bar(['Lower Reservoir'], [HWL_l - TWL_l], bottom=TWL_l, color='#2ECC71', alpha=0.7)
+# ====== ADD THE VISUALIZATION CODE HERE ======
+# Create figure with appropriate size
+fig, ax = plt.subplots(figsize=(8, 6))  # Adjusted figure size
 
-ax.annotate('', xy=(0, HWL_u), xytext=(0, TWL_l),
+# Plot reservoirs with proper spacing
+reservoir_width = 0.4
+positions = [1, 2]  # Positions for upper and lower reservoirs
+
+# Upper reservoir
+upper_height = HWL_u - LWL_u
+ax.bar(positions[0], upper_height, bottom=LWL_u, width=reservoir_width, 
+       color='#3498DB', alpha=0.7, label='Upper Reservoir')
+
+# Lower reservoir
+lower_height = HWL_l - LWL_l
+ax.bar(positions[1], lower_height, bottom=LWL_l, width=reservoir_width,
+       color='#2ECC71', alpha=0.7, label='Lower Reservoir')
+
+# Add head indicators with proper spacing
+head_y_pos = (HWL_u + LWL_l)/2  # Middle position for max head
+min_head_y_pos = (LWL_u + HWL_l)/2  # Middle position for min head
+
+# Max head arrow
+ax.annotate('', xy=(positions[0], HWL_u), xytext=(positions[0], LWL_l),
            arrowprops=dict(arrowstyle='<->', color='#E74C3C', lw=2))
-ax.text(0.1, (HWL_u + TWL_l)/2, f'Max Head = {max_head:.1f} m', ha='left', va='center')
+ax.text(positions[0]+0.1, head_y_pos, f'Max Head\n{max_head:.1f} m', 
+       ha='left', va='center')
 
-ax.annotate('', xy=(0.2, LWL_u), xytext=(0.2, HWL_l),
+# Min head arrow
+ax.annotate('', xy=(positions[1], LWL_u), xytext=(positions[1], HWL_l),
            arrowprops=dict(arrowstyle='<->', color='#27AE60', lw=2))
-ax.text(0.3, (LWL_u + HWL_l)/2, f'Min Head = {min_head:.1f} m', ha='left', va='center')
+ax.text(positions[1]+0.1, min_head_y_pos, f'Min Head\n{min_head:.1f} m',
+       ha='left', va='center')
 
+# Configure plot
 ax.set_ylabel('Elevation (m)')
-ax.set_title('Reservoir Operation Ranges')
+ax.set_xticks(positions)
+ax.set_xticklabels(['Upper Reservoir', 'Lower Reservoir'])
+ax.set_title('Reservoir Operation Ranges', pad=20)  # Add padding
+ax.legend(loc='upper right')
 ax.grid(True, linestyle='--', alpha=0.4)
-st.pyplot(fig_reservoir)
+
+# Adjust layout to prevent overlap
+plt.tight_layout()
+st.pyplot(fig)
+# ====== END OF VISUALIZATION CODE ======
 
 # Metrics
 c1, c2, c3 = st.columns(3)
