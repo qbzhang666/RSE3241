@@ -1,7 +1,7 @@
-# PHES Design Teaching App (improved)
-# -----------------------------------------------------------
-# Focus: Reservoir head, penstock hydraulics, tunnel stresses, head losses, surge tanks
-# Cloud-friendly (no extra packages), robust formatting, didactic annotations
+# PHES Design Teaching App (with Equations & Reference Tables)
+# ----------------------------------------------------------------
+# Reservoir head, penstock hydraulics, lining stress, losses, surge tanks
+# Cloud-friendly, robust formatting, didactic annotations, equations & references
 
 import io
 import json
@@ -38,23 +38,22 @@ def headloss_darcy(f, L, D, v, Ksum=0.0):
 
 def hoop_stress(pi, pe, ri, r):
     """
-    Lame solution (thin-free assumptions avoided).
-    sigma_theta(r) = [pi*(r^2 + ri^2) - 2*pe*r^2] / (r^2 - ri^2)
+    Lame solution (thick-walled cylinder, elastic):
+    σθ(r) = [pi*(r^2 + ri^2) - 2*pe*r^2] / (r^2 - ri^2)
     Accepts scalars or numpy arrays for r.
     """
     r_arr = np.array([r]) if np.isscalar(r) else np.array(r)
     with np.errstate(divide='ignore', invalid='ignore'):
         s = (pi * (r_arr**2 + ri**2) - 2 * pe * r_arr**2) / (r_arr**2 - ri**2)
-    # exclude r <= ri (not physical inside the lining)
-    s[r_arr <= ri] = np.nan
+    s[r_arr <= ri] = np.nan  # not physical inside the inner radius
     return s.item() if np.isscalar(r) else s
 
 def required_pext_for_ft(pi_MPa, ri, re, ft_MPa):
-    """External confinement to keep σθ(ri) ≤ f_t (simple rearrangement at r ≈ re boundary)."""
-    # Using a conservative check at the inner fibre:
-    # Solve for pe so that sigma_theta(ri) = ft
-    # From Lame at r->ri, the limiting expression gives:
-    # pe_req ≈ (pi - ft) * (re**2 - ri**2) / (2 * re**2)
+    """
+    External confinement to keep σθ at the inner fibre ≤ f_t (simple conservative rearrangement).
+    A common classroom approximation:
+        p_ext,req ≈ (pi - f_t) * (re^2 - ri^2) / (2 re^2)
+    """
     return max(0.0, (pi_MPa - ft_MPa) * (re**2 - ri**2) / (2.0 * re**2))
 
 def snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=26.0):
@@ -68,7 +67,7 @@ def norwegian_FRV(CRV, hs, alpha_deg, gamma_w=9.81, gamma_R=26.0):
     return (CRV * gamma_R * math.cos(math.radians(alpha_deg))) / (hs * gamma_w)
 
 def surge_tank_first_cut(Ah, Lh, ratio=4.0):
-    """Very first-cut surge tank sizing (classroom-level)."""
+    """Very first-cut surge tank sizing (didactic)."""
     if Ah <= 0 or Lh <= 0 or ratio <= 0:
         return {"As": float("nan"), "omega_n": float("nan"), "Tn": float("nan")}
     As = ratio * Ah
@@ -94,7 +93,6 @@ def fit_hf_k_n_from_anchors(h_gross, eta_t, anchors):
 # ------------------------------- App Shell -------------------------------
 st.set_page_config(page_title="PHES Design Teaching App", layout="wide")
 st.title("Pumped Hydro Energy Storage — Design Teaching App")
-
 st.caption("Interactive classroom tool: reservoir head, penstock hydraulics, lining stress, losses, and surge tanks. "
            "Values are illustrative; final design requires detailed vendor data + transient analysis.")
 
@@ -209,14 +207,15 @@ hf_max_guess = 40.0
 
 # iterative two-pass to converge hf with v
 def compute_block(P_MW, hf_guess):
-    h_net = gross_head - hf_guess if P_MW == P_design else min_head - hf_guess
+    h_span = gross_head if P_MW == P_design else min_head
+    h_net = h_span - hf_guess
     Q_total = Q_from_power(P_MW, h_net, eta_t)
     Q_per = safe_div(Q_total, N_pen)
     A = area_circle(D_pen)
     v = safe_div(Q_per, A)
     hf = headloss_darcy(f, L_pen, D_pen, v, K_sum)
     # updated net head using hf
-    h_net2 = (gross_head if P_MW == P_design else min_head) - hf
+    h_net2 = h_span - hf
     Q_total2 = Q_from_power(P_MW, h_net2, eta_t)
     Q_per2 = safe_div(Q_total2, N_pen)
     v2 = safe_div(Q_per2, A)
@@ -232,7 +231,6 @@ else:
     # manual hf entries
     hf_design = st.number_input("Design head loss h_f,design (m)", 0.0, 500.0, 25.0, 0.1)
     hf_max = st.number_input("Max head loss h_f,max (m)", 0.0, 500.0, 40.0, 0.1)
-    # compute with fixed hf
     def compute_fixed(P_MW, hf_fixed, head_span):
         h_net = head_span - hf_fixed
         Q_total = Q_from_power(P_MW, h_net, eta_t)
@@ -332,8 +330,7 @@ FRV = norwegian_FRV(CRV, hs, alpha, gamma_w=9.81, gamma_R=gamma_R)
 c1, c2 = st.columns(2)
 c1.metric("Snowy vertical cover C_RV (m)", f"{CRV:.1f}")
 c2.metric("Norwegian factor F_RV (-)", f"{FRV:.2f}")
-
-st.markdown("**Target**: Typically F_RV ≥ 1.2–1.5 for comfort (site-specific).")
+st.markdown("**Target**: Typically F_RV ≥ 1.2–1.5 (site-dependent).")
 
 # Lining stress
 st.subheader("Lining Hoop Stress (Lame solution)")
@@ -345,7 +342,7 @@ with c2:
 with c3:
     ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1)
 
-sigma_ri = hoop_stress(pi_MPa, pext, ri, re)   # evaluate at outer face ~conservative display
+sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # stress evaluated at outer face for display
 pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
 
 # Stress profile
@@ -367,11 +364,11 @@ ax.legend(loc="best")
 st.pyplot(fig_s)
 
 c1, c2, c3 = st.columns(3)
-c1.metric("σθ @ outer face (MPa)", f"{sigma_ri:.1f}")
+c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
 c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
-c3.metric("Status", "⚠️ Cracking likely" if sigma_ri > ft_MPa else "✅ OK",
+c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
           help=("Stress exceeds tensile strength; increase thickness or confinement."
-                if sigma_ri > ft_MPa else "Within tensile capacity at outer face."))
+                if sigma_outer > ft_MPa else "Within tensile capacity at outer face."))
 
 # ------------------------------- Section 6: Optional hf = k·Q^n Fit -------------------------------
 st.header("6) (Optional) Loss Curve Fit  h_f = k·Qⁿ  from Anchors")
@@ -418,20 +415,71 @@ c2.metric("A_s (m²)", f"{surge['As']:.2f}")
 c3.metric("Natural period T_n (s)", f"{surge['Tn']:.1f}")
 st.caption("Rule-of-thumb only. Real designs require full water-hammer/transient analysis.")
 
-# ------------------------------- Section 8: Downloads -------------------------------
-st.header("8) Download Results")
+# ------------------------------- Section 8A: Equations -------------------------------
+st.header("8) Core Equations (for teaching)")
+
+tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining)", "Surge/Waterhammer"])
+
+with tabH:
+    st.markdown("#### Continuity")
+    st.latex(r"Q = A \, v")
+    st.markdown("#### Bernoulli (with losses)")
+    st.latex(r"\frac{P_1}{\rho g} + \frac{v_1^2}{2g} + z_1 = \frac{P_2}{\rho g} + \frac{v_2^2}{2g} + z_2 + h_f")
+    st.markdown("#### Turbine Power")
+    st.latex(r"P = \rho g Q H_{\text{net}} \eta_t")
+    st.markdown("#### Darcy–Weisbach Head Loss (with local losses)")
+    st.latex(r"h_f = \left(f \frac{L}{D} + \sum K \right) \frac{v^2}{2g}")
+
+with tabM:
+    st.markdown("#### Lame (thick-walled cylinder) — hoop stress")
+    st.latex(r"\sigma_\theta(r) = \frac{p_i (r^2 + r_i^2) - 2 p_e r^2}{r^2 - r_i^2}")
+    st.markdown("#### Required external confinement (didactic inner-fibre check)")
+    st.latex(r"p_{e,\text{req}} \approx \frac{(p_i - f_t) (r_o^2 - r_i^2)}{2 r_o^2}")
+    st.markdown("#### Snowy vertical cover")
+    st.latex(r"C_{RV} = \frac{h_s \, \gamma_w}{\gamma_R}")
+    st.markdown("#### Norwegian valley-side stability factor")
+    st.latex(r"F_{RV} = \frac{C_{RV} \, \gamma_R \cos\alpha}{h_s \, \gamma_w}")
+
+with tabS:
+    st.markdown("#### First-cut surge tank sizing (simple oscillator)")
+    st.latex(r"A_s = k \, A_h, \quad \omega_n = \sqrt{\frac{g A_h}{L_h A_s}}, \quad T_n = \frac{2\pi}{\omega_n}")
+    st.caption("Use only as a teaching baseline; proper design requires transient simulation (e.g., method of characteristics).")
+
+# ------------------------------- Section 8B: Reference Tables -------------------------------
+st.header("9) Reference Tables (typical classroom values)")
+
+with st.expander("📚 Friction Factors (Darcy) — typical ranges & sources", expanded=False):
+    df_f = pd.DataFrame({
+        "Material": ["New steel (welded)", "New steel (riveted)", "Concrete (smooth)", "Concrete (rough)", "PVC/Plastic"],
+        "Typical f": [0.012, 0.017, 0.015, 0.022, 0.009],
+        "Range": ["0.010–0.015", "0.015–0.020", "0.012–0.018", "0.018–0.025", "0.007–0.012"],
+        "Source (teaching)": ["ASCE (2017)","USBR (1987)","ACI 351.3R (2018)","USACE EM (2008)","AWWA (2012)"]
+    })
+    st.table(df_f)
+
+with st.expander("📚 Local Loss Coefficients ΣK — indicative ranges & notes", expanded=False):
+    df_k = pd.DataFrame({
+        "Component": ["Entrance (bellmouth)", "Entrance (square)", "90° bend", "45° bend", "Gate valve (open)",
+                      "Butterfly valve (open)", "T-junction", "Exit"],
+        "K (typical)": [0.15, 0.50, 0.25, 0.15, 0.20, 0.30, 0.40, 1.00],
+        "Range": ["0.1–0.2","0.4–0.5","0.2–0.3","0.1–0.2","0.1–0.3","0.2–0.4","0.3–0.5","0.8–1.0"],
+        "Notes": ["Best-case entrance","Worst-case entrance","Radius/diameter dependent",
+                  "Gentler than 90°","Design dependent","Position dependent","Flow split losses","Kinetic recovery lost"]
+    })
+    st.table(df_k)
+    st.caption("Typical ΣK for well-designed penstock trunks: ~2–5 (teaching values).")
+
+# ------------------------------- Section 9: Downloads & Bibliography -------------------------------
+st.header("10) Downloads & Bibliography")
 
 bundle = {
     "reservoirs": {"upper": {"HWL": HWL_u, "LWL": LWL_u}, "lower": {"HWL": HWL_l, "TWL": TWL_l}},
     "penstock": {"N": N_pen, "D": D_pen, "L": L_pen, "f": f, "K_sum": K_sum, "material": f_material},
     "efficiency": {"eta_t": eta_t},
-    "operating": {
-        "design": out_design,
-        "max": out_max
-    },
+    "operating": {"design": out_design, "max": out_max},
     "tunnel": {
         "ri": ri, "t": t, "re": re, "pi_MPa": pi_MPa, "pext": pext, "ft_MPa": ft_MPa,
-        "CRV": CRV, "FRV": FRV, "sigma_outer": sigma_ri, "pext_req": pext_req
+        "CRV": CRV, "FRV": FRV, "sigma_outer": sigma_outer, "pext_req": pext_req
     },
     "surge": surge,
     "hf_fit": {"k": k_fit, "n": n_fit}
@@ -448,10 +496,20 @@ flat = {
     "hnet_max_m": out_max["h_net"], "Q_total_max_m3s": out_max["Q_total"],
     "v_max_ms": out_max["v"], "hf_max_m": out_max["hf"],
     "ri_m": ri, "re_m": re, "pi_MPa": pi_MPa, "pext_MPa": pext, "ft_MPa": ft_MPa,
-    "CRV_m": CRV, "FRV": FRV, "A_h_m2": Ah, "A_s_m2": surge["As"], "Tn_s": surge["Tn"],
+    "CRV_m": CRV, "FRV": FRV, "A_h_m2": area_circle(D_pen), "A_s_m2": surge["As"], "Tn_s": surge["Tn"],
     "k_fit": k_fit, "n_fit": n_fit
 }
 csv_bytes = pd.DataFrame([flat]).to_csv(index=False).encode("utf-8")
 st.download_button("Download CSV (parameters)", data=csv_bytes, file_name="phes_parameters.csv")
+
+st.markdown("""
+**Bibliography (teaching references)**  
+- USBR Design Standards (Penstocks; Hydraulics)  
+- ICOLD Bulletins on Pressure Tunnels and Surge Tanks  
+- ASCE Manuals & ACI 351.3R (Concrete & friction ranges)  
+- USACE Engineering Manuals (Hydraulic Loss Coefficients)  
+- Chaudhry, M.H. (2014). *Applied Hydraulic Transients*.  
+- Gordon, J.L. (2001). *Hydraulics of Hydroelectric Power*.  
+""")
 
 st.caption("Educational tool • Use for teaching & scoping only • © Your Course / Lab")
