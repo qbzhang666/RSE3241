@@ -34,6 +34,25 @@ with col2:
     design_power = st.number_input("Design Power (MW)", value=500.0)
     max_power = st.number_input("Maximum Power (MW)", value=600.0)
 
+st.subheader("Head Loss Parameters")
+col1, col2 = st.columns(2)
+with col1:
+    L_penstock = st.number_input("Penstock Length (m)", value=500.0)
+    f = st.number_input("Friction Factor", value=0.015, min_value=0.01, max_value=0.03)
+with col2:
+    K_sum = st.number_input("Total Local Loss Coefficients (ΣK)", value=4.5)
+    auto_hf = st.checkbox("Calculate losses automatically")
+
+if auto_hf:
+    v_design = Q_design / (math.pi*(D_pen/2)**2)
+    v_max = Q_max / (math.pi*(D_pen/2)**2)
+    
+    hf_design = (f * L_penstock/D_pen + K_sum) * (v_design**2)/(2*g)
+    hf_max = (f * L_penstock/D_pen + K_sum) * (v_max**2)/(2*g)
+else:
+    hf_design = st.number_input("Design Head Loss (m)", value=25.0)
+    hf_max = st.number_input("Max Head Loss (m)", value=40.0)
+
 # =====================================
 # Section 2: Key Equations
 # =====================================
