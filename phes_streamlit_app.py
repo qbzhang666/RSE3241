@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 # Configure plotting style
-plt.style.use('seaborn')
+plt.style.use('seaborn-v0_8')
 mpl.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman"],
