@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import math
 
 # Constants
-g = 9.81  # m/s²
+g = 9.8  # m/s²
 rho = 1000  # kg/m³
 
 st.set_page_config(layout="wide")
@@ -87,7 +87,7 @@ with st.expander("Show Design Equations"):
     - $P$: Power (MW)
     - $h_{\\text{net}} = \\Delta H - h_f$: Net head (Gross head $\\Delta H$ minus head loss $h_f$) (m)
     - $\\rho$: Water density (1000 kg/m³)
-    - $g$: Gravitational acceleration (9.81 m/s²)
+    - $g$: Gravitational acceleration (9.8 m/s²)
     - $\\eta_t$: Turbine efficiency (e.g., 0.85 for 85%)
     
     ### 2.2 Per-Penstock Discharge
@@ -193,27 +193,152 @@ else:
     - Consider smaller diameter for cost savings
     """)
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 # =====================================
-# Section 6: System Curves
+# Section 6: Interactive System Curves
 # =====================================
 st.header("5. System Characteristics")
 
-# Generate operating curve
-Q_range = np.linspace(0, Q_max_total*1.2, 100)
-h_net_range = h_net_design - (h_net_design - h_net_min) * (Q_range/Q_max_total)**2
-P_range = N_penstocks * (rho * g * (Q_range/N_penstocks) * h_net_range * eta_t) / 1e6
+# Create interactive plot with Plotly
+fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-fig, ax = plt.subplots(figsize=(10,6))
-ax.plot(Q_range, P_range, 'b-', label='Power Output')
-ax.axvline(Q_design_total, color='g', linestyle='--', label='Design Discharge')
-ax.axvline(Q_max_total, color='r', linestyle='--', label='Max Discharge')
-ax.set_xlabel("Total System Discharge (m³/s)")
-ax.set_ylabel("Total Power Output (MW)")
-ax.set_title("System Operating Curve")
-ax.grid(True)
-ax.legend()
-st.pyplot(fig)
+# Main power curve (left axis)
+fig.add_trace(
+    go.Scatter(
+        x=Q_range,
+        y=P_range,
+        name="Power Output",
+        line=dict(color="blue", width=3),
+        hovertemplate="<b>%{x:.1f} m³/s</b><br>Power: %{y:.1f} MW",
+    ),
+    secondary_y=False,
+)
 
+# Add efficiency curve (right axis)
+fig.add_trace(
+    go.Scatter(
+        x=Q_range,
+        y=(P_range*1e6)/(rho*g*(Q_range/N_penstocks)*100,
+        name="System Efficiency (%)",
+        line=dict(color="purple", width=2, dash="dot"),
+        hovertemplate="<b>%{x:.1f} m³/s</b><br>Eff: %{y:.1f}%",
+        visible="legendonly"  # Hidden by default
+    ),
+    secondary_y=True,
+)
+
+# Add reference lines
+fig.add_vline(
+    x=Q_design_total,
+    line=dict(color="green", dash="dash", width=2),
+    annotation=dict(text="Design", xanchor="left"),
+    name="Design Discharge"
+)
+
+fig.add_vline(
+    x=Q_max_total,
+    line=dict(color="red", dash="dash", width=2),
+    annotation=dict(text="Max", xanchor="left"),
+    name="Max Discharge"
+)
+
+# Add velocity markers
+velocity_markers = [4, 6, 7]  # USBR standards
+for v in velocity_markers:
+    Q_v = v * (math.pi * (D_pen**2)/4) * N_penstocks
+    fig.add_vline(
+        x=Q_v,
+        line=dict(color="orange", width=1, dash="dot"),
+        annotation=dict(text=f"{v} m/s", yanchor="bottom"),
+        name=f"{v} m/s velocity"
+    )
+
+# Layout configuration
+fig.update_layout(
+    title="System Operating Characteristics",
+    xaxis_title="Total System Discharge (m³/s)",
+    yaxis_title="Power Output (MW)",
+    yaxis2_title="Efficiency (%)",
+    hovermode="x unified",
+    width=800,
+    height=500,
+    legend=dict(orientation="h", yanchor="bottom", y=1.02),
+    margin=dict(l=50, r=50, b=50, t=80),
+)
+
+# Add range slider
+fig.update_layout(
+    xaxis=dict(
+        rangeslider=dict(visible=True),
+        rangeselector=dict(
+            buttons=list([
+                dict(count=1, label="1x", step="all"),
+                dict(count=2, label="2x", step="all"),
+                dict(step="all")
+            ])
+        )
+    )
+)
+
+# Display the interactive plot
+st.plotly_chart(fig, use_container_width=True)
+
+# =====================================
+# Additional Controls
+# =====================================
+with st.expander("⚙️ Chart Customization"):
+    col1, col2 = st.columns(2)
+    with col1:
+        show_efficiency = st.checkbox("Show Efficiency Curve", value=False)
+        show_velocity = st.checkbox("Show Velocity Markers", value=True)
+    with col2:
+        log_scale = st.checkbox("Logarithmic Scale (X-axis)")
+    
+    # Update visibility based on controls
+    fig.update_traces(
+        selector={"name": "System Efficiency (%)"},
+        visible=show_efficiency
+    )
+    for v in velocity_markers:
+        fig.update_traces(
+            selector={"name": f"{v} m/s velocity"},
+            visible=show_velocity
+        )
+    if log_scale:
+        fig.update_xaxes(type="log")
+    
+    st.plotly_chart(fig, use_container_width=True)
+
+# =====================================
+# Operating Point Analysis
+# =====================================
+st.subheader("Operating Point Analysis")
+
+selected_Q = st.slider(
+    "Select Discharge (m³/s)",
+    min_value=0.0,
+    max_value=float(Q_max_total*1.2),
+    value=float(Q_design_total),
+    step=0.1
+)
+
+# Calculate values at selected point
+idx = np.abs(Q_range - selected_Q).argmin()
+P_selected = P_range[idx]
+h_net_selected = h_net_range[idx]
+v_selected = (selected_Q/N_penstocks)/(math.pi*(D_pen/2)**2)
+
+# Display metrics
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Power Output", f"{P_selected:.1f} MW")
+with col2:
+    st.metric("Net Head", f"{h_net_selected:.1f} m")
+with col3:
+    st.metric("Flow Velocity", f"{v_selected:.1f} m/s", 
+              delta="Above limit" if v_selected > 6 else None)
 # =====================================
 # Section 7: References
 # =====================================
