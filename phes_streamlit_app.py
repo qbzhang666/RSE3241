@@ -1,6 +1,5 @@
 # PHES Design App · Snowy 2.0 & Kidston (Sections 5–9)
-# Run locally:      streamlit run app.py
-# Streamlit Cloud:  push to GitHub → share.streamlit.io → select repo/app.py
+# Fully corrected version with proper imports and configurations
 
 import io
 import math
@@ -8,10 +7,11 @@ import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl  # Added this import
 import streamlit as st
 
 # Configure plotting style
-plt.style.use('seaborn-v0_8')
+plt.style.use('default')  # Using default style which is more stable
 mpl.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman"],
@@ -63,7 +63,7 @@ def solve_Q_hf_net(P_MW, h_gross, eta_t, k, n, q0=None, tol=1e-10, itmax=200):
     return dict(Q=Q, hf=hf, h_net=h_gross - hf)
 
 def hoop_stress(pi, pe, ri, r):
-    """Improved hoop stress calculation with safeguards"""
+    """Calculate hoop stress with safeguards"""
     r_array = np.array([r]) if np.isscalar(r) else np.array(r)
     with np.errstate(divide='ignore', invalid='ignore'):
         stress = (pi*(r_array**2 + ri**2) - 2*pe*r_array**2)/(r_array**2 - ri**2)
@@ -95,6 +95,7 @@ def thoma_sigma_available(H_atm, H_vap, TWL, runner_CL, h_losses_draft, H_net):
 # --------------------------------- UI ---------------------------------
 st.set_page_config(page_title="PHES Design (Snowy & Kidston)", layout="wide")
 st.title("PHES Design App · Snowy 2.0 & Kidston (Sections 5–9)")
+
 
 # Presets
 with st.sidebar:
