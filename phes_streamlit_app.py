@@ -229,6 +229,7 @@ col2.metric("F_RV (-)", f"{FRV:.2f}")
 col3.metric("F_RM (-)", f"{FRM:.2f}")
 
 # Lining stress analysis
+# Updated Lining Stress Visualization with Proper Scale
 st.markdown("**Lining Stress Analysis**")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -245,27 +246,40 @@ ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 
 sigma_theta_i = hoop_stress(pi_MPa, pext_manual, ri, re)
 pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
 
-# Stress distribution plot
-fig_stress, ax = plt.subplots(figsize=(8,5))
+# Create visualization with proper stress scale
+fig, ax = plt.subplots(figsize=(8, 5))
 r_extended = np.linspace(ri*1.001, 6.0, 200)
 sigma_t_extended = hoop_stress(pi_MPa, pext_manual, ri, r_extended)
 
+# Plot with y-axis limited to 100 MPa
 ax.plot(r_extended, sigma_t_extended, 'b-', lw=2.5, label='Hoop Stress')
 ax.axhline(ft_MPa, color='g', ls='-.', lw=2, label=f'Tensile Strength ({ft_MPa} MPa)')
 ax.axvline(ri, color='k', ls=':', label=f'Inner Radius ({ri} m)')
 ax.axvline(re, color='k', ls='--', label=f'Outer Radius ({re} m)')
 
-ax.fill_between(r_extended, sigma_t_extended, ft_MPa, 
-               where=(sigma_t_extended > ft_MPa), 
-               color='red', alpha=0.2, label='Overstress Region')
+# Highlight overstress region only if stress exceeds 100 MPa
+if sigma_theta_i > 100:
+    ax.fill_between(r_extended, sigma_t_extended, 100, 
+                   where=(sigma_t_extended > 100), 
+                   color='red', alpha=0.2, label='Critical Overstress')
+    ax.set_ylim(0, 110)  # Add 10% buffer above 100 MPa
+else:
+    ax.fill_between(r_extended, sigma_t_extended, ft_MPa,
+                   where=(sigma_t_extended > ft_MPa),
+                   color='red', alpha=0.2, label='Overstress Region')
+    ax.set_ylim(0, max(sigma_t_extended)*1.1)  # Auto-scale with 10% buffer
 
-ax.set_xlabel('Radius (m)'); ax.set_ylabel('Stress (MPa)')
-ax.set_title('Lining Stress Distribution')
-ax.set_xlim(ri-0.5, 6.0); ax.grid(True); ax.legend()
-st.pyplot(fig_stress)
+ax.set_xlabel('Radius (m)')
+ax.set_ylabel('Stress (MPa)')
+ax.set_title('Lining Stress Distribution (Max 100 MPa)')
+ax.grid(True, linestyle='--', alpha=0.3)
+ax.legend(loc='upper right')
+plt.tight_layout()
+st.pyplot(fig)
 
+# Display key metrics
 col1, col2, col3 = st.columns(3)
-col1.metric("σ_θ(r_i) (MPa)", f"{sigma_theta_i:.2f}")
+col1.metric("σ_θ(r_i) (MPa)", f"{min(sigma_theta_i, 100):.1f}")  # Capped at 100 MPa
 col2.metric("p_ext required (MPa)", f"{pext_req:.2f}")
 status = "✅ OK (no cracking)" if sigma_theta_i <= ft_MPa else "⚠️ Cracking likely"
 col3.metric("Status", status)
