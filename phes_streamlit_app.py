@@ -229,7 +229,7 @@ col2.metric("F_RV (-)", f"{FRV:.2f}")
 col3.metric("F_RM (-)", f"{FRM:.2f}")
 
 # Lining stress analysis
-# Lining Stress Visualization with Strict 100 MPa Limit
+# Corrected Lining Stress Analysis with Proper Cracking Criteria
 st.markdown("**Lining Stress Analysis**")
 
 col1, col2, col3, col4 = st.columns(4)
@@ -245,60 +245,62 @@ with col4:
 re = ri + t
 ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 100.0, 3.0, 0.1)
 
-# Calculate stresses (may exceed 100 MPa)
+# Calculate stresses
 sigma_theta_i = hoop_stress(pi_MPa, pext_manual, ri, re)
 pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
 
-# Create visualization strictly limited to 100 MPa
+# Create visualization (capped at 100 MPa)
 fig, ax = plt.subplots(figsize=(8, 5))
 r_extended = np.linspace(ri*1.001, 6.0, 200)
 sigma_t_extended = hoop_stress(pi_MPa, pext_manual, ri, r_extended)
+sigma_t_visual = np.minimum(sigma_t_extended, 100)  # Cap visualization at 100 MPa
 
-# Cap all stress values at 100 MPa for visualization
-sigma_t_visual = np.minimum(sigma_t_extended, 100)
-
-ax.plot(r_extended, sigma_t_visual, 'b-', lw=2.5, label='Hoop Stress (capped at 100 MPa)')
+# Plotting
+ax.plot(r_extended, sigma_t_visual, 'b-', lw=2.5, label='Hoop Stress')
 ax.axhline(ft_MPa, color='g', ls='-.', lw=2, label=f'Tensile Strength ({ft_MPa} MPa)')
 ax.axvline(ri, color='k', ls=':', label=f'Inner Radius ({ri} m)')
 ax.axvline(re, color='k', ls='--', label=f'Outer Radius ({re} m)')
 
-# Highlight overstress region (up to 100 MPa)
-if ft_MPa < 100:
+# Highlight overstress region (where stress > tensile strength)
+if ft_MPa < 100:  # Only show if within our visualization range
     ax.fill_between(r_extended, sigma_t_visual, ft_MPa,
                   where=(sigma_t_visual > ft_MPa),
-                  color='red', alpha=0.2, label='Overstress Region')
+                  color='red', alpha=0.2, label='Cracking Risk Region')
 
 ax.set_xlabel('Radius (m)')
 ax.set_ylabel('Stress (MPa)')
 ax.set_title('Lining Stress Distribution (Max 100 MPa Display)')
-ax.set_ylim(0, 100)  # Hard limit at 100 MPa
+ax.set_ylim(0, 100)
 ax.grid(True, linestyle='--', alpha=0.3)
 ax.legend(loc='upper right')
 plt.tight_layout()
 st.pyplot(fig)
 
-# Display metrics with high-stress warnings
+# Status evaluation based ONLY on tensile strength comparison
 col1, col2, col3 = st.columns(3)
-col1.metric("σ_θ(r_i) (MPa)", f"{min(sigma_theta_i, 100):.1f}",
-           help="Actual calculated value may be higher")
+col1.metric("σ_θ(r_i) (MPa)", f"{sigma_theta_i:.1f}")
 col2.metric("p_ext required (MPa)", f"{pext_req:.2f}")
 
-if sigma_theta_i > 100:
-    status = "⚠️ Extreme Stress (>100 MPa)"
-    col3.metric("Status", status, 
-               help="Stress exceeds visualization range - check calculations")
-    st.error("""
-    **Warning:** Calculated stress exceeds 100 MPa. 
-    - For concrete linings, typical working stress should be < 30 MPa
-    - Verify input parameters or consider:
-      * Increasing wall thickness
-      * Using higher strength materials
-      * Reducing internal pressure
-    """)
-elif sigma_theta_i > ft_MPa:
-    col3.metric("Status", "⚠️ Cracking likely")
+# Corrected cracking criteria - only compares with tensile strength
+if sigma_theta_i > ft_MPa:
+    status = "⚠️ Cracking likely"
+    explanation = f"Stress ({sigma_theta_i:.1f} MPa) exceeds tensile strength ({ft_MPa} MPa)"
 else:
-    col3.metric("Status", "✅ OK (no cracking)")
+    status = "✅ OK (no cracking)"
+    explanation = f"Stress ({sigma_theta_i:.1f} MPa) within safe limits"
+
+col3.metric("Status", status, help=explanation)
+
+# Additional warnings for extreme cases
+if sigma_theta_i > 100:
+    st.warning(f"""
+    **High Stress Alert:** Calculated stress ({sigma_theta_i:.1f} MPa) exceeds visualization range.
+    - Consider: Increasing thickness (current: {t} m) or using stronger materials
+    - Required external pressure to prevent cracking: {pext_req:.2f} MPa
+    """)
+elif sigma_theta_i > 0.7 * ft_MPa:  # Warning at 70% of tensile strength
+    st.info(f"Safety Note: Stress is {sigma_theta_i/ft_MPa:.0%} of tensile strength - consider safety factor")
+    
 # ---------------------------- 8) Head losses ----------------------------
 st.subheader("8) Head Loss Analysis")
 
