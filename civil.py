@@ -1,517 +1,345 @@
-import streamlit as st
+# PHES / Hydropower Design Teaching App (Snowy 2.0 & Kidston)
+# Enhanced version with improved UI, calculations, and visualization
+
+import math
 import numpy as np
 import pandas as pd
-import math
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import io
-import json
+import streamlit as st
+from io import BytesIO
+import base64
 
-# Configure plotting style
-plt.style.use('default')
-mpl.rcParams.update({
-    "font.family": "serif",
-    "font.serif": ["Times New Roman"],
-    "axes.grid": True,
-    "grid.linestyle": "--",
-    "grid.alpha": 0.4,
-    "axes.edgecolor": "0.15",
-    "axes.linewidth": 1.25,
-})
+# ======================== CONSTANTS & PHYSICS ========================
+G = 9.80665  # Standard gravity (m/s²)
+RHO = 997     # Water density at 25°C (kg/m³)
+ATM_PRESSURE = 101.325  # kPa
+VAP_PRESSURE = 3.169    # kPa at 25°C
 
-# Constants
-g = 9.81  # m/s²
-rho = 1000  # kg/m³
+# ======================== ENGINEERING FUNCTIONS ========================
+def power_output(Q, h_net, eta):
+    """Calculate power output in MW"""
+    return RHO * G * Q * h_net * eta / 1e6
 
-# Physics helper functions
-def hoop_stress(pi, pe, ri, r):
-    with np.errstate(divide='ignore', invalid='ignore'):
-        stress = (pi*(r**2 + ri**2) - 2*pe*r**2)/(r**2 - ri**2)
-    return stress
+def discharge_required(P, h_net, eta):
+    """Calculate required discharge for power output"""
+    return P * 1e6 / (RHO * G * h_net * eta)
 
-def required_pext_for_ft(pi_MPa, ri, re, ft_MPa):
-    return (ft_MPa - pi_MPa) * (re**2 - ri**2) / (2.0 * re**2)
+def head_loss(L, D, f, K, Q):
+    """Calculate head loss using Darcy-Weisbach equation"""
+    A = math.pi * (D/2)**2
+    v = Q / A
+    return (f * L/D + K) * (v**2) / (2 * G)
 
-def snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=26.0):
-    return (hs * gamma_w) / gamma_R
+def thoma_sigma(H_atm, H_vap, submergence, h_loss, H_net):
+    """Calculate Thoma cavitation coefficient"""
+    return (H_atm - H_vap + submergence - h_loss) / H_net
 
-def norwegian_FRV(CRV, hs, alpha_deg, gamma_w=9.81, gamma_R=26.0):
-    return (CRV * gamma_R * math.cos(math.radians(alpha_deg))) / (hs * gamma_w)
+# ======================== STREAMLIT CONFIG ========================
+st.set_page_config(
+    page_title="Advanced PHES Design Simulator",
+    layout="wide",
+    page_icon="💧"
+)
 
-def surge_tank_first_cut(Ah, Lh, ratio=4.0):
-    As = ratio * Ah
-    omega_n = math.sqrt(g * Ah / (Lh * As))
-    Tn = 2*math.pi/omega_n
-    return dict(As=As, omega_n=omega_n, Tn=Tn)
-
-# App configuration
-st.set_page_config(page_title="PHES Design Teaching App", layout="wide")
-st.title("Pumped Hydro Energy Storage Design App")
+st.title("🏔️ Pumped Hydro Energy Storage Design Simulator")
 st.markdown("""
-**Teaching tool for hydropower engineering principles** · Combines penstock hydraulics, tunnel mechanics, and system design
+**Explore PHES design principles using Snowy 2.0 and Kidston as case studies**  
+*Sections 5-9: Hydraulic Design, Pressure Tunnels, Cavitation Analysis*
 """)
 
-# =====================================
-# SECTION 1: SYSTEM OVERVIEW
-# =====================================
-st.header("1. System Overview")
-
-with st.expander("Project Description", expanded=True):
-    st.markdown("""
-    This app demonstrates key design principles for pumped hydro storage systems:
-    
-    1. **Reservoir Sizing & Head Determination**  
-    2. **Penstock Hydraulics** (flow, velocity, head loss)  
-    3. **Pressure Tunnel Design** (rock mechanics, lining stresses)  
-    4. **Head Loss Analysis**  
-    5. **Surge Tank Fundamentals**  
-    
-    Based on industry standards from Snowy 2.0, Kidston PHES, and international design practices.
-    """)
-
-# Presets system
+# ======================== SIDEBAR CONTROLS ========================
 with st.sidebar:
-    st.header("Project Presets")
-    preset = st.selectbox("Select Project", ["Custom", "Snowy 2.0 · Plateau", "Kidston PHES"])
+    st.header("⚙️ Project Configuration")
+    project = st.selectbox("Select Project", ["Snowy 2.0", "Kidston PHES", "Custom Design"])
     
-    if preset == "Snowy 2.0 · Plateau":
-        st.session_state.update(dict(
-            HWL_u=1100.0, LWL_u=1080.0, HWL_l=450.0, TWL_l=420.0,
-            N_penstocks=6, D_pen=4.8, design_power=1000, max_power=2000,
-            f_material="Concrete (smooth)", f=0.015, L_penstock=15000
-        ))
-    elif preset == "Kidston PHES":
-        st.session_state.update(dict(
-            HWL_u=500.0, LWL_u=490.0, HWL_l=230.0, TWL_l=220.0,
-            N_penstocks=2, D_pen=3.2, design_power=250, max_power=500,
-            f_material="New steel (welded)", f=0.012, L_penstock=800
-        ))
-
-# =====================================
-# SECTION 2: RESERVOIR PARAMETERS
-# =====================================
-st.header("2. Reservoir Parameters")
-st.subheader("Water Level Elevations")
-
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown("**Upper Reservoir**")
-    HWL_u = st.number_input("High Water Level (m)", 0.0, 3000.0, float(st.session_state.get("HWL_u", 1100.0)), 1.0, key="hwl_u")
-    LWL_u = st.number_input("Low Water Level (m)", 0.0, 3000.0, float(st.session_state.get("LWL_u", 1080.0)), 1.0, key="lwl_u")
-with col2:
-    st.markdown("**Lower Reservoir**")
-    HWL_l = st.number_input("High Water Level (m)", 0.0, 3000.0, float(st.session_state.get("HWL_l", 450.0)), 1.0, key="hwl_l")
-    TWL_l = st.number_input("Tailwater Level (m)", 0.0, 3000.0, float(st.session_state.get("TWL_l", 420.0)), 1.0, key="twl_l")
-
-# Calculate head parameters
-gross_head = HWL_u - TWL_l
-min_head = LWL_u - HWL_l
-head_fluctuation = (LWL_u - TWL_l)/(HWL_u - TWL_l) if (HWL_u - TWL_l) > 0 else 0
-
-# Visualization
-fig_res, ax = plt.subplots(figsize=(10, 6))
-ax.bar(['Upper'], [HWL_u - LWL_u], bottom=LWL_u, color='#3498DB', alpha=0.7)
-ax.bar(['Lower'], [HWL_l - TWL_l], bottom=TWL_l, color='#2ECC71', alpha=0.7)
-ax.annotate('', xy=(0, HWL_u), xytext=(0, TWL_l), arrowprops=dict(arrowstyle='<->', color='#E74C3C', lw=2))
-ax.text(0.1, (HWL_u + TWL_l)/2, f'Max Head: {gross_head:.1f} m', ha='left', va='center', fontsize=12)
-ax.annotate('', xy=(0.4, LWL_u), xytext=(0.4, HWL_l), arrowprops=dict(arrowstyle='<->', color='#27AE60', lw=2))
-ax.text(0.5, (LWL_u + HWL_l)/2, f'Min Head: {min_head:.1f} m', ha='left', va='center', fontsize=12)
-ax.set_ylabel('Elevation (m)')
-ax.set_title('Reservoir Operating Range')
-ax.grid(True, linestyle='--', alpha=0.4)
-st.pyplot(fig_res)
-
-# Metrics
-col1, col2, col3 = st.columns(3)
-col1.metric("Gross Head", f"{gross_head:.1f} m")
-col2.metric("Head Fluctuation", f"{head_fluctuation:.2f}")
-col3.metric("Energy Storage", f"{(HWL_u - LWL_u) * (HWL_l - TWL_l) / 1e6:.1f} GL", "Based on reservoir areas")
-
-# =====================================
-# SECTION 3: PENSTOCK DESIGN
-# =====================================
-st.header("3. Penstock Design")
-st.subheader("Hydraulic Parameters")
-
-col1, col2 = st.columns(2)
-with col1:
-    N_penstocks = st.number_input("Number of Penstocks", min_value=1, max_value=8, 
-                                 value=int(st.session_state.get("N_penstocks", 2)), key="n_penstocks")
-    D_pen = st.number_input("Diameter (m)", value=float(st.session_state.get("D_pen", 3.5)), key="d_pen")
-    design_power = st.number_input("Design Power (MW)", value=float(st.session_state.get("design_power", 500.0)), key="p_design")
-    max_power = st.number_input("Maximum Power (MW)", value=float(st.session_state.get("max_power", 600.0)), key="p_max")
-    
-with col2:
-    eta_t = st.number_input("Turbine Efficiency", value=0.90, min_value=0.7, max_value=1.0, key="eta_t")
-    L_penstock = st.number_input("Length (m)", value=float(st.session_state.get("L_penstock", 500.0)), key="l_penstock")
-    h_draft = st.number_input("Draft Head (m)", 5.0, 50.0, 15.0, 1.0, 
-                             help="Distance from tailwater to turbine centerline")
-    runner_CL = TWL_l - h_draft
-    st.metric("Turbine Centerline Elevation", f"{runner_CL:.1f} m")
-
-# Head Loss Parameters
-st.subheader("Head Loss Parameters")
-col1, col2 = st.columns(2)
-
-with col1:
-    # Friction factor selection
-    f_options = {
-        "New steel (welded)": 0.012,
-        "New steel (riveted)": 0.017,
-        "Concrete (smooth)": 0.015,
-        "Concrete (rough)": 0.022,
-        "PVC/Plastic": 0.009
-    }
-    f_material = st.selectbox(
-        "Penstock Material",
-        options=list(f_options.keys()),
-        index=2 if "Concrete" in st.session_state.get("f_material", "") else 0,
-        key="f_material"
-    )
-    f = st.slider(
-        "Friction Factor (f)",
-        min_value=0.005,
-        max_value=0.03,
-        value=f_options[f_material],
-        step=0.001,
-        key="friction"
-    )
-    
-with col2:
-    # Component loss calculator
-    components = {
-        "Entrance (bellmouth)": 0.15,
-        "Entrance (square)": 0.50,
-        "90° bend": 0.25,
-        "45° bend": 0.15,
-        "Gate valve": 0.20,
-        "Butterfly valve": 0.30,
-        "T-junction": 0.40,
-        "Exit": 1.00
-    }
-    
-    st.markdown("**Local Loss Coefficients (ΣK)**")
-    K_sum = 0.0
-    for comp, k_val in components.items():
-        if st.checkbox(comp, value=(comp in ["Entrance (bellmouth)", "90° bend", "Exit"])):
-            K_sum += k_val
-    st.metric("Total ΣK", f"{K_sum:.2f}", "Sum of all selected components")
-
-auto_hf = st.checkbox("Calculate head losses automatically", value=True, key="auto_hf")
-
-# Initialize head losses
-hf_design = 25.0  
-hf_max = 40.0
-
-if auto_hf:
-    # Iterative head loss calculation
-    h_net_design_temp = gross_head - hf_design
-    h_net_min_temp = min_head - hf_max
-    
-    Q_design_total_temp = (design_power * 1e6) / (rho * g * h_net_design_temp * eta_t)
-    Q_max_total_temp = (max_power * 1e6) / (rho * g * h_net_min_temp * eta_t)
-    
-    v_design = (4 * (Q_design_total_temp/N_penstocks)) / (math.pi * D_pen**2)
-    v_max = (4 * (Q_max_total_temp/N_penstocks)) / (math.pi * D_pen**2)
-    
-    hf_design = (f * L_penstock/D_pen + K_sum) * (v_design**2)/(2*g)
-    hf_max = (f * L_penstock/D_pen + K_sum) * (v_max**2)/(2*g)
-    
-    st.success(f"Calculated Head Losses: Design = {hf_design:.2f} m, Max = {hf_max:.2f} m")
-else:
-    hf_design = st.number_input("Design Head Loss (m)", value=25.0, key="hf_design")
-    hf_max = st.number_input("Max Head Loss (m)", value=40.0, key="hf_max")
-
-# =====================================
-# SECTION 4: DESIGN PRINCIPLES & EQUATIONS
-# =====================================
-st.header("4. Fundamental Design Equations")
-
-tab1, tab2, tab3 = st.tabs(["Hydraulics", "Structural Mechanics", "System Design"])
-
-with tab1:
-    st.subheader("Hydraulic Principles")
-    st.markdown("""
-    #### Continuity Equation
-    $$ Q = A \cdot v $$
-    
-    #### Bernoulli's Energy Equation
-    $$ \\frac{P_1}{\\rho g} + \\frac{v_1^2}{2g} + z_1 = \\frac{P_2}{\\rho g} + \\frac{v_2^2}{2g} + z_2 + h_f $$
-    
-    #### Power Calculation
-    $$ P = \\rho \\cdot g \\cdot Q \\cdot H_{\\text{net}} \\cdot \\eta_t $$
-    
-    #### Darcy-Weisbach Head Loss
-    $$ h_f = \\left( f \\frac{L}{D} + \\sum K \\right) \\frac{v^2}{2g} $$
-    """)
-    
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Moody_diagram.jpg/800px-Moody_diagram.jpg", 
-             caption="Darcy-Weisbach friction factor diagram (Moody Chart)", 
-             width=500)
-
-with tab2:
-    st.subheader("Structural Mechanics")
-    st.markdown("""
-    #### Hoop Stress in Pressure Tunnels
-    $$ \\sigma_\\theta = \\frac{p_i (r^2 + r_i^2) - 2p_e r^2}{r^2 - r_i^2} $$
-    
-    #### Minimum Cover Depth (Snowy Formula)
-    $$ C_{RV} = \\frac{h_s \\cdot \\gamma_w}{\\gamma_R} $$
-    
-    #### Norwegian Stability Criterion
-    $$ F_{RV} = \\frac{C_{RV} \\cdot \\gamma_R \\cdot \\cos \\alpha}{h_s \\cdot \\gamma_w} $$
-    
-    Where:
-    - $F_{RV} > 1.5$ for stable rock conditions
-    - $F_{RV} > 2.0$ for fractured rock
-    """)
-
-with tab3:
-    st.subheader("System Design Principles")
-    st.markdown("""
-    #### Surge Tank Sizing
-    $$ A_s = k \\cdot A_h $$
-    $$ T_n = 2\\pi \\sqrt{\\frac{L_h A_s}{g A_h}} $$
-    
-    #### Head Loss Curve Fitting
-    $$ h_f = k \\cdot Q^n $$
-    
-    Where:
-    - $k$: System loss coefficient
-    - $n$: Flow exponent (1.85-2.0)
-    - $k = 4$ for conservative design
-    """)
-# =====================================
-# SECTION 5: CALCULATION RESULTS
-# =====================================
-st.header("5. Calculation Results")
-
-# Net heads
-h_net_design = gross_head - hf_design
-h_net_min = min_head - hf_max
-
-# Discharges
-Q_design_total = (design_power * 1e6) / (rho * g * h_net_design * eta_t)
-Q_max_total = (max_power * 1e6) / (rho * g * h_net_min * eta_t)
-Q_design = Q_design_total / N_penstocks
-Q_max = Q_max_total / N_penstocks
-
-# Velocities
-A_pen = math.pi * (D_pen/2)**2
-v_design = Q_design / A_pen
-v_max = Q_max / A_pen
-
-# Results table
-results = pd.DataFrame({
-    "Parameter": ["Total System", "Per Penstock"],
-    "Design Discharge (m³/s)": [Q_design_total, Q_design],
-    "Max Discharge (m³/s)": [Q_max_total, Q_max],
-    "Design Velocity (m/s)": [Q_design_total/A_pen, v_design],
-    "Max Velocity (m/s)": [Q_max_total/A_pen, v_max]
-})
-
-st.dataframe(results.style.format({
-    "Design Discharge (m³/s)": "{:.2f}",
-    "Max Discharge (m³/s)": "{:.2f}",
-    "Design Velocity (m/s)": "{:.2f}",
-    "Max Velocity (m/s)": "{:.2f}"
-}), use_container_width=True)
-
-# Velocity validation
-st.subheader("Velocity Validation")
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("Design Velocity", f"{v_design:.2f} m/s")
-    st.metric("Max Velocity", f"{v_max:.2f} m/s")
-
-with col2:
-    st.markdown("### USBR Standards")
-    st.markdown("- **Recommended range:** 4-6 m/s")
-    st.markdown("- **Absolute maximum:** 7 m/s (short durations)")
-
-if v_max > 7.0:
-    st.error("⚠️ **Dangerous Velocity** - Exceeds all standards")
-elif v_max > 6.0:
-    st.warning("⚠️ **Above Recommended Limit** - Acceptable for short durations only")
-elif v_max > 4.0:
-    st.success("✓ **Optimal Range** - Meets USBR standards")
-else:
-    st.info("ℹ️ **Low Velocity** - Consider smaller diameter for cost savings")
-
-# =====================================
-# SECTION 6: PRESSURE TUNNEL DESIGN
-# =====================================
-st.header("6. Pressure Tunnel Design")
-
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    hs = st.number_input("Hydrostatic Head to Crown (m)", 100.0, 1000.0, 300.0, 10.0)
-with col2:
-    alpha = st.number_input("Tunnel Inclination (°)", 0.0, 90.0, 20.0, 1.0)
-with col3:
-    ri = st.number_input("Inner Radius (m)", 2.0, 10.0, 3.15, 0.05)
-with col4:
-    t = st.number_input("Lining Thickness (m)", 0.2, 2.0, 0.35, 0.01)
-
-re = ri + t
-pi_MPa = st.slider("Internal Pressure (MPa)", 0.1, 10.0, 2.0, 0.1)
-ft_MPa = st.number_input("Concrete Tensile Strength (MPa)", 1.0, 100.0, 3.0, 0.1)
-
-# Calculate stresses
-sigma_theta_i = hoop_stress(pi_MPa, 0, ri, re)
-pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
-
-# Visualization
-r_vals = np.linspace(ri*1.001, ri*2, 100)
-sigma_vals = hoop_stress(pi_MPa, 0, ri, r_vals)
-
-fig_stress, ax = plt.subplots(figsize=(10, 5))
-ax.plot(r_vals, sigma_vals, 'b-', lw=2.5, label='Hoop Stress')
-ax.axhline(ft_MPa, color='g', ls='--', label=f'Tensile Strength ({ft_MPa} MPa)')
-ax.axvline(ri, color='k', ls=':', label=f'Inner Radius ({ri} m)')
-ax.axvline(re, color='k', ls='--', label=f'Outer Radius ({re} m)')
-ax.fill_between(r_vals, sigma_vals, ft_MPa, where=(sigma_vals>ft_MPa), color='red', alpha=0.2)
-ax.set_xlabel('Radius (m)'); ax.set_ylabel('Stress (MPa)')
-ax.set_title('Lining Stress Distribution'); ax.grid(True); ax.legend()
-st.pyplot(fig_stress)
-
-# Results
-col1, col2, col3 = st.columns(3)
-col1.metric("Max Stress", f"{sigma_theta_i:.1f} MPa")
-col2.metric("Required p_ext", f"{pext_req:.2f} MPa")
-col3.metric("Status", 
-            "⚠️ Cracking Risk" if sigma_theta_i > ft_MPa else "✅ Safe", 
-            "Stress exceeds strength" if sigma_theta_i > ft_MPa else "Within limits")
-
-# =====================================
-# SECTION 7: SYSTEM CHARACTERISTICS
-# =====================================
-st.header("7. System Characteristics")
-
-# Generate operating curve
-Q_range = np.linspace(0, Q_max_total*1.2, 100)
-h_net_range = h_net_design - (h_net_design - h_net_min) * (Q_range/Q_max_total)**2
-P_range = N_penstocks * (rho * g * (Q_range/N_penstocks) * h_net_range * eta_t) / 1e6
-
-# Create interactive plot
-fig_sys = make_subplots(specs=[[{"secondary_y": True}]])
-
-# Main power curve
-fig_sys.add_trace(
-    go.Scatter(
-        x=Q_range,
-        y=P_range,
-        name="Power Output",
-        line=dict(color="blue", width=3),
-        hovertemplate="Discharge: %{x:.1f} m³/s<br>Power: %{y:.1f} MW"
-    ),
-    secondary_y=False,
-)
-
-# Reference lines
-fig_sys.add_vline(x=Q_design_total, line=dict(color="green", dash="dash", width=2), name="Design")
-fig_sys.add_vline(x=Q_max_total, line=dict(color="red", dash="dash", width=2), name="Max")
-
-# Layout
-fig_sys.update_layout(
-    title="System Operating Characteristics",
-    xaxis_title="Total System Discharge (m³/s)",
-    yaxis_title="Power Output (MW)",
-    hovermode="x unified",
-    height=500
-)
-
-st.plotly_chart(fig_sys, use_container_width=True)
-
-# =====================================
-# SECTION 8: SURGE TANK DESIGN
-# =====================================
-st.header("8. Surge Tank Fundamentals")
-
-Ah = math.pi * (D_pen**2)/4
-Lh = st.number_input("Headrace Length to Surge Tank (m)", 1000.0, 20000.0, 5000.0, 100.0)
-ratio = st.slider("Area Ratio (Aₛ/Aₕ)", 1.0, 10.0, 4.0, 0.1)
-
-surge_params = surge_tank_first_cut(Ah, Lh, ratio=ratio)
-
-col1, col2, col3 = st.columns(3)
-col1.metric("Conduit Area (Aₕ)", f"{Ah:.1f} m²")
-col2.metric("Surge Tank Area (Aₛ)", f"{surge_params['As']:.1f} m²")
-col3.metric("Natural Period (Tₙ)", f"{surge_params['Tn']:.1f} s")
-
-st.markdown("""
-**Design Guidelines:**
-- Natural period should be 60-90 seconds for stable operation
-- Minimum area ratio: 3:1 for medium-head systems
-- Consider differential surge tanks for large systems
-""")
-
-# =====================================
-# SECTION 9: REFERENCES & DOWNLOADS
-# =====================================
-st.header("9. References & Export")
-
-tab1, tab2, tab3 = st.tabs(["Standards", "References", "Export"])
-
-with tab1:
-    st.subheader("Design Standards")
-    st.markdown("""
-    #### Friction Factors (f)
-    | Material              | Range       | Source          |
-    |-----------------------|-------------|-----------------|
-    | New steel (welded)    | 0.010-0.015 | ASCE (2017)     |
-    | Concrete (smooth)     | 0.012-0.018 | ACI 351.3R      |
-    
-    #### Local Loss Coefficients (K)
-    | Component         | Range    |
-    |-------------------|----------|
-    | Entrance (bell)   | 0.1-0.2  |
-    | 90° bend          | 0.2-0.3  |
-    | Exit              | 0.8-1.0  |
-    """)
-
-with tab2:
-    st.subheader("Recommended References")
-    st.markdown("""
-    1. **USBR Design Standards No. 3** - Penstock design guidelines
-    2. **ICOLD Bulletins** - Pressure tunnel recommendations
-    3. **ASME Hydropower Standards** - Mechanical design
-    4. Gordon, J.L. (2001) *Hydraulics of Hydroelectric Power*
-    5. Chaudhry, M.H. (2014) *Applied Hydraulic Transients*
-    """)
-
-with tab3:
-    st.subheader("Export Results")
-    results_data = {
-        "reservoirs": {
-            "upper": {"HWL": HWL_u, "LWL": LWL_u},
-            "lower": {"HWL": HWL_l, "TWL": TWL_l}
-        },
-        "penstock": {
-            "diameter": D_pen,
-            "length": L_penstock,
-            "material": f_material,
-            "friction_factor": f
-        },
-        "performance": {
-            "design_power": design_power,
-            "max_power": max_power,
-            "design_flow": Q_design_total,
-            "max_flow": Q_max_total
-        },
-        "tunnel": {
-            "stress": sigma_theta_i,
-            "required_external_pressure": pext_req
+    # Project presets
+    if project == "Snowy 2.0":
+        params = {
+            "H_upper": 1200, "H_lower": 500, "head_diff": 700,
+            "tunnel_length": 27000, "penstock_dia": 10.5,
+            "power_capacity": 2000, "units": 6
         }
-    }
+    elif project == "Kidston PHES":
+        params = {
+            "H_upper": 495, "H_lower": 320, "head_diff": 175,
+            "tunnel_length": 2300, "penstock_dia": 4.2,
+            "power_capacity": 250, "units": 2
+        }
+    else:  # Custom
+        params = {
+            "H_upper": 800, "H_lower": 400, "head_diff": 400,
+            "tunnel_length": 5000, "penstock_dia": 6.0,
+            "power_capacity": 500, "units": 4
+        }
     
-    json_data = json.dumps(results_data, indent=2)
-    st.download_button("Download JSON Report", data=json_data, file_name="phes_design_report.json")
-    
-    st.download_button("Download Parameters CSV", 
-                      data=pd.DataFrame(results_data).to_csv().encode('utf-8'),
-                      file_name="phes_parameters.csv")
+    # Adjustable parameters
+    st.subheader("Design Parameters")
+    h_gross = st.slider("Gross Head (m)", 50, 1000, params["head_diff"], 10)
+    tunnel_length = st.number_input("Tunnel Length (m)", 500, 50000, params["tunnel_length"])
+    penstock_dia = st.number_input("Penstock Diameter (m)", 1.0, 15.0, params["penstock_dia"], 0.1)
+    power_capacity = st.number_input("Rated Power (MW)", 10, 3000, params["power_capacity"], 10)
+    num_units = st.number_input("Number of Units", 1, 12, params["units"])
+    efficiency = st.slider("Turbine Efficiency", 0.75, 0.95, 0.90, 0.01)
 
-st.caption("Educational Tool · Hydropower Engineering · v2.0")
+# ======================== MAIN CALCULATIONS ========================
+# Hydraulic calculations
+Q_design = discharge_required(power_capacity, h_gross, efficiency) / num_units
+flow_velocity = Q_design / (math.pi * (penstock_dia/2)**2)
+
+# Head loss calculations
+friction_factor = 0.015  # Concrete-lined tunnel
+local_losses = 1.2       # Entrance + bends + valves
+h_loss = head_loss(tunnel_length, penstock_dia, friction_factor, local_losses, Q_design)
+h_net = h_gross - h_loss
+
+# Cavitation analysis
+submergence = 10  # Runner below tailwater (m)
+thoma = thoma_sigma(ATM_PRESSURE/9.80665, VAP_PRESSURE/9.80665, submergence, 2.0, h_net)
+
+# ======================== VISUALIZATION ========================
+st.header("📊 System Performance")
+fig = make_subplots(rows=1, cols=2, specs=[[{"type": "bar"}, {"type": "scatter"}]],
+                    subplot_titles=("Energy Balance", "Head vs. Flow"))
+
+# Energy balance chart
+fig.add_trace(go.Bar(
+    name="Gross Head",
+    x=["Head Components"],
+    y=[h_gross],
+    marker_color="#1f77b4"
+), row=1, col=1)
+
+fig.add_trace(go.Bar(
+    name="Head Loss",
+    x=["Head Components"],
+    y=[h_loss],
+    marker_color="#ff7f0e"
+), row=1, col=1)
+
+fig.add_trace(go.Bar(
+    name="Net Head",
+    x=["Head Components"],
+    y=[h_net],
+    marker_color="#2ca02c"
+), row=1, col=1)
+
+# Head-flow curve
+flow_range = np.linspace(0, Q_design*1.5, 50)
+head_net_range = h_gross - head_loss(tunnel_length, penstock_dia, friction_factor, local_losses, flow_range)
+
+fig.add_trace(go.Scatter(
+    x=flow_range,
+    y=head_net_range,
+    mode="lines",
+    name="Net Head",
+    line=dict(color="#9467bd", width=3)
+), row=1, col=2)
+
+fig.add_trace(go.Scatter(
+    x=[Q_design],
+    y=[h_net],
+    mode="markers",
+    name="Design Point",
+    marker=dict(color="red", size=10)
+), row=1, col=2)
+
+# Update layout
+fig.update_layout(
+    height=500,
+    showlegend=True,
+    barmode="stack",
+    xaxis_title="Flow Rate (m³/s)",
+    yaxis_title="Head (m)",
+    hovermode="x unified"
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+# ======================== ENGINEERING ANALYSIS ========================
+st.header("⚙️ Engineering Analysis")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.subheader("Hydraulics")
+    st.metric("Design Flow per Unit", f"{Q_design:.1f} m³/s")
+    st.metric("Flow Velocity", f"{flow_velocity:.1f} m/s", 
+              "Good" if 4 <= flow_velocity <= 6 else "High" if flow_velocity > 6 else "Low")
+    st.metric("Head Loss", f"{h_loss:.1f} m ({h_loss/h_gross:.1%})")
+
+with col2:
+    st.subheader("Structural")
+    pressure_head = h_gross * 0.8  # 80% of max head
+    st.metric("Max Internal Pressure", f"{pressure_head/100:.1f} MPa")
+    
+    # Steel lining stress calculation
+    thickness = 0.05 * penstock_dia
+    hoop_stress = (pressure_head * RHO * G * penstock_dia) / (2 * thickness)
+    st.metric("Hoop Stress in Lining", f"{hoop_stress/1e6:.1f} MPa", 
+              "Within limits" if hoop_stress/1e6 < 200 else "High")
+
+with col3:
+    st.subheader("Cavitation")
+    st.metric("Thoma Coefficient", f"{thoma:.3f}")
+    st.metric("Recommended Safety Margin", "0.10", 
+              "Adequate" if thoma > 0.10 else "Inadequate")
+    st.metric("Runner Submergence", f"{submergence} m")
+
+# ======================== PRESSURE TUNNEL ANALYSIS ========================
+st.header("🏔️ Pressure Tunnel Design")
+
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    st.subheader("Rock Cover Analysis")
+    overburden = st.slider("Overburden Thickness (m)", 10, 500, 100, 10)
+    rock_density = st.slider("Rock Density (kg/m³)", 2000, 3000, 2650, 50)
+    
+    # Minimum cover calculation
+    min_cover = (1.5 * pressure_head * RHO) / rock_density
+    st.metric("Minimum Rock Cover Required", f"{min_cover:.1f} m")
+    st.metric("Safety Factor", f"{overburden/min_cover:.2f}",
+              "Adequate" if overburden/min_cover > 1.2 else "Inadequate")
+    
+    st.subheader("Lining Design")
+    lining_type = st.selectbox("Lining Type", ["Concrete", "Steel", "Shotcrete"])
+    thickness = st.slider("Lining Thickness (mm)", 100, 1000, 300, 50)
+
+with col2:
+    # Tunnel cross-section visualization
+    fig = go.Figure()
+    
+    # Rock boundary
+    fig.add_shape(type="circle", x0=-5, y0=-5, x1=5, y1=5, 
+                 line=dict(color="saddlebrown", width=2), fillcolor="peru", opacity=0.3)
+    
+    # Tunnel
+    tunnel_radius = penstock_dia/2
+    fig.add_shape(type="circle", x0=-tunnel_radius, y0=-tunnel_radius, 
+                 x1=tunnel_radius, y1=tunnel_radius,
+                 line=dict(color="royalblue", width=3), fillcolor="lightblue", opacity=0.5)
+    
+    # Lining
+    lining_radius = tunnel_radius - thickness/1000
+    fig.add_shape(type="circle", x0=-lining_radius, y0=-lining_radius, 
+                 x1=lining_radius, y1=lining_radius,
+                 line=dict(color="darkred", width=2, dash="dot"), 
+                 fillcolor="rgba(205,92,92,0.2)")
+    
+    # Overburden
+    fig.add_shape(type="rect", x0=-6, y0=5, x1=6, y1=10, 
+                 line=dict(width=0), fillcolor="forestgreen", opacity=0.4)
+    
+    fig.update_layout(
+        title="Tunnel Cross-Section",
+        xaxis=dict(visible=False, range=[-10, 10]),
+        yaxis=dict(visible=False, range=[-10, 10]),
+        height=450,
+        showlegend=False,
+        margin=dict(l=10, r=10, t=50, b=10)
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+# ======================== RESULTS SUMMARY ========================
+st.header("📝 Design Summary")
+
+results = {
+    "Parameter": [
+        "Gross Head", "Net Head", "Head Loss", 
+        "Total Discharge", "Discharge per Unit", "Flow Velocity",
+        "Power Output", "Efficiency",
+        "Internal Pressure", "Hoop Stress",
+        "Thoma Coefficient", "Safety Margin"
+    ],
+    "Value": [
+        f"{h_gross} m", f"{h_net:.1f} m", f"{h_loss:.1f} m",
+        f"{Q_design * num_units:.1f} m³/s", f"{Q_design:.1f} m³/s", f"{flow_velocity:.1f} m/s",
+        f"{power_capacity} MW", f"{efficiency*100:.1f}%",
+        f"{pressure_head/100:.2f} MPa", f"{hoop_stress/1e6:.1f} MPa",
+        f"{thoma:.3f}", f"{(thoma - 0.10):.3f}" if thoma > 0.10 else "Insufficient"
+    ],
+    "Status": [
+        "Input", "Calculated", "Good" if h_loss/h_gross < 0.15 else "High",
+        "Calculated", "Calculated", "✅ Optimal" if 4 <= flow_velocity <= 6 else "⚠️ Check",
+        "Input", "Input",
+        "Calculated", "✅ Safe" if hoop_stress/1e6 < 200 else "⚠️ Review",
+        "Calculated", "✅ Adequate" if thoma > 0.10 else "⚠️ Insufficient"
+    ]
+}
+
+df_results = pd.DataFrame(results)
+st.dataframe(df_results, hide_index=True, use_container_width=True)
+
+# ======================== DOWNLOAD REPORT ========================
+st.header("📤 Export Results")
+
+# Create PDF report (simulated)
+report = f"""
+PHES DESIGN REPORT
+==================
+
+Project: {project}
+Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}
+
+DESIGN PARAMETERS
+-----------------
+Gross Head: {h_gross} m
+Tunnel Length: {tunnel_length} m
+Penstock Diameter: {penstock_dia} m
+Rated Power: {power_capacity} MW
+Number of Units: {num_units}
+Turbine Efficiency: {efficiency*100:.1f}%
+
+HYDRAULIC RESULTS
+-----------------
+Design Flow per Unit: {Q_design:.1f} m³/s
+Flow Velocity: {flow_velocity:.1f} m/s
+Head Loss: {h_loss:.1f} m ({h_loss/h_gross:.1%})
+Net Head: {h_net:.1f} m
+
+ENGINEERING ANALYSIS
+-------------------
+Max Internal Pressure: {pressure_head/100:.2f} MPa
+Hoop Stress: {hoop_stress/1e6:.1f} MPa
+Thoma Cavitation Coefficient: {thoma:.3f}
+Rock Cover Safety Factor: {overburden/min_cover:.2f}
+"""
+
+# Download buttons
+col1, col2 = st.columns(2)
+with col1:
+    st.download_button(
+        label="Download Report (TXT)",
+        data=report,
+        file_name="phes_design_report.txt",
+        mime="text/plain"
+    )
+    
+with col2:
+    # Excel download
+    excel_file = BytesIO()
+    with pd.ExcelWriter(excel_file, engine="xlsxwriter") as writer:
+        df_results.to_excel(writer, sheet_name="Design Summary", index=False)
+        
+        # Add calculations sheet
+        calc_data = pd.DataFrame({
+            "Parameter": ["Water Density", "Gravity", "Friction Factor", "Local Losses"],
+            "Value": [RHO, G, friction_factor, local_losses],
+            "Unit": ["kg/m³", "m/s²", "-", "-"]
+        })
+        calc_data.to_excel(writer, sheet_name="Constants", index=False)
+    
+    st.download_button(
+        label="Download Data (Excel)",
+        data=excel_file.getvalue(),
+        file_name="phes_design_data.xlsx",
+        mime="application/vnd.ms-excel"
+    )
+
+# ======================== FOOTER ========================
+st.markdown("---")
+st.caption("""
+**PHES Design Teaching App** | Developed for Renewable Energy Engineering  
+*Based on Snowy 2.0 (NSW, Australia) and Kidston PHES (QLD, Australia) case studies*
+""")
