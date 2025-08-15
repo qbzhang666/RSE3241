@@ -72,37 +72,50 @@ else:
     hf_design = st.number_input("Design Head Loss (m)", value=25.0, key="hf_design")
     hf_max = st.number_input("Max Head Loss (m)", value=40.0, key="hf_max")
     
-# =====================================
-# Section 2: Key Equations
-# =====================================
-st.header("2. Design Equations")
-with st.expander("View Fundamental Equations"):
-    st.markdown("""
-    ### **1. Total Discharge Calculation**
-    \[
-    Q_{total} = \frac{P \times 10^6}{\rho \times g \times h_{net} \times \eta_t}
-    \]
-    Where:
-    - \( P \) = Power (MW)
-    - \( h_{net} = \Delta H - h_f \) (Gross head - head loss)
-    
-    ### **2. Per-Penstock Discharge**
-    \[
-    Q_{penstock} = \frac{Q_{total}}{N_{penstocks}}
-    \]
-    
-    ### **3. Flow Velocity**
-    \[
-    v = \frac{Q_{penstock}}{A} = \frac{4Q_{penstock}}{\pi D^2}
-    \]
-    *Recommended limit: 4-6 m/s (USBR)*
-    
-    ### **4. Head Loss (Darcy-Weisbach)**
-    \[
-    h_f = \frac{fLv^2}{D2g}
-    \]
-    Where \( f \) = friction factor (~0.015 for concrete)
-    """)
+\section*{2. Design Equations}
+
+\subsection*{2.1 Total Discharge Calculation}
+\[
+Q_{\text{total}} = \frac{P \times 10^6}{\rho \cdot g \cdot h_{\text{net}} \cdot \eta_t}
+\]
+\textbf{Where:}
+\begin{itemize}
+    \item \( P \): Power (MW)
+    \item \( h_{\text{net}} = \Delta H - h_f \): Net head (Gross head \(\Delta H\) minus head loss \(h_f\)) (m)
+    \item \( \rho \): Water density (assumed 1000 kg/m\(^3\))
+    \item \( g \): Gravitational acceleration (9.81 m/s\(^2\))
+    \item \( \eta_t \): Turbine efficiency (decimal, e.g., 0.85 for 85\%)
+\end{itemize}
+
+\subsection*{2.2 Per-Penstock Discharge}
+\[
+Q_{\text{penstock}} = \frac{Q_{\text{total}}}{N_{\text{penstocks}}}
+\]
+\textbf{Where:}
+\begin{itemize}
+    \item \( N_{\text{penstocks}} \): Number of penstocks
+\end{itemize}
+
+\subsection*{2.3 Flow Velocity Validation}
+\[
+v = \frac{Q_{\text{penstock}}}{A} = \frac{4 Q_{\text{penstock}}}{\pi D^2}
+\]
+\textbf{Industry Standard (USBR):}
+\begin{itemize}
+    \item Recommended velocity range: \textbf{4–6 m/s} (balances efficiency and material erosion)
+\end{itemize}
+
+\subsection*{2.4 Head Loss (Darcy-Weisbach)}
+\[
+h_f = \frac{f L v^2}{D \cdot 2g}
+\]
+\textbf{Where:}
+\begin{itemize}
+    \item \( f \): Friction factor (0.015 for concrete)
+    \item \( L \): Penstock length (m)
+    \item \( D \): Penstock diameter (m)
+    \item \( v \): Flow velocity (m/s)
+\end{itemize}
 
 # =====================================
 # Section 3: Calculations
@@ -162,31 +175,10 @@ else:
     st.warning("Low velocity (<4 m/s) - May lead to uneconomic design")
 
 # =====================================
-# Section 5: System Curves
 # =====================================
-st.header("4. System Characteristics")
-
-# Generate operating curve
-Q_range = np.linspace(0, Q_max_total*1.2, 100)
-h_net_range = h_net_design - (h_net_design - h_net_min) * (Q_range/Q_max_total)**2
-P_range = N_penstocks * (rho * g * (Q_range/N_penstocks) * h_net_range * eta_t) / 1e6
-
-fig, ax = plt.subplots(figsize=(10,6))
-ax.plot(Q_range, P_range, 'b-', label='Power Output')
-ax.axvline(Q_design_total, color='g', linestyle='--', label='Design Discharge')
-ax.axvline(Q_max_total, color='r', linestyle='--', label='Max Discharge')
-ax.set_xlabel("Total System Discharge (m³/s)")
-ax.set_ylabel("Total Power Output (MW)")
-ax.set_title("System Operating Curve")
-ax.grid(True)
-ax.legend()
-st.pyplot(fig)
-
+# Section 5: Design Standards & References
 # =====================================
-# =====================================
-# Section 6: Design Standards & References
-# =====================================
-st.header("5. Industry Design Standards")
+st.header("4. Industry Design Standards")
 st.subheader("Penstock Velocity Limits")
 
 standards_data = [
@@ -264,3 +256,24 @@ st.markdown("""
 - [ICOLD Bulletins](https://www.icold-cigb.org/)
 - [ASME Hydropower Standards](https://www.asme.org/)
 """)
+
+# =====================================
+# Section 6: System Curves
+# =====================================
+st.header("5. System Characteristics")
+
+# Generate operating curve
+Q_range = np.linspace(0, Q_max_total*1.2, 100)
+h_net_range = h_net_design - (h_net_design - h_net_min) * (Q_range/Q_max_total)**2
+P_range = N_penstocks * (rho * g * (Q_range/N_penstocks) * h_net_range * eta_t) / 1e6
+
+fig, ax = plt.subplots(figsize=(10,6))
+ax.plot(Q_range, P_range, 'b-', label='Power Output')
+ax.axvline(Q_design_total, color='g', linestyle='--', label='Design Discharge')
+ax.axvline(Q_max_total, color='r', linestyle='--', label='Max Discharge')
+ax.set_xlabel("Total System Discharge (m³/s)")
+ax.set_ylabel("Total Power Output (MW)")
+ax.set_title("System Operating Curve")
+ax.grid(True)
+ax.legend()
+st.pyplot(fig)
