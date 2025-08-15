@@ -12,47 +12,64 @@ st.set_page_config(layout="wide")
 st.title("Pumped Hydro Storage Penstock Design")
 
 # =====================================
-# Section 1: Input Parameters
+# Section 1: Input Parameters (CORRECTED)
 # =====================================
 st.header("1. System Parameters")
 col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Hydraulic Parameters")
-    HWL_u = st.number_input("Upper Reservoir HWL (m)", value=1100.0)
-    LWL_u = st.number_input("Upper Reservoir LWL (m)", value=1080.0)
-    HWL_l = st.number_input("Lower Reservoir HWL (m)", value=450.0)
-    TWL_l = st.number_input("Lower Reservoir TWL (m)", value=420.0)
-    hf_design = st.number_input("Design Head Loss (m)", value=25.0)
-    hf_max = st.number_input("Max Head Loss (m)", value=40.0)
+    HWL_u = st.number_input("Upper Reservoir HWL (m)", value=1100.0, key="hwl_u")
+    LWL_u = st.number_input("Upper Reservoir LWL (m)", value=1080.0, key="lwl_u")
+    HWL_l = st.number_input("Lower Reservoir HWL (m)", value=450.0, key="hwl_l")
+    TWL_l = st.number_input("Lower Reservoir TWL (m)", value=420.0, key="twl_l")
 
 with col2:
     st.subheader("Penstock Design")
-    N_penstocks = st.number_input("Number of Penstocks", min_value=1, max_value=8, value=2)
-    eta_t = st.number_input("Turbine Efficiency", value=0.90, min_value=0.7, max_value=1.0)
-    D_pen = st.number_input("Penstock Diameter (m)", value=3.5)
-    design_power = st.number_input("Design Power (MW)", value=500.0)
-    max_power = st.number_input("Maximum Power (MW)", value=600.0)
+    N_penstocks = st.number_input("Number of Penstocks", min_value=1, max_value=8, value=2, key="n_penstocks")
+    eta_t = st.number_input("Turbine Efficiency", value=0.90, min_value=0.7, max_value=1.0, key="eta_t")
+    D_pen = st.number_input("Penstock Diameter (m)", value=3.5, key="d_pen")
+    design_power = st.number_input("Design Power (MW)", value=500.0, key="p_design")
+    max_power = st.number_input("Maximum Power (MW)", value=600.0, key="p_max")
 
+# =====================================
+# Head Loss Parameters (CORRECTED)
+# =====================================
 st.subheader("Head Loss Parameters")
 col1, col2 = st.columns(2)
 with col1:
-    L_penstock = st.number_input("Penstock Length (m)", value=500.0)
-    f = st.number_input("Friction Factor", value=0.015, min_value=0.01, max_value=0.03)
+    L_penstock = st.number_input("Penstock Length (m)", value=500.0, key="l_penstock")
+    f = st.number_input("Friction Factor", value=0.015, min_value=0.01, max_value=0.03, key="friction")
 with col2:
-    K_sum = st.number_input("Total Local Loss Coefficients (ΣK)", value=4.5)
-    auto_hf = st.checkbox("Calculate losses automatically")
+    K_sum = st.number_input("Total Local Loss Coefficients (ΣK)", value=4.5, key="k_sum")
+    auto_hf = st.checkbox("Calculate losses automatically", key="auto_hf")
+
+# Initialize variables
+hf_design = 25.0  # Default values
+hf_max = 40.0
 
 if auto_hf:
+    # Need to calculate Q_design and Q_max first
+    h_net_design_temp = (HWL_u - TWL_l) - hf_design
+    h_net_min_temp = (LWL_u - HWL_l) - hf_max
+    
+    Q_design_total = (design_power * 1e6) / (rho * g * h_net_design_temp * eta_t)
+    Q_max_total = (max_power * 1e6) / (rho * g * h_net_min_temp * eta_t)
+    Q_design = Q_design_total / N_penstocks
+    Q_max = Q_max_total / N_penstocks
+    
     v_design = Q_design / (math.pi*(D_pen/2)**2)
     v_max = Q_max / (math.pi*(D_pen/2)**2)
     
     hf_design = (f * L_penstock/D_pen + K_sum) * (v_design**2)/(2*g)
     hf_max = (f * L_penstock/D_pen + K_sum) * (v_max**2)/(2*g)
+    
+    st.write(f"Calculated Design Head Loss: {hf_design:.2f} m")
+    st.write(f"Calculated Max Head Loss: {hf_max:.2f} m")
 else:
-    hf_design = st.number_input("Design Head Loss (m)", value=25.0)
-    hf_max = st.number_input("Max Head Loss (m)", value=40.0)
-
+    hf_design = st.number_input("Design Head Loss (m)", value=25.0, key="hf_design")
+    hf_max = st.number_input("Max Head Loss (m)", value=40.0, key="hf_max")
+    
 # =====================================
 # Section 2: Key Equations
 # =====================================
