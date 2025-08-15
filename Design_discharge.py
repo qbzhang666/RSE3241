@@ -168,6 +168,68 @@ with st.expander("Show Design Equations"):
     """)
 
 # =====================================
+# Section 8: Friction & Loss Coefficients Reference
+# =====================================
+st.header("7. Reference Tables")
+
+with st.expander("📚 Friction Factors & Loss Coefficients"):
+    st.subheader("Friction Factors (f) - Darcy-Weisbach Equation")
+    friction_data = {
+        "Material": ["New steel (welded)", 
+                    "New steel (riveted)", 
+                    "Concrete (smooth)", 
+                    "Concrete (rough)", 
+                    "PVC/Plastic"],
+        "Friction Factor Range": ["0.010 - 0.015", 
+                                 "0.015 - 0.020", 
+                                 "0.012 - 0.018", 
+                                 "0.018 - 0.025", 
+                                 "0.007 - 0.012"],
+        "Source": ["ASCE (2017)", 
+                   "USBR (1987)", 
+                   "ACI 351.3R (2018)", 
+                   "USACE (2008)", 
+                   "AWWA (2012)"]
+    }
+    st.table(pd.DataFrame(friction_data))
+
+    st.subheader("Typical Local Loss Coefficients (K)")
+    loss_data = {
+        "Component": ["Entrance (bellmouth)", 
+                     "Entrance (square)", 
+                     "90° bend", 
+                     "45° bend", 
+                     "Gate valve (open)", 
+                     "Butterfly valve (open)", 
+                     "T-junction", 
+                     "Exit"],
+        "K-value Range": ["0.1 - 0.2", 
+                         "0.4 - 0.5", 
+                         "0.2 - 0.3", 
+                         "0.1 - 0.2", 
+                         "0.1 - 0.3", 
+                         "0.2 - 0.4", 
+                         "0.3 - 0.5", 
+                         "0.8 - 1.0"],
+        "Notes": ["Best case entrance", 
+                 "Worst case entrance", 
+                 "Depends on radius/diameter ratio", 
+                 "Gentler than 90°", 
+                 "Varies with design", 
+                 "Position dependent", 
+                 "Flow splitting", 
+                 "All kinetic energy lost"]
+    }
+    st.table(pd.DataFrame(loss_data))
+
+    st.markdown("""
+    **Design Recommendations:**
+    - For concrete penstocks: Use f = 0.015-0.020
+    - ΣK typically ranges 2.0-5.0 for well-designed systems
+    - Add 10-20% safety margin for aging effects
+    - Reduce bends and use bellmouth entrances to minimize losses
+    """)
+# =====================================
 # Section 3: Calculations
 # =====================================
 st.header("3. Calculation Results")
@@ -406,65 +468,3 @@ st.markdown("""
 - **USACE Engineering Manuals:** Hydraulic Loss Coefficients
 """)
 
-# =====================================
-# Section 8: Friction & Loss Coefficients Reference
-# =====================================
-st.header("7. Reference Tables")
-
-with st.expander("📚 Friction Factors & Loss Coefficients"):
-    st.subheader("Friction Factors (f) - Darcy-Weisbach Equation")
-    friction_data = {
-        "Material": ["New steel (welded)", 
-                    "New steel (riveted)", 
-                    "Concrete (smooth)", 
-                    "Concrete (rough)", 
-                    "PVC/Plastic"],
-        "Friction Factor Range": ["0.010 - 0.015", 
-                                 "0.015 - 0.020", 
-                                 "0.012 - 0.018", 
-                                 "0.018 - 0.025", 
-                                 "0.007 - 0.012"],
-        "Source": ["ASCE (2017)", 
-                   "USBR (1987)", 
-                   "ACI 351.3R (2018)", 
-                   "USACE (2008)", 
-                   "AWWA (2012)"]
-    }
-    st.table(pd.DataFrame(friction_data))
-
-    st.subheader("Typical Local Loss Coefficients (K)")
-    loss_data = {
-        "Component": ["Entrance (bellmouth)", 
-                     "Entrance (square)", 
-                     "90° bend", 
-                     "45° bend", 
-                     "Gate valve (open)", 
-                     "Butterfly valve (open)", 
-                     "T-junction", 
-                     "Exit"],
-        "K-value Range": ["0.1 - 0.2", 
-                         "0.4 - 0.5", 
-                         "0.2 - 0.3", 
-                         "0.1 - 0.2", 
-                         "0.1 - 0.3", 
-                         "0.2 - 0.4", 
-                         "0.3 - 0.5", 
-                         "0.8 - 1.0"],
-        "Notes": ["Best case entrance", 
-                 "Worst case entrance", 
-                 "Depends on radius/diameter ratio", 
-                 "Gentler than 90°", 
-                 "Varies with design", 
-                 "Position dependent", 
-                 "Flow splitting", 
-                 "All kinetic energy lost"]
-    }
-    st.table(pd.DataFrame(loss_data))
-
-    st.markdown("""
-    **Design Recommendations:**
-    - For concrete penstocks: Use f = 0.015-0.020
-    - ΣK typically ranges 2.0-5.0 for well-designed systems
-    - Add 10-20% safety margin for aging effects
-    - Reduce bends and use bellmouth entrances to minimize losses
-    """)
