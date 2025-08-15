@@ -201,7 +201,12 @@ from plotly.subplots import make_subplots
 # =====================================
 st.header("5. System Characteristics")
 
-# Create interactive plot with Plotly
+# First calculate Q_range based on system parameters
+Q_range = np.linspace(0, Q_max_total*1.2, 100)  # Generate discharge range
+h_net_range = h_net_design - (h_net_design - h_net_min) * (Q_range/Q_max_total)**2
+P_range = N_penstocks * (rho * g * (Q_range/N_penstocks) * h_net_range * eta_t) / 1e6
+
+# Now create the interactive plot
 fig = make_subplots(specs=[[{"secondary_y": True}]])
 
 # Main power curve (left axis)
@@ -220,7 +225,7 @@ fig.add_trace(
 fig.add_trace(
     go.Scatter(
         x=Q_range,
-        y=(P_range*1e6)/(rho*g*(Q_range/N_penstocks))*100,
+        y=(P_range*1e6)/(rho*g*(Q_range/N_penstocks)*100,
         name="System Efficiency (%)",
         line=dict(color="purple", width=2, dash="dot"),
         hovertemplate="<b>%{x:.1f} m³/s</b><br>Eff: %{y:.1f}%",
