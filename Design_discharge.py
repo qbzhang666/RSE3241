@@ -217,7 +217,6 @@ fig.add_trace(
 )
 
 # Add efficiency curve (right axis)
-# Add efficiency curve (right axis)
 fig.add_trace(
     go.Scatter(
         x=Q_range,
