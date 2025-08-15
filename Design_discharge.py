@@ -217,6 +217,7 @@ fig.add_trace(
 )
 
 # Add efficiency curve (right axis)
+# Add efficiency curve (right axis)
 fig.add_trace(
     go.Scatter(
         x=Q_range,
@@ -228,7 +229,6 @@ fig.add_trace(
     ),
     secondary_y=True,
 )
-
 # Add reference lines
 fig.add_vline(
     x=Q_design_total,
