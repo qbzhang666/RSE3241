@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import math
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Constants
 g = 9.8  # m/s²
@@ -33,15 +35,65 @@ with col2:
     max_power = st.number_input("Maximum Power (MW)", value=600.0, key="p_max")
 
 # =====================================
-# Head Loss Parameters
+# Head Loss Parameters (Improved with references)
 # =====================================
 st.subheader("Head Loss Parameters")
 col1, col2 = st.columns(2)
 with col1:
     L_penstock = st.number_input("Penstock Length (m)", value=500.0, key="l_penstock")
-    f = st.number_input("Friction Factor", value=0.015, min_value=0.01, max_value=0.03, key="friction")
+    
+    # Improved friction factor input
+    f_options = {
+        "New steel (welded)": 0.012,
+        "New steel (riveted)": 0.017,
+        "Concrete (smooth)": 0.015,
+        "Concrete (rough)": 0.022,
+        "PVC/Plastic": 0.009
+    }
+    f_material = st.selectbox(
+        "Penstock Material",
+        options=list(f_options.keys()),
+        index=2,  # Default to concrete
+        key="f_material"
+    )
+    f = st.slider(
+        "Friction Factor (f)",
+        min_value=0.005,
+        max_value=0.03,
+        value=f_options[f_material],
+        step=0.001,
+        key="friction"
+    )
+    st.caption(f"Typical for {f_material}: {f_options[f_material]:.3f}")
+    
 with col2:
-    K_sum = st.number_input("Total Local Loss Coefficients (ΣK)", value=4.5, key="k_sum")
+    # Improved K_sum input with reference values
+    st.markdown("**Local Loss Coefficients (ΣK)**")
+    st.caption("Sum of individual loss coefficients (K-values)")
+    
+    # Component loss calculator
+    components = {
+        "Entrance (bellmouth)": 0.15,
+        "Entrance (square)": 0.50,
+        "90° bend": 0.25,
+        "45° bend": 0.15,
+        "Gate valve": 0.20,
+        "Butterfly valve": 0.30,
+        "T-junction": 0.40,
+        "Exit": 1.00
+    }
+    
+    K_sum = 0.0
+    st.markdown("**Add Components:**")
+    for comp, k_val in components.items():
+        if st.checkbox(comp, value=(comp in ["Entrance (bellmouth)", "90° bend", "Exit"])):
+            K_sum += k_val
+            st.caption(f"+ {k_val} for {comp} (current ΣK = {K_sum:.2f})")
+    
+    # Display total K_sum
+    st.markdown(f"**Total ΣK = {K_sum:.2f}**")
+    st.caption("Typical range: 2.0-5.0 for well-designed systems")
+    
     auto_hf = st.checkbox("Calculate losses automatically", value=True, key="auto_hf")
 
 # Initialize variables with default values
@@ -193,9 +245,6 @@ else:
     - Consider smaller diameter for cost savings
     """)
 
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-
 # =====================================
 # Section 6: Interactive System Curves
 # =====================================
@@ -233,6 +282,7 @@ fig.add_trace(
     ),
     secondary_y=True,
 )
+
 # Add reference lines
 fig.add_vline(
     x=Q_design_total,
@@ -343,15 +393,19 @@ with col2:
 with col3:
     st.metric("Flow Velocity", f"{v_selected:.1f} m/s", 
               delta="Above limit" if v_selected > 6 else None)
+
 # =====================================
 # Section 7: References
 # =====================================
 st.header("6. References")
 st.markdown("""
-- USBR Design Standards No. 3
-- ICOLD Bulletins
-- ASME Hydropower Standards
+- **USBR Design Standards No. 3:** Hydropower Penstock Design Guidelines
+- **ICOLD Bulletins:** Penstock and Tunnel Design Recommendations
+- **ASME Hydropower Standards:** Mechanical Design of Hydropower Systems
+- **ASCE Guidelines:** Friction Factors for Penstocks
+- **USACE Engineering Manuals:** Hydraulic Loss Coefficients
 """)
+
 # =====================================
 # Section 8: Friction & Loss Coefficients Reference
 # =====================================
@@ -365,11 +419,11 @@ with st.expander("📚 Friction Factors & Loss Coefficients"):
                     "Concrete (smooth)", 
                     "Concrete (rough)", 
                     "PVC/Plastic"],
-        "Friction Factor (f)": [0.010-0.015, 
-                               0.015-0.020, 
-                               0.012-0.018, 
-                               0.018-0.025, 
-                               0.007-0.012],
+        "Friction Factor Range": ["0.010 - 0.015", 
+                                 "0.015 - 0.020", 
+                                 "0.012 - 0.018", 
+                                 "0.018 - 0.025", 
+                                 "0.007 - 0.012"],
         "Source": ["ASCE (2017)", 
                    "USBR (1987)", 
                    "ACI 351.3R (2018)", 
@@ -388,14 +442,14 @@ with st.expander("📚 Friction Factors & Loss Coefficients"):
                      "Butterfly valve (open)", 
                      "T-junction", 
                      "Exit"],
-        "K-value": [0.1-0.2, 
-                   0.5, 
-                   0.2-0.3, 
-                   0.1-0.2, 
-                   0.1-0.3, 
-                   0.2-0.4, 
-                   0.3-0.5, 
-                   1.0],
+        "K-value Range": ["0.1 - 0.2", 
+                         "0.4 - 0.5", 
+                         "0.2 - 0.3", 
+                         "0.1 - 0.2", 
+                         "0.1 - 0.3", 
+                         "0.2 - 0.4", 
+                         "0.3 - 0.5", 
+                         "0.8 - 1.0"],
         "Notes": ["Best case entrance", 
                  "Worst case entrance", 
                  "Depends on radius/diameter ratio", 
@@ -412,4 +466,5 @@ with st.expander("📚 Friction Factors & Loss Coefficients"):
     - For concrete penstocks: Use f = 0.015-0.020
     - ΣK typically ranges 2.0-5.0 for well-designed systems
     - Add 10-20% safety margin for aging effects
+    - Reduce bends and use bellmouth entrances to minimize losses
     """)
