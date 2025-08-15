@@ -9,173 +9,151 @@ g = 9.81  # m/s²
 rho = 1000  # kg/m³
 
 st.set_page_config(layout="wide")
-st.title("Pumped Hydro Storage Discharge Analysis")
+st.title("Pumped Hydro Storage Penstock Design")
 
-# ======================
+# =====================================
 # Section 1: Input Parameters
-# ======================
+# =====================================
 st.header("1. System Parameters")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("Reservoir Levels (m)")
-    HWL_u = st.number_input("Upper Reservoir HWL", value=1100.0)
-    LWL_u = st.number_input("Upper Reservoir LWL", value=1080.0)
-    HWL_l = st.number_input("Lower Reservoir HWL", value=450.0)
-    TWL_l = st.number_input("Lower Reservoir TWL", value=420.0)
+    st.subheader("Hydraulic Parameters")
+    HWL_u = st.number_input("Upper Reservoir HWL (m)", value=1100.0)
+    LWL_u = st.number_input("Upper Reservoir LWL (m)", value=1080.0)
+    HWL_l = st.number_input("Lower Reservoir HWL (m)", value=450.0)
+    TWL_l = st.number_input("Lower Reservoir TWL (m)", value=420.0)
+    hf_design = st.number_input("Design Head Loss (m)", value=25.0)
+    hf_max = st.number_input("Max Head Loss (m)", value=40.0)
 
 with col2:
-    st.subheader("Design Parameters")
+    st.subheader("Penstock Design")
+    N_penstocks = st.number_input("Number of Penstocks", min_value=1, max_value=8, value=2)
     eta_t = st.number_input("Turbine Efficiency", value=0.90, min_value=0.7, max_value=1.0)
     D_pen = st.number_input("Penstock Diameter (m)", value=3.5)
     design_power = st.number_input("Design Power (MW)", value=500.0)
     max_power = st.number_input("Maximum Power (MW)", value=600.0)
 
-# ======================
-# Section 2: Calculations
-# ======================
-st.header("2. Discharge Calculations")
+# =====================================
+# Section 2: Key Equations
+# =====================================
+st.header("2. Design Equations")
+with st.expander("View Fundamental Equations"):
+    st.markdown("""
+    ### **1. Total Discharge Calculation**
+    \[
+    Q_{total} = \frac{P \times 10^6}{\rho \times g \times h_{net} \times \eta_t}
+    \]
+    Where:
+    - \( P \) = Power (MW)
+    - \( h_{net} = \Delta H - h_f \) (Gross head - head loss)
+    
+    ### **2. Per-Penstock Discharge**
+    \[
+    Q_{penstock} = \frac{Q_{total}}{N_{penstocks}}
+    \]
+    
+    ### **3. Flow Velocity**
+    \[
+    v = \frac{Q_{penstock}}{A} = \frac{4Q_{penstock}}{\pi D^2}
+    \]
+    *Recommended limit: 4-6 m/s (USBR)*
+    
+    ### **4. Head Loss (Darcy-Weisbach)**
+    \[
+    h_f = \frac{fLv^2}{D2g}
+    \]
+    Where \( f \) = friction factor (~0.015 for concrete)
+    """)
 
-# Head calculations
-gross_head = HWL_u - TWL_l
-h_net_design = HWL_u - TWL_l - 25  # Assuming 25m head loss at design
-h_net_min = LWL_u - HWL_l - 40     # Assuming 40m head loss at max flow
+# =====================================
+# Section 3: Calculations
+# =====================================
+st.header("3. Calculation Results")
 
-# Discharge equations
-with st.expander("Show Equations"):
-    st.latex(r'''
-    \text{Discharge Calculation: } 
-    Q = \frac{P \times 10^6}{\rho \times g \times h_{net} \times \eta_t}
-    ''')
-    st.latex(r'''
-    \text{Velocity Calculation: }
-    v = \frac{Q}{A} = \frac{Q}{\pi \times (D_{pen}/2)^2}
-    ''')
-    st.latex(r'''
-    \text{Power Calculation: }
-    P = \frac{\rho \times g \times Q \times h_{net} \times \eta_t}{10^6}
-    ''')
+# Net heads
+h_net_design = (HWL_u - TWL_l) - hf_design
+h_net_min = (LWL_u - HWL_l) - hf_max
 
-# Calculate discharges
-Q_design = (design_power * 1e6) / (rho * g * h_net_design * eta_t)
-Q_max = (max_power * 1e6) / (rho * g * h_net_min * eta_t)
+# Discharges
+Q_design_total = (design_power * 1e6) / (rho * g * h_net_design * eta_t)
+Q_max_total = (max_power * 1e6) / (rho * g * h_net_min * eta_t)
+Q_design = Q_design_total / N_penstocks
+Q_max = Q_max_total / N_penstocks
 
-# Calculate velocities
+# Velocities
 A_pen = math.pi * (D_pen/2)**2
 v_design = Q_design / A_pen
 v_max = Q_max / A_pen
 
-# ======================
-# Section 3: Results Display
-# ======================
-st.header("3. Results Comparison")
-
-# Create results table
+# =====================================
+# Section 4: Results Display
+# =====================================
 results = pd.DataFrame({
-    "Parameter": ["Design", "Maximum"],
-    "Power (MW)": [design_power, max_power],
-    "Net Head (m)": [h_net_design, h_net_min],
-    "Discharge (m³/s)": [Q_design, Q_max],
-    "Velocity (m/s)": [v_design, v_max]
+    "Parameter": ["Total System", "Per Penstock"],
+    "Design Discharge (m³/s)": [Q_design_total, Q_design],
+    "Max Discharge (m³/s)": [Q_max_total, Q_max],
+    "Velocity (m³/s)": ["-", v_max]
 })
 
 st.dataframe(results.style.format({
-    "Power (MW)": "{:.1f}",
-    "Net Head (m)": "{:.1f}",
-    "Discharge (m³/s)": "{:.2f}",
-    "Velocity (m/s)": "{:.2f}"
+    "Design Discharge (m³/s)": "{:.2f}",
+    "Max Discharge (m³/s)": "{:.2f}",
+    "Velocity (m³/s)": "{:.2f}" if not isinstance(v, str) else v
+    for v in results["Velocity (m³/s)"]
 }), use_container_width=True)
 
-# Safety margin
-safety_margin = ((Q_max - Q_design) / Q_design) * 100
-st.metric("Safety Margin", f"{safety_margin:.1f}%")
+# Velocity check
+st.subheader("Velocity Validation")
+st.latex(f"v_{{max}} = {v_max:.2f} \, \text{{m/s}}")
 
-# ======================
-# Section 4: Visualizations
-# ======================
+if v_max > 6.0:
+    st.error(f"**Exceeds recommended limit (6 m/s, USBR)**")
+    st.markdown("""
+    **Mitigation Options:**
+    - Increase diameter (current: {D_pen} m)
+    - Add more penstocks (current: {N_penstocks})
+    - Reduce max power (current: {max_power} MW)
+    """)
+elif v_max > 4.0:
+    st.success("Within recommended range (4-6 m/s)")
+else:
+    st.warning("Low velocity (<4 m/s) - May lead to uneconomic design")
+
+# =====================================
+# Section 5: System Curves
+# =====================================
 st.header("4. System Characteristics")
 
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+# Generate operating curve
+Q_range = np.linspace(0, Q_max_total*1.2, 100)
+h_net_range = h_net_design - (h_net_design - h_net_min) * (Q_range/Q_max_total)**2
+P_range = N_penstocks * (rho * g * (Q_range/N_penstocks) * h_net_range * eta_t) / 1e6
 
-# Discharge comparison
-ax1.bar(["Design", "Maximum"], [Q_design, Q_max], color=["blue", "orange"])
-ax1.set_ylabel("Discharge (m³/s)")
-ax1.set_title("Design vs Maximum Discharge")
-for i, val in enumerate([Q_design, Q_max]):
-    ax1.text(i, val, f"{val:.1f}", ha='center', va='bottom')
-
-# System curve
-Q_range = np.linspace(0, Q_max*1.2, 100)
-h_net_range = h_net_design - (h_net_design - h_net_min) * (Q_range/Q_max)**2
-P_range = (rho * g * Q_range * h_net_range * eta_t) / 1e6
-
-ax2.plot(Q_range, P_range, 'g-', label='Power Output')
-ax2.axvline(Q_design, color='b', linestyle='--', label='Design Discharge')
-ax2.axvline(Q_max, color='r', linestyle='--', label='Max Discharge')
-ax2.set_xlabel("Discharge (m³/s)")
-ax2.set_ylabel("Power (MW)")
-ax2.set_title("System Operating Characteristics")
-ax2.legend()
-ax2.grid(True)
-
+fig, ax = plt.subplots(figsize=(10,6))
+ax.plot(Q_range, P_range, 'b-', label='Power Output')
+ax.axvline(Q_design_total, color='g', linestyle='--', label='Design Discharge')
+ax.axvline(Q_max_total, color='r', linestyle='--', label='Max Discharge')
+ax.set_xlabel("Total System Discharge (m³/s)")
+ax.set_ylabel("Total Power Output (MW)")
+ax.set_title("System Operating Curve")
+ax.grid(True)
+ax.legend()
 st.pyplot(fig)
 
-# ======================
-# Section 5: Design Checks
-# ======================
-st.header("5. Design Verification")
-
-# Velocity check
-st.subheader("Velocity Check")
-st.write(f"Maximum velocity: {v_max:.2f} m/s")
-if v_max > 6.0:
-    st.error("Velocity exceeds typical limit of 6 m/s for concrete-lined tunnels")
-else:
-    st.success("Velocity within acceptable limits")
-
-# Capacity check
-st.subheader("Capacity Check")
-if Q_design > Q_max:
-    st.error("Design discharge exceeds maximum system capacity!")
-else:
-    st.success("Design discharge within system capacity")
-
-# Design ratios
-st.subheader("Design Ratios")
-col1, col2 = st.columns(2)
-
-with col1:
-    load_ratio = Q_design / Q_max
-    st.metric("Load Ratio (Q_design/Q_max)", f"{load_ratio:.2f}", 
-             help="Optimal range: 0.7-0.9")
-
-with col2:
-    head_ratio = h_net_design / gross_head
-    st.metric("Head Utilization", f"{head_ratio:.2f}",
-             help="Ratio of design net head to gross head")
-
-# ======================
-# Relevant Equations Summary
-# ======================
-st.header("Key Equations Summary")
-
+# =====================================
+# Section 6: References
+# =====================================
+st.header("5. Design Standards")
 st.markdown("""
-**1. Discharge Calculation:**
-\[ Q = \frac{P \times 10^6}{\rho \times g \times h_{net} \times \eta_t} \]
-
-**2. Flow Velocity:**
-\[ v = \frac{Q}{A} = \frac{4Q}{\pi D^2} \]
-
-**3. Power Output:**
-\[ P = \frac{\rho \times g \times Q \times h_{net} \times \eta_t}{10^6} \]
-
-**4. Head Loss Approximation:**
-\[ h_f = k \times Q^n \] 
-*(Where k and n are system-specific coefficients)*
-
-**5. Safety Margin:**
-\[ \text{Margin} = \left(\frac{Q_{max} - Q_{design}}{Q_{design}}\right) \times 100\% \]
-
-**6. Load Ratio:**
-\[ \text{Load Ratio} = \frac{Q_{design}}{Q_{max}} \]
+- **USBR (1987)**: *Design Standards No. 3 - Hydropower*
+  - Concrete penstocks: 4-6 m/s
+  - Steel penstocks: 5-7 m/s
+  
+- **ASME (2019)**: *Hydropower Technical Guidelines*
+  - Short-term peaks: ≤8 m/s
+  - Continuous operation: ≤6 m/s
+  
+- **Practical Design Handbook**:
+  - Economic velocity range: 3.5-5.5 m/s
 """)
