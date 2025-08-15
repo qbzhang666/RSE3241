@@ -127,7 +127,7 @@ else:
 # =====================================
 # Section 2: Design Equations (as LaTeX in Streamlit)
 # =====================================
-st.header("2. Design Equations")
+st.header("Design Equations")
 
 with st.expander("Show Design Equations"):
     st.markdown("""
@@ -170,7 +170,7 @@ with st.expander("Show Design Equations"):
 # =====================================
 # Section 8: Friction & Loss Coefficients Reference
 # =====================================
-st.header("7. Reference Tables")
+st.header("Reference Tables")
 
 with st.expander("📚 Friction Factors & Loss Coefficients"):
     st.subheader("Friction Factors (f) - Darcy-Weisbach Equation")
@@ -232,7 +232,7 @@ with st.expander("📚 Friction Factors & Loss Coefficients"):
 # =====================================
 # Section 3: Calculations
 # =====================================
-st.header("3. Calculation Results")
+st.header("2. Calculation Results")
 
 # Net heads
 h_net_design = (HWL_u - TWL_l) - hf_design
@@ -270,7 +270,7 @@ st.dataframe(results.style.format({
 # =====================================
 # Section 5: Velocity Validation
 # =====================================
-st.header("4. Velocity Validation")
+st.header("3. Velocity Validation")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -310,7 +310,7 @@ else:
 # =====================================
 # Section 6: Interactive System Curves
 # =====================================
-st.header("5. System Characteristics")
+st.header("4. System Characteristics")
 
 # First calculate Q_range based on system parameters
 Q_range = np.linspace(0, Q_max_total*1.2, 100)  # Generate discharge range
@@ -459,7 +459,7 @@ with col3:
 # =====================================
 # Section 7: References
 # =====================================
-st.header("6. References")
+st.header("5. References")
 st.markdown("""
 - **USBR Design Standards No. 3:** Hydropower Penstock Design Guidelines
 - **ICOLD Bulletins:** Penstock and Tunnel Design Recommendations
