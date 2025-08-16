@@ -382,6 +382,7 @@ st.header("3) Discharges & Velocities")
 def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
     """Two-pass iteration to refine f and h_f for given Ksum."""
     A = area_circle(D_pen)
+
     # pass 1
     h_net = h_span - hf_guess
     Q_total = Q_from_power(P_MW, h_net, eta_t)
@@ -421,7 +422,7 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
         rel_rough=(safe_div(eps, D_pen) if mode_f != "Manual (slider)" else None)
     )
 
-# Compute ignoring local losses first (Ksum=0) — clean view of Q & v
+# Compute ignoring local losses first (Ksum = 0) — clean view of Q & v
 out_design_flow = compute_block(P_design, gross_head, 0.0, hf_guess=20.0)
 out_max_flow    = compute_block(P_max,    min_head,  0.0, hf_guess=30.0)
 
@@ -445,42 +446,39 @@ st.dataframe(
     }
 )
 
-# Velocity checks
-st.subheader("Velocity checks (USBR guidance)")
+# Velocity checks (keep simple classroom check; add USBR reference)
+st.subheader("Velocity checks (with reference)")
+
 v_design = out_design_flow["v"]; v_max = out_max_flow["v"]
 c1, c2 = st.columns(2)
 with c1:
     st.metric("v_design (m/s)", f"{v_design:.2f}")
     st.metric("v_max (m/s)", f"{v_max:.2f}")
 with c2:
-    st.markdown("- **Recommended range:** 4–6 m/s (concrete penstocks)")
-    st.markdown("- **Absolute max:** ~7 m/s (short duration)")
+    st.markdown(
+        "**USBR guidance (penstocks):**  \n"
+        "- Low-pressure steel: *3–5 m/s*  \n"
+        "- Medium-pressure steel: *5–7 m/s*  \n"
+        "- High-pressure steel: *7–10 m/s*  \n\n"
+        "*Reference: USBR —* **Design of Small Dams**, 3rd ed. (1987), Ch. 10 (Penstocks)."
+    )
 
+# Simple traffic-light classroom rule (concrete/typical teaching band ~4–6 m/s; short bursts ~7 m/s)
 if v_max > 7.0:
     st.error("⚠️ Dangerous velocity (exceeds ~7 m/s). Revisit D or layout.")
 elif v_max > 6.0:
-    st.warning("⚠️ Above recommended 6 m/s. Acceptable only for short periods.")
+    st.warning("⚠️ Above ~6 m/s. Acceptable only for short periods in many teaching examples.")
 elif v_max >= 4.0:
-    st.success("✓ Within recommended 4–6 m/s range.")
+    st.success("✓ Within typical teaching band ~4–6 m/s.")
 else:
-    st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
+    st.info("ℹ️ Low velocity (<4 m/s): hydraulically safe but may be uneconomic (oversized).")
 
-st.markdown("### 3) Discharges & Velocities")
+# Reference equations (LaTeX)
+st.markdown("#### Equations used")
+st.latex(r"A = \frac{\pi D^{2}}{4} \quad [\text{m}^2]")
+st.latex(r"Q_p = \frac{Q_{\text{total}}}{N_{\text{pen}}} \quad \left[\text{m}^3/\text{s}\right]")
+st.latex(r"v = \frac{Q_p}{A} \quad [\text{m}/\text{s}]")
 
-st.latex(r"A = \frac{\pi D^{2}}{4} \quad (\text{m}^2)")
-st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}} \quad (\text{m}^3/\text{s})")
-st.latex(r"v = \frac{Q_p}{A} \quad (\text{m/s})")
-
-st.markdown(
-    """
-    **Velocity checks (USBR guidance):**
-    - Low-pressure steel penstocks: *3 – 5 m/s*  
-    - Medium-pressure steel penstocks: *5 – 7 m/s*  
-    - High-pressure steel penstocks: *7 – 10 m/s*  
-
-    *Reference: United States Bureau of Reclamation (USBR), Design of Small Dams, 3rd Edition (1987), Chapter 10 – Penstocks.*
-    """
-)
 
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
