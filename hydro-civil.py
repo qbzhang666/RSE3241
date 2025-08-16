@@ -225,58 +225,80 @@ with st.sidebar:
             ))
 
 # ------------------------------- Section 1: Reservoirs -------------------------------
-st.header("1) Reservoir Levels & Rating Head")
+st.header("1) Reservoir Levels, NWL & Rating Head")
 
 c1, c2 = st.columns(2)
 with c1:
     st.markdown("**Upper reservoir**")
-    HWL_u = st.number_input("Upper HWL (m)", 0.0, 3000.0, float(st.session_state.get("HWL_u", 1100.0)), 1.0)
-    LWL_u = st.number_input("Upper LWL (m)", 0.0, 3000.0, float(st.session_state.get("LWL_u", 1080.0)), 1.0)
+    HWL_u = st.number_input("Upper HWL (m)", 0.0, 3000.0,
+                            float(st.session_state.get("HWL_u", 1100.0)), 1.0)
+    LWL_u = st.number_input("Upper LWL (m)", 0.0, 3000.0,
+                            float(st.session_state.get("LWL_u", 1080.0)), 1.0)
 with c2:
     st.markdown("**Lower reservoir**")
-    HWL_l = st.number_input("Lower HWL (m)", 0.0, 3000.0, float(st.session_state.get("HWL_l", 450.0)), 1.0)
-    TWL_l = st.number_input("Lower TWL (m)", 0.0, 3000.0, float(st.session_state.get("TWL_l", 420.0)), 1.0)
+    HWL_l = st.number_input("Lower HWL (m)", 0.0, 3000.0,
+                            float(st.session_state.get("HWL_l", 450.0)), 1.0)
+    TWL_l = st.number_input("Lower TWL (m)", 0.0, 3000.0,
+                            float(st.session_state.get("TWL_l", 420.0)), 1.0)
 
-# Heads
-gross_head = HWL_u - TWL_l                # HWL_u – TWL_l
-min_head   = LWL_u - HWL_l                # LWL_u – HWL_l  (worst case)
-head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))  # (LWL – TWL)/(HWL – TWL)
+# Drawdown & NWL (upper pond)
+Ha_u  = HWL_u - LWL_u                       # available drawdown
+NWL_u = HWL_u - Ha_u / 3.0                  # NWL = HWL − Ha/3
 
-# Visualization
+# Heads (NWL-based gross head)
+gross_head = NWL_u - TWL_l                  # Hg = NWL − TWL
+min_head   = LWL_u - HWL_l                  # worst case
+head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))  # (LWL − TWL)/(HWL − TWL)
+
+# --- Visualisation ---
 fig_res, ax = plt.subplots(figsize=(8, 5))
+# storage bars
 ax.bar(["Upper"], [HWL_u - LWL_u], bottom=LWL_u, color="#3498DB", alpha=0.75, width=0.4)
 ax.bar(["Lower"], [HWL_l - TWL_l], bottom=TWL_l, color="#2ECC71", alpha=0.75, width=0.4)
-ax.annotate("", xy=(0, HWL_u), xytext=(0, TWL_l), arrowprops=dict(arrowstyle="<->", color="#E74C3C", lw=2))
-ax.text(-0.1, (HWL_u + TWL_l)/2, f"Gross ≈ {gross_head:.1f} m", color="#E74C3C", va="center")
-ax.annotate("", xy=(0.2, LWL_u), xytext=(0.2, HWL_l), arrowprops=dict(arrowstyle="<->", color="#27AE60", lw=2))
-ax.text(0.1, (LWL_u + HWL_l)/2, f"Min ≈ {min_head:.1f} m", color="#27AE60", va="center")
+# NWL line (spans both bars)
+ax.hlines(NWL_u, -0.4, 1.4, colors="#34495E", linestyles="--", linewidth=2, label="NWL (upper)")
+# gross head arrow (NWL to TWL)
+ax.annotate("", xy=(1.0, NWL_u), xytext=(1.0, TWL_l),
+            arrowprops=dict(arrowstyle="<->", color="#E74C3C", lw=2))
+ax.text(1.05, (NWL_u + TWL_l)/2, f"Hg ≈ {gross_head:.1f} m", color="#E74C3C", va="center")
+
+# min head arrow (LWL to HWL_l)
+ax.annotate("", xy=(0.2, LWL_u), xytext=(0.2, HWL_l),
+            arrowprops=dict(arrowstyle="<->", color="#27AE60", lw=2))
+ax.text(0.08, (LWL_u + HWL_l)/2, f"Min ≈ {min_head:.1f} m", color="#27AE60", va="center")
+
 ax.set_ylabel("Elevation (m)")
-ax.set_title("Reservoir Operating Range")
+ax.set_title("Reservoir Operating Range (with NWL)")
 ax.grid(True, linestyle="--", alpha=0.35)
+ax.legend(loc="upper left", fontsize=9)
 st.pyplot(fig_res)
 
+# Equations (for teaching)
+with st.expander("Show equations used"):
+    st.latex(r"H_a = HWL - LWL")
+    st.latex(r"NWL = HWL - \frac{H_a}{3}")
+    st.latex(r"H_g = NWL - TWL")
+    st.latex(r"\text{Head fluctuation rate (HFR)} = \frac{LWL - TWL}{HWL - TWL}")
+
 # Metrics
-m1, m2, m3 = st.columns(3)
-m1.metric("Gross head (m)", f"{gross_head:.1f}")
-m2.metric("Min head (m)", f"{min_head:.1f}")
-m3.metric("Head fluctuation ratio (LWL→TWL)", f"{head_fluct_ratio:.3f}")
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Available drawdown Ha (m)", f"{Ha_u:.1f}")
+m2.metric("NWL (m)", f"{NWL_u:.1f}")
+m3.metric("Gross head Hg = NWL−TWL (m)", f"{gross_head:.1f}")
+m4.metric("Head fluctuation ratio (LWL→TWL)", f"{head_fluct_ratio:.3f}")
 
-# --- Head fluctuation criterion (treated as LOWER LIMIT) ---
-st.markdown("**Head fluctuation rate**")
-st.latex(r"\text{HFR} = \frac{LWL - TWL}{HWL - TWL}")
-
+# --- Head fluctuation criterion (LOWER limit, ≥) ---
+st.markdown("**Head fluctuation rate criterion (lower limit)**")
 crit_col1, crit_col2 = st.columns([2, 1])
 with crit_col1:
     turbine_choice = st.selectbox(
-        "Criterion (lower limit, choose turbine type or none):",
+        "Select turbine type (sets recommended **minimum** HFR):",
         ["None (no check)", "Francis (≥ 0.70)", "Kaplan (≥ 0.55)"],
-        index=1  # default to Francis
+        index=1
     )
 with crit_col2:
-    # Allow a custom lower limit when "None" isn't selected
     custom_limit = st.number_input("Custom lower limit (optional)", 0.0, 1.0, 0.70, 0.01)
 
-# Determine the active lower limit
 if turbine_choice.startswith("Francis"):
     limit = 0.70
 elif turbine_choice.startswith("Kaplan"):
@@ -286,20 +308,36 @@ elif turbine_choice.startswith("None"):
 else:
     limit = None
 
-# If user typed a custom value and a turbine type isn't "None", let the typed value override
-if not (limit is None) and custom_limit is not None:
+if (limit is not None) and (custom_limit is not None):
     limit = float(custom_limit)
 
-# Validate as LOWER limit: HFR >= limit
 if limit is not None and not np.isnan(head_fluct_ratio):
     st.markdown(f"**HFR:** {head_fluct_ratio:.3f}  •  **Lower limit:** {limit:.2f}")
     if head_fluct_ratio >= limit:
-        st.success("Meets the recommended **minimum** head fluctuation requirement (HFR ≥ limit).")
+        st.success("Meets the recommended **minimum** (HFR ≥ limit).")
     else:
         st.error(
             "Below the recommended **minimum** head fluctuation. "
-            "Consider **raising LWL** (reduce operating drawdown) or **increasing gross head** (increase HWL − TWL)."
+            "Consider **raising LWL** (smaller drawdown) or **increasing HWL − TWL**."
         )
+# Inputs
+HWL = float(HWL_input)   # High Water Level (m)
+LWL = float(LWL_input)   # Low Water Level (m)
+TWL = float(TWL_input)   # Tail Water Level (m)
+
+# Equation 1: Available drawdown
+Ha = HWL - LWL
+
+# Equation 2: Normal Water Level
+NWL = HWL - Ha/3
+
+# Equation 3: Gross Head
+Hg = NWL - TWL
+
+# For debugging/validation
+st.write("Available drawdown (Ha):", Ha, "m")
+st.write("Normal Water Level (NWL):", NWL, "m")
+st.write("Gross Head (Hg):", Hg, "m")
 
 
 # ------------------------------- Section 2: Penstock & Moody -------------------------
