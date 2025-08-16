@@ -242,12 +242,12 @@ with c2:
                             float(st.session_state.get("TWL_l", 420.0)), 1.0)
 
 # Drawdown & NWL (upper pond)
-Ha_u  = HWL_u - LWL_u                       # available drawdown
-NWL_u = HWL_u - Ha_u / 3.0                  # NWL = HWL − Ha/3
+Ha_u  = HWL_u - LWL_u                 # available drawdown
+NWL_u = HWL_u - Ha_u / 3.0            # NWL = HWL − Ha/3
 
 # Heads (NWL-based gross head)
-gross_head = NWL_u - TWL_l                  # Hg = NWL − TWL
-min_head   = LWL_u - HWL_l                  # worst case
+gross_head = NWL_u - TWL_l            # Hg = NWL − TWL
+min_head   = LWL_u - HWL_l            # worst case
 head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))  # (LWL − TWL)/(HWL − TWL)
 
 # --- Visualisation ---
@@ -261,12 +261,10 @@ ax.hlines(NWL_u, -0.4, 1.4, colors="#34495E", linestyles="--", linewidth=2, labe
 ax.annotate("", xy=(1.0, NWL_u), xytext=(1.0, TWL_l),
             arrowprops=dict(arrowstyle="<->", color="#E74C3C", lw=2))
 ax.text(1.05, (NWL_u + TWL_l)/2, f"Hg ≈ {gross_head:.1f} m", color="#E74C3C", va="center")
-
 # min head arrow (LWL to HWL_l)
 ax.annotate("", xy=(0.2, LWL_u), xytext=(0.2, HWL_l),
             arrowprops=dict(arrowstyle="<->", color="#27AE60", lw=2))
 ax.text(0.08, (LWL_u + HWL_l)/2, f"Min ≈ {min_head:.1f} m", color="#27AE60", va="center")
-
 ax.set_ylabel("Elevation (m)")
 ax.set_title("Reservoir Operating Range (with NWL)")
 ax.grid(True, linestyle="--", alpha=0.35)
@@ -285,59 +283,10 @@ m1, m2, m3, m4 = st.columns(4)
 m1.metric("Available drawdown Ha (m)", f"{Ha_u:.1f}")
 m2.metric("NWL (m)", f"{NWL_u:.1f}")
 m3.metric("Gross head Hg = NWL−TWL (m)", f"{gross_head:.1f}")
-m4.metric("Head fluctuation ratio (LWL→TWL)", f"{head_fluct_ratio:.3f}")
+m4.metric("Head fluctuation ratio (HFR)", f"{head_fluct_ratio:.3f}")
 
-# --- Head fluctuation criterion (LOWER limit, ≥) ---
-st.markdown("**Head fluctuation rate criterion (lower limit)**")
-crit_col1, crit_col2 = st.columns([2, 1])
-with crit_col1:
-    turbine_choice = st.selectbox(
-        "Select turbine type (sets recommended **minimum** HFR):",
-        ["None (no check)", "Francis (≥ 0.70)", "Kaplan (≥ 0.55)"],
-        index=1
-    )
-with crit_col2:
-    custom_limit = st.number_input("Custom lower limit (optional)", 0.0, 1.0, 0.70, 0.01)
-
-if turbine_choice.startswith("Francis"):
-    limit = 0.70
-elif turbine_choice.startswith("Kaplan"):
-    limit = 0.55
-elif turbine_choice.startswith("None"):
-    limit = None
-else:
-    limit = None
-
-if (limit is not None) and (custom_limit is not None):
-    limit = float(custom_limit)
-
-if limit is not None and not np.isnan(head_fluct_ratio):
-    st.markdown(f"**HFR:** {head_fluct_ratio:.3f}  •  **Lower limit:** {limit:.2f}")
-    if head_fluct_ratio >= limit:
-        st.success("Meets the recommended **minimum** (HFR ≥ limit).")
-    else:
-        st.error(
-            "Below the recommended **minimum** head fluctuation. "
-            "Consider **raising LWL** (smaller drawdown) or **increasing HWL − TWL**."
-        )
-# Inputs
-HWL = float(HWL_input)   # High Water Level (m)
-LWL = float(LWL_input)   # Low Water Level (m)
-TWL = float(TWL_input)   # Tail Water Level (m)
-
-# Equation 1: Available drawdown
-Ha = HWL - LWL
-
-# Equation 2: Normal Water Level
-NWL = HWL - Ha/3
-
-# Equation 3: Gross Head
-Hg = NWL - TWL
-
-# For debugging/validation
-st.write("Available drawdown (Ha):", Ha, "m")
-st.write("Normal Water Level (NWL):", NWL, "m")
-st.write("Gross Head (Hg):", Hg, "m")
+# NOTE: the previous turbine-limit UI/check has been removed as requested.
+# Also remove any leftover debug code that referenced HWL_input/LWL_input/TWL_input.
 
 
 # ------------------------------- Section 2: Penstock & Moody -------------------------
