@@ -285,8 +285,48 @@ m2.metric("NWL (m)", f"{NWL_u:.1f}")
 m3.metric("Gross head Hg = NWL−TWL (m)", f"{gross_head:.1f}")
 m4.metric("Head fluctuation ratio (HFR)", f"{head_fluct_ratio:.3f}")
 
-# NOTE: the previous turbine-limit UI/check has been removed as requested.
-# Also remove any leftover debug code that referenced HWL_input/LWL_input/TWL_input.
+# --- Head fluctuation criterion (treated as LOWER LIMIT) ---
+st.markdown("**Head fluctuation rate**")
+st.latex(r"\text{HFR} = \frac{LWL - TWL}{HWL - TWL}")
+
+crit_col1, crit_col2 = st.columns([2, 1])
+with crit_col1:
+    turbine_choice = st.selectbox(
+        "Criterion (lower limit, choose turbine type or none):",
+        ["None (no check)", "Francis (≥ 0.70)", "Kaplan (≥ 0.55)"],
+        index=1  # default to Francis
+    )
+with crit_col2:
+    # Allow a custom lower limit (overrides preset if provided)
+    custom_limit = st.number_input("Custom lower limit (optional)", 0.0, 1.0, 0.70, 0.01)
+
+# Determine the active lower limit
+if turbine_choice.startswith("Francis"):
+    limit = 0.70
+elif turbine_choice.startswith("Kaplan"):
+    limit = 0.55
+elif turbine_choice.startswith("None"):
+    limit = None
+else:
+    limit = None
+
+# If user typed a custom value and a turbine type isn't "None", let the typed value override
+if limit is not None and custom_limit is not None:
+    limit = float(custom_limit)
+
+# Validate as LOWER limit: HFR ≥ limit
+if limit is not None and not np.isnan(head_fluct_ratio):
+    st.markdown(f"**HFR:** {head_fluct_ratio:.3f}  •  **Lower limit:** {limit:.2f}")
+    if head_fluct_ratio >= limit:
+        st.success("Meets the recommended **minimum** head fluctuation requirement (HFR ≥ limit).")
+    else:
+        st.error(
+            "Below the recommended **minimum** head fluctuation. "
+            "Consider **raising LWL** (reduce operating drawdown) or **increasing gross head** (increase HWL − TWL)."
+        )
+
+# (Keep the comment if you like)
+# NOTE: the previous turbine-limit UI/check had been removed; this block restores it as requested.
 
 
 # ------------------------------- Section 2: Penstock & Moody -------------------------
