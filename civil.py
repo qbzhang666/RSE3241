@@ -305,6 +305,15 @@ with col1:
         \[ F_{RM} = \frac{C_{RM} \cdot \gamma_R \cdot \cos\beta}{h_s \cdot \gamma_w} \]
         
         Target \( F_{RV} \geq 1.2-1.5 \)
+        
+        Where:
+        - \( C_{RV} \) = Required vertical rock cover (m)
+        - \( C_{RM} \) = Required rock cover for mountain slope (m)
+        - \( h_s \) = Hydrostatic head to tunnel crown (m)
+        - \( \gamma_w \) = Unit weight of water (kN/m³)
+        - \( \gamma_R \) = Unit weight of rock (kN/m³)
+        - \( \alpha \) = Tunnel inclination angle (degrees)
+        - \( \beta \) = Ground slope angle (degrees)
         """)
 
 with col2:
