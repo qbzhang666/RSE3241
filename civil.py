@@ -160,6 +160,69 @@ fig.update_layout(
 
 st.plotly_chart(fig, use_container_width=True)
 
+# ======================== ENGINEERING FUNDAMENTALS ========================
+st.header("📚 Engineering Fundamentals")
+with st.expander("Key Equations"):
+    st.subheader("Hydraulic Power Equation")
+    st.latex(r"P = \rho \cdot g \cdot Q \cdot H_{net} \cdot \eta")
+    st.markdown("Where:")
+    st.markdown("- \( P \) = Power output (W)")
+    st.markdown("- \( \rho \) = Water density (kg/m³)")
+    st.markdown("- \( g \) = Gravitational acceleration (m/s²)")
+    st.markdown("- \( Q \) = Flow rate (m³/s)")
+    st.markdown("- \( H_{net} \) = Net head (m)")
+    st.markdown("- \( \eta \) = Efficiency")
+    
+    st.subheader("Darcy-Weisbach Equation")
+    st.latex(r"h_f = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g} + \sum K \cdot \frac{v^2}{2g}")
+    st.markdown("Where:")
+    st.markdown("- \( h_f \) = Head loss (m)")
+    st.markdown("- \( f \) = Friction factor")
+    st.markdown("- \( L \) = Length of pipe (m)")
+    st.markdown("- \( D \) = Diameter of pipe (m)")
+    st.markdown("- \( v \) = Flow velocity (m/s)")
+    st.markdown("- \( \sum K \) = Sum of local loss coefficients")
+    
+    st.subheader("Thoma Cavitation Coefficient")
+    st.latex(r"\sigma = \frac{H_{atm} - H_{vap} + S - h_{loss}}{H_{net}}")
+    st.markdown("Where:")
+    st.markdown("- \( \sigma \) = Thoma coefficient")
+    st.markdown("- \( H_{atm} \) = Atmospheric pressure head (m)")
+    st.markdown("- \( H_{vap} \) = Vapor pressure head (m)")
+    st.markdown("- \( S \) = Runner submergence (m)")
+    st.markdown("- \( h_{loss} \) = Draft tube losses (m)")
+    
+    st.subheader("Hoop Stress (Thin-Walled Pressure Vessel)")
+    st.latex(r"\sigma_h = \frac{P \cdot D}{2t}")
+    st.markdown("Where:")
+    st.markdown("- \( \sigma_h \) = Hoop stress (Pa)")
+    st.markdown("- \( P \) = Internal pressure (Pa)")
+    st.markdown("- \( D \) = Diameter (m)")
+    st.markdown("- \( t \) = Wall thickness (m)")
+
+# ======================== MATERIAL PROPERTIES ========================
+st.header("📦 Material Properties")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Concrete Grades")
+    concrete_data = {
+        "Grade": ["C25", "C30", "C35", "C40"],
+        "Compressive Strength (MPa)": [25, 30, 35, 40],
+        "Tensile Strength (MPa)": [2.6, 2.9, 3.2, 3.5],
+        "Elastic Modulus (GPa)": [31, 33, 34, 35]
+    }
+    st.dataframe(pd.DataFrame(concrete_data), hide_index=True)
+
+with col2:
+    st.subheader("Steel Reinforcement")
+    steel_data = {
+        "Grade": ["400 MPa", "500 MPa"],
+        "Yield Strength (MPa)": [400, 500],
+        "Elastic Modulus (GPa)": [200, 200]
+    }
+    st.dataframe(pd.DataFrame(steel_data), hide_index=True)
+
 # ======================== ENGINEERING ANALYSIS ========================
 st.header("⚙️ Engineering Analysis")
 
@@ -171,12 +234,29 @@ with col1:
     st.metric("Flow Velocity", f"{flow_velocity:.1f} m/s", 
               "Good" if 4 <= flow_velocity <= 6 else "High" if flow_velocity > 6 else "Low")
     st.metric("Head Loss", f"{h_loss:.1f} m ({h_loss/h_gross:.1%})")
+    
+    with st.expander("Velocity Guidelines"):
+        st.markdown("""
+        | Velocity Range (m/s) | Evaluation | Recommendation |
+        |----------------------|------------|----------------|
+        | < 4.0 | Low | May indicate oversized conduit |
+        | 4.0 - 6.0 | Optimal | Good balance of efficiency and cost |
+        | 6.0 - 7.0 | High | Acceptable for short durations |
+        | > 7.0 | Very High | Risk of erosion and cavitation |
+        """)
 
 with col2:
     st.subheader("Structural")
     st.metric("Max Internal Pressure", f"{pressure_head/100:.1f} MPa")
     st.metric("Hoop Stress in Lining", f"{hoop_stress/1e6:.1f} MPa", 
               "Within limits" if hoop_stress/1e6 < 200 else "High")
+    
+    with st.expander("Stress Limits"):
+        st.markdown("""
+        - **Concrete compressive stress**: < 40% of compressive strength
+        - **Steel stress**: < 80% of yield strength
+        - **Crack width**: < 0.3 mm for water-retaining structures
+        """)
 
 with col3:
     st.subheader("Cavitation")
@@ -184,8 +264,18 @@ with col3:
     st.metric("Recommended Safety Margin", "0.10", 
               "Adequate" if thoma > 0.10 else "Inadequate")
     st.metric("Runner Submergence", f"{submergence} m")
+    
+    with st.expander("Cavitation Risk"):
+        st.markdown("""
+        | Thoma σ | Cavitation Risk |
+        |---------|-----------------|
+        | > 0.15 | Very Low |
+        | 0.10 - 0.15 | Low |
+        | 0.05 - 0.10 | Moderate |
+        | < 0.05 | High |
+        """)
 
-# ======================== PRESSURE TUNNEL ANALYSIS ========================
+# ======================== PRESSURE TUNNEL DESIGN ========================
 st.header("🏔️ Pressure Tunnel Design")
 
 col1, col2 = st.columns([1, 2])
@@ -204,6 +294,18 @@ with col1:
     st.subheader("Lining Design")
     lining_type = st.selectbox("Lining Type", ["Concrete", "Steel", "Shotcrete"])
     thickness = st.slider("Lining Thickness (mm)", 100, 1000, 300, 50)
+    
+    with st.expander("Rock Cover Criteria"):
+        st.markdown("""
+        **Snowy Vertical Cover Method:**
+        \[ C_{RV} = \frac{h_s \cdot \gamma_w}{\gamma_R} \]
+        
+        **Norwegian Method:**
+        \[ F_{RV} = \frac{C_{RV} \cdot \gamma_R \cdot \cos\alpha}{h_s \cdot \gamma_w} \]
+        \[ F_{RM} = \frac{C_{RM} \cdot \gamma_R \cdot \cos\beta}{h_s \cdot \gamma_w} \]
+        
+        Target \( F_{RV} \geq 1.2-1.5 \)
+        """)
 
 with col2:
     # Tunnel cross-section visualization
@@ -293,6 +395,17 @@ with col1:
     st.subheader("Reinforcement")
     reinforcement_ratio = st.slider("Reinforcement Ratio ρ (%)", 0.5, 5.0, 1.5, 0.1)
     cover = st.slider("Concrete Cover (mm)", 30, 100, 50, 5)
+    
+    with st.expander("Lame's Equations"):
+        st.markdown("""
+        **Thick-Walled Cylinder Stress:**
+        \[ \sigma_r = A - \frac{B}{r^2} \]
+        \[ \sigma_\theta = A + \frac{B}{r^2} \]
+        
+        Where:
+        \[ A = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} \]
+        \[ B = \frac{(p_i - p_e) r_i^2 r_o^2}{r_o^2 - r_i^2} \]
+        """)
 
 with col2:
     st.subheader("Stress Analysis")
@@ -453,7 +566,7 @@ Concrete Grade: {concrete_grade}
 Reinforcement Grade: {steel_grade}
 Reinforcement Ratio: {reinforcement_ratio}%
 Concrete Cover: {cover} mm
-Calculated Crack Width: {crack_width:.3f} mm
+Calculated Crack Width: {crack_width*1000:.3f} mm
 Safety Factor: {tens_strength/hoop_stress:.2f}
 """
 
