@@ -63,7 +63,7 @@ def main():
                 ]
             )
             
-            if "flow discharge" in known_variable:
+            if "flow discharge" in known_variable and "Optimal" in known_variable:
                 flow_discharge = st.number_input(
                     "Flow discharge [m³/s]",
                     min_value=0.01,
@@ -226,10 +226,16 @@ def generate_plot(H_g, Q, P, eff_turb, eff_gener, K_N, AP_AN, head_loss):
         Pplus = eta * (1.5 * Qplus - Beta[i] * Qplus**3)
         ax.plot(Pplus, Qplus, colors[i], label=labels[i], linewidth=2.5)
     
+    # Calculate points for special markers
+    Q_eff_0 = math.sqrt(1.5/(3*Beta[0]))
+    P_eff_0 = eta * (1.5 * Q_eff_0 - Beta[0] * Q_eff_0**3)
+    
+    Q_eff_08 = math.sqrt(0.7/(3*Beta[0]))
+    P_eff_08 = eta * (1.5 * Q_eff_08 - Beta[0] * Q_eff_08**3)
+    
     # Add markers and annotations
-    ax.plot([0], [math.sqrt(1.5/(3*Beta[0]))], 'sg', markersize=8, label='dP₊/dQ₊ = 0')
-    ax.plot([eta*(1.5*math.sqrt(0.7/(3*Beta[0])) - Beta[0]*(math.sqrt(0.7/(3*Beta[0]))**3)], 
-            [math.sqrt(0.7/(3*Beta[0]))], 'sc', markersize=8, label='dP₊/dQ₊ = 0.8η')
+    ax.plot(P_eff_0, Q_eff_0, 'sg', markersize=8, label='dP₊/dQ₊ = 0')
+    ax.plot(P_eff_08, Q_eff_08, 'sc', markersize=8, label='dP₊/dQ₊ = 0.8η')
     ax.plot(Pplus_actual, Qplus_actual, 'pr', markersize=12, label='Your Data Point')
     
     # Format plot
