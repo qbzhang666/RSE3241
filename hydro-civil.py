@@ -388,7 +388,7 @@ else:
     st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
 
 # Mini Moody chart
-if mode_f != "Manual (slider)"):
+if mode_f != "Manual (slider)":
     st.subheader("Mini Moody diagram (your operating point)")
     Re_vals = np.logspace(3, 8, 300)
     epsD_list = [0.0, 1e-6, 1e-5, 1e-4, 5e-4, 1e-3]
