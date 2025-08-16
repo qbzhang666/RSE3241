@@ -465,6 +465,27 @@ elif v_max >= 4.0:
 else:
     st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
 
+# (append this immediately after the existing velocity checks messages)
+
+with st.expander("References & notes for velocity screening", expanded=False):
+    st.markdown("""
+- **How we compute v**: by continuity, \( v = Q/A \) where \( Q \) is **per-penstock** discharge and
+  \( A = \pi D^2/4 \).
+- **Why 4–6 m/s?**  Preliminary guidance for large conduits/penstocks aims to balance head losses,
+  transient pressures, and abrasion/cavitation risks. Many teaching & agency sources cite ~4–6 m/s
+  as a reasonable **design range**, with ~7 m/s as a **short-duration** upper bound.
+- **Caveats**: Acceptable velocities depend on material, lining/abrasion, length, local losses,
+  water quality (sediment), transients (water-hammer), and economics. Detailed projects should be
+  checked via transient analysis (e.g., Method of Characteristics) and life-cycle cost.
+
+**Teaching references** (typical):
+- USBR Design Standards / Hydraulic Design of Hydropower Plants (penstocks & conveyance).
+- USACE Engineering Manuals (hydraulic design / local loss coefficients).
+- ASCE Manuals; ACI 351.3R (friction & material ranges).
+- Gordon, *Hydraulics of Hydroelectric Power*; Chaudhry, *Applied Hydraulic Transients*.
+""")
+
+
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
 
