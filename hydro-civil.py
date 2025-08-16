@@ -92,11 +92,7 @@ def hoop_stress(pi, pe, ri, r):
     return s.item() if np.isscalar(r) else s
 
 def required_pext_for_ft(pi_MPa, ri, re, ft_MPa):
-    """
-    External confinement to keep σθ at the inner/outer fibre ≤ f_t (didactic inner-fibre form).
-    Approx classroom expression:
-        p_ext,req ≈ ((p_i - f_t) * (r_o^2 - r_i^2)) / (2 r_o^2)
-    """
+    """Didactic check for external confinement (inner-fibre form)."""
     return max(0.0, (pi_MPa - ft_MPa) * (re**2 - ri**2) / (2.0 * re**2))
 
 def snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=26.0):
@@ -118,11 +114,62 @@ def surge_tank_first_cut(Ah, Lh, ratio=4.0):
     Tn = 2 * math.pi / omega_n
     return dict(As=As, omega_n=omega_n, Tn=Tn)
 
+# ------------------------------- NEW: Diameter helpers -------------------
+# (A) Chart extrapolation D = a Q^b  — seeded with typical points up to 150 m³/s.
+Q_chart = np.array([5, 10, 20, 30, 50, 75, 100, 125, 150], dtype=float)       # m³/s
+D_chart = np.array([1.6, 2.1, 3.0, 3.8, 4.6, 5.3, 5.9, 6.5, 7.0], dtype=float)  # m
+
+def fit_extrapolate_Q_to_D(Q_data, D_data):
+    Q_data = np.asarray(Q_data, float)
+    D_data = np.asarray(D_data, float)
+    x = np.log(Q_data); y = np.log(D_data)
+    b, ln_a = np.polyfit(x, y, 1)  # y = b x + ln a
+    a = np.exp(ln_a)
+    def D_of_Q(Q): return a * (np.asarray(Q, float) ** b)
+    return a, b, D_of_Q
+
+def D_from_velocity(Q, V):
+    return math.sqrt(4.0 * Q / (math.pi * V))
+
+def D_from_headloss(Q, L, hf_allow, eps=3e-4, Ksum=2.0, T_C=15.0, rho=1000.0, g=9.81,
+                    D_init=None, tol=1e-6, itmax=80):
+    """Solve for D such that hf ≈ hf_allow using Swamee–Jain and ΣK."""
+    if hf_allow <= 0 or L <= 0 or Q <= 0:
+        return float("nan"), float("nan"), float("nan"), float("nan"), float("nan")
+    nu = water_nu_kinematic_m2s(T_C, rho)
+    D = D_from_velocity(Q, 4.0) if D_init is None else float(D_init)
+    for _ in range(itmax):
+        A = math.pi * D**2 / 4.0
+        v = Q / A
+        Re = v * D / nu
+        f = f_moody_swamee_jain(Re, eps / D)
+        hf = (f * L / D + Ksum) * v**2 / (2.0 * g)
+        # numeric derivative
+        dD = 1e-6 * max(1.0, D)
+        A2 = math.pi * (D + dD)**2 / 4.0
+        v2 = Q / A2
+        Re2 = v2 * (D + dD) / nu
+        f2 = f_moody_swamee_jain(Re2, eps / (D + dD))
+        hf2 = (f2 * L / (D + dD) + Ksum) * v2**2 / (2.0 * g)
+        dhf_dD = (hf2 - hf) / dD if dD != 0 else 0.0
+        if abs(dhf_dD) < 1e-10:
+            break
+        D_new = D - (hf - hf_allow) / dhf_dD
+        if D_new <= 0: D_new = 0.5 * D
+        if abs(D_new - D) < tol * D: 
+            D = D_new; break
+        D = D_new
+    A = math.pi * D**2 / 4.0
+    v = Q / A
+    Re = v * D / nu
+    f = f_moody_swamee_jain(Re, eps / D)
+    hf = (f * L / D + Ksum) * v**2 / (2.0 * g)
+    return D, f, Re, v, hf
+
 # --------------------- Rock Cover & Lining UI (modular) ------------------
 def rock_cover_and_lining_ui():
     """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
     st.header("5) Pressure Tunnel: Rock Cover & Lining Stress")
-
     # Rock cover inputs
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -157,39 +204,28 @@ def rock_cover_and_lining_ui():
     sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # evaluated at outer face (display)
     pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
 
-    # Stress profile
+    # Stress profile & plot (limit 0–200 MPa for readability)
     r_plot = np.linspace(ri * 1.001, re, 200)
     sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
-
     fig_s, ax = plt.subplots(figsize=(8, 4.5))
     ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
     ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
     ax.axvline(ri, color="k", ls=":", label=f"ri={ri:.2f} m")
     ax.axvline(re, color="k", ls="--", label=f"re={re:.2f} m")
-    ax.fill_between(
-        r_plot, sigma_profile, ft_MPa,
-        where=(sigma_profile > ft_MPa), color="red", alpha=0.2, label="Cracking risk"
-    )
-    ax.set_xlabel("Radius r (m)")
-    ax.set_ylabel("Hoop stress σθ (MPa)")
+    ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
+                    color="red", alpha=0.2, label="Cracking risk")
+    ax.set_xlabel("Radius r (m)"); ax.set_ylabel("Hoop stress σθ (MPa)")
     ax.set_title("Lining hoop stress distribution")
-    ax.grid(True, linestyle="--", alpha=0.35)
-    ax.legend(loc="best")
-
-    # >>> Limit vertical axis to 0–200 MPa (per concrete tensile range)
-    ax.set_ylim(0, 200)
-
+    ax.set_ylim(0, 200)  # NEW: cap vertical axis
+    ax.grid(True, linestyle="--", alpha=0.35); ax.legend(loc="best")
     st.pyplot(fig_s)
 
     c1, c2, c3 = st.columns(3)
     c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
     c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
-    c3.metric(
-        "Status",
-        "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
-        help=("Stress exceeds tensile strength; increase thickness or confinement."
-              if sigma_outer > ft_MPa else "Within tensile capacity at outer face.")
-    )
+    c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
+              help=("Stress exceeds tensile strength; increase thickness or confinement."
+                    if sigma_outer > ft_MPa else "Within tensile capacity at outer face."))
 
     return {
         "hs": hs, "alpha_deg": alpha, "ri_m": ri, "t_m": t, "re_m": re,
@@ -252,16 +288,12 @@ head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))  # (LWL − TWL)/(
 
 # --- Visualisation ---
 fig_res, ax = plt.subplots(figsize=(8, 5))
-# storage bars
 ax.bar(["Upper"], [HWL_u - LWL_u], bottom=LWL_u, color="#3498DB", alpha=0.75, width=0.4)
 ax.bar(["Lower"], [HWL_l - TWL_l], bottom=TWL_l, color="#2ECC71", alpha=0.75, width=0.4)
-# NWL line (spans both bars)
 ax.hlines(NWL_u, -0.4, 1.4, colors="#34495E", linestyles="--", linewidth=2, label="NWL (upper)")
-# gross head arrow (NWL to TWL)
 ax.annotate("", xy=(1.0, NWL_u), xytext=(1.0, TWL_l),
             arrowprops=dict(arrowstyle="<->", color="#E74C3C", lw=2))
 ax.text(1.05, (NWL_u + TWL_l)/2, f"Hg ≈ {gross_head:.1f} m", color="#E74C3C", va="center")
-# min head arrow (LWL to HWL_l)
 ax.annotate("", xy=(0.2, LWL_u), xytext=(0.2, HWL_l),
             arrowprops=dict(arrowstyle="<->", color="#27AE60", lw=2))
 ax.text(0.08, (LWL_u + HWL_l)/2, f"Min ≈ {min_head:.1f} m", color="#27AE60", va="center")
@@ -285,49 +317,33 @@ m2.metric("NWL (m)", f"{NWL_u:.1f}")
 m3.metric("Gross head Hg = NWL−TWL (m)", f"{gross_head:.1f}")
 m4.metric("Head fluctuation ratio (HFR)", f"{head_fluct_ratio:.3f}")
 
-# --- Head fluctuation criterion (treated as LOWER LIMIT) ---
+# Head fluctuation criterion (lower limit)
 st.markdown("**Head fluctuation rate**")
 st.latex(r"\text{HFR} = \frac{LWL - TWL}{HWL - TWL}")
-
 crit_col1, crit_col2 = st.columns([2, 1])
 with crit_col1:
     turbine_choice = st.selectbox(
         "Criterion (lower limit, choose turbine type or none):",
         ["None (no check)", "Francis (≥ 0.70)", "Kaplan (≥ 0.55)"],
-        index=1  # default to Francis
+        index=1
     )
 with crit_col2:
-    # Allow a custom lower limit (overrides preset if provided)
     custom_limit = st.number_input("Custom lower limit (optional)", 0.0, 1.0, 0.70, 0.01)
 
-# Determine the active lower limit
-if turbine_choice.startswith("Francis"):
-    limit = 0.70
-elif turbine_choice.startswith("Kaplan"):
-    limit = 0.55
-elif turbine_choice.startswith("None"):
-    limit = None
-else:
-    limit = None
-
-# If user typed a custom value and a turbine type isn't "None", let the typed value override
+if   turbine_choice.startswith("Francis"): limit = 0.70
+elif turbine_choice.startswith("Kaplan"):  limit = 0.55
+elif turbine_choice.startswith("None"):    limit = None
+else:                                       limit = None
 if limit is not None and custom_limit is not None:
     limit = float(custom_limit)
 
-# Validate as LOWER limit: HFR ≥ limit
 if limit is not None and not np.isnan(head_fluct_ratio):
     st.markdown(f"**HFR:** {head_fluct_ratio:.3f}  •  **Lower limit:** {limit:.2f}")
     if head_fluct_ratio >= limit:
-        st.success("Meets the recommended **minimum** head fluctuation requirement (HFR ≥ limit).")
+        st.success("Meets the recommended **minimum** (HFR ≥ limit).")
     else:
-        st.error(
-            "Below the recommended **minimum** head fluctuation. "
-            "Consider **raising LWL** (reduce operating drawdown) or **increasing gross head** (increase HWL − TWL)."
-        )
-
-# (Keep the comment if you like)
-# NOTE: the previous turbine-limit UI/check had been removed; this block restores it as requested.
-
+        st.error("Below the recommended **minimum** head fluctuation. "
+                 "Consider **raising LWL** or **increasing HWL − TWL**.")
 
 # ------------------------------- Section 2: Penstock & Moody -------------------------
 st.header("2) Penstock Geometry & Efficiencies (with Moody)")
@@ -344,7 +360,6 @@ with c2:
 st.subheader("Friction factor mode")
 mode_f = st.radio("Choose how to set Darcy friction factor f:",
                   ["Manual (slider)", "Compute from Moody (Swamee–Jain)"], index=1)
-
 if mode_f == "Manual (slider)":
     f = st.slider("Friction factor f (Darcy)", 0.005, 0.03, 0.015, 0.001)
     rough_choice = "—"; eps = None; T_C = None
@@ -361,10 +376,11 @@ else:
                               float(st.session_state.get("eps_custom", rl[rough_choice] if rl[rough_choice] else 0.00030)),
                               0.00001, format="%.5f") if rough_choice == "Custom..." else rl[rough_choice]
 
-# ------------------------------- Section 3: Losses & iteration -----------------------
-st.header("3) Discharges, Velocities, Head Losses")
+# -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
+st.header("3) Discharges & Velocities")
+
 def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
-    """Two-pass iteration to refine f and h_f."""
+    """Two-pass iteration to refine f and h_f for given Ksum."""
     A = area_circle(D_pen)
     # pass 1
     h_net = h_span - hf_guess
@@ -382,7 +398,7 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
 
     hf = headloss_darcy(f_used, L_pen, D_pen, v, Ksum=Ksum)
 
-    # pass 2 (refine)
+    # pass 2
     h_net2 = h_span - hf
     Q_total2 = Q_from_power(P_MW, h_net2, eta_t)
     Q_per2 = safe_div(Q_total2, N_pen)
@@ -390,7 +406,7 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
 
     if mode_f == "Manual (slider)":
         f_used2 = f
-        Re2 = safe_div(v2 * D_pen, water_nu_kinematic_m2s(20.0))  # placeholder
+        Re2 = safe_div(v2 * D_pen, water_nu_kinematic_m2s(20.0))
     else:
         nu2 = water_nu_kinematic_m2s(T_C)
         Re2 = safe_div(v2 * D_pen, nu2)
@@ -405,55 +421,33 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
         rel_rough=(safe_div(eps, D_pen) if mode_f != "Manual (slider)" else None)
     )
 
-# Local loss builder
-st.subheader("Local loss components (ΣK)")
-components = {
-    "Entrance (bellmouth)": 0.15, "Entrance (square)": 0.50,
-    "90° bend": 0.25, "45° bend": 0.15,
-    "Gate valve (open)": 0.20, "Butterfly valve (open)": 0.30,
-    "T-junction": 0.40, "Exit": 1.00
-}
-K_sum_global = 0.0
-cols = st.columns(4)
-for i, (comp, kval) in enumerate(components.items()):
-    default_on = comp in ["Entrance (bellmouth)", "90° bend", "Exit"]
-    with cols[i % 4]:
-        if st.checkbox(comp, value=default_on):
-            K_sum_global += kval
-st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
+# Compute ignoring local losses first (Ksum=0) — clean view of Q & v
+out_design_flow = compute_block(P_design, gross_head, 0.0, hf_guess=20.0)
+out_max_flow    = compute_block(P_max,    min_head,  0.0, hf_guess=30.0)
 
-# Compute for design (gross head) and max (min head)
-out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
-out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
-
-# Summary table
-results_basic = pd.DataFrame({
+# Table for Q & v only
+results_flow = pd.DataFrame({
     "Case": ["Design", "Maximum"],
-    "Net head h_net (m)": [out_design["h_net"], out_max["h_net"]],
-    "Total Q (m³/s)": [out_design["Q_total"], out_max["Q_total"]],
-    "Per-penstock Q (m³/s)": [out_design["Q_per"], out_max["Q_per"]],
-    "Velocity v (m/s)": [out_design["v"], out_max["v"]],
-    "Reynolds Re (-)": [out_design["Re"], out_max["Re"]],
-    "Darcy f (-)": [out_design["f"], out_max["f"]],
-    "Head loss h_f (m)": [out_design["hf"], out_max["hf"]],
+    "Net head h_net (m)": [out_design_flow["h_net"], out_max_flow["h_net"]],
+    "Total Q (m³/s)": [out_design_flow["Q_total"], out_max_flow["Q_total"]],
+    "Per-penstock Q (m³/s)": [out_design_flow["Q_per"], out_max_flow["Q_per"]],
+    "Velocity v (m/s)": [out_design_flow["v"], out_max_flow["v"]],
+    "Reynolds Re (-)": [out_design_flow["Re"], out_max_flow["Re"]],
 })
 st.dataframe(
-    results_basic,
-    use_container_width=True,
+    results_flow, use_container_width=True,
     column_config={
         "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
         "Total Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
         "Per-penstock Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
         "Velocity v (m/s)": st.column_config.NumberColumn(format="%.2f"),
         "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
-        "Darcy f (-)": st.column_config.NumberColumn(format="%.004f"),
-        "Head loss h_f (m)": st.column_config.NumberColumn(format="%.2f"),
     }
 )
 
 # Velocity checks
 st.subheader("Velocity checks (USBR guidance)")
-v_design = out_design["v"]; v_max = out_max["v"]
+v_design = out_design_flow["v"]; v_max = out_max_flow["v"]
 c1, c2 = st.columns(2)
 with c1:
     st.metric("v_design (m/s)", f"{v_design:.2f}")
@@ -470,6 +464,86 @@ elif v_max >= 4.0:
     st.success("✓ Within recommended 4–6 m/s range.")
 else:
     st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
+
+# --------------- Section 4: Head Losses & Diameter Sizing ----------------
+st.header("4) Head Losses & Diameter Sizing")
+
+# Local loss builder (ΣK)
+st.subheader("Local loss components (ΣK)")
+components = {
+    "Entrance (bellmouth)": 0.15, "Entrance (square)": 0.50,
+    "90° bend": 0.25, "45° bend": 0.15,
+    "Gate valve (open)": 0.20, "Butterfly valve (open)": 0.30,
+    "T-junction": 0.40, "Exit": 1.00
+}
+K_sum_global = 0.0
+cols = st.columns(4)
+for i, (comp, kval) in enumerate(components.items()):
+    default_on = comp in ["Entrance (bellmouth)", "90° bend", "Exit"]
+    with cols[i % 4]:
+        if st.checkbox(comp, value=default_on):
+            K_sum_global += kval
+st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
+
+# Compute with ΣK to show hf and f
+out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
+out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
+
+results_losses = pd.DataFrame({
+    "Case": ["Design", "Maximum"],
+    "Darcy f (-)": [out_design["f"], out_max["f"]],
+    "Reynolds Re (-)": [out_design["Re"], out_max["Re"]],
+    "Head loss h_f (m)": [out_design["hf"], out_max["hf"]],
+    "Net head h_net (m)": [out_design["h_net"], out_max["h_net"]],
+})
+st.dataframe(
+    results_losses, use_container_width=True,
+    column_config={
+        "Darcy f (-)": st.column_config.NumberColumn(format="%.004f"),
+        "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
+        "Head loss h_f (m)": st.column_config.NumberColumn(format="%.2f"),
+        "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
+    }
+)
+
+# NEW: Diameter Estimator (three methods)
+st.subheader("Diameter estimator (pick a method)")
+Q_for_sizing = out_design_flow["Q_total"] or 0.0
+
+tabA, tabB, tabC = st.tabs(["Chart extrapolation", "Velocity target", "Head-loss target"])
+
+with tabA:
+    a_fit, b_fit, D_of_Q = fit_extrapolate_Q_to_D(Q_chart, D_chart)
+    D_ext = float(D_of_Q(Q_for_sizing)) if Q_for_sizing > 0 else float("nan")
+    st.write(f"Fitted curve: **D ≈ {a_fit:.3f} · Q^{b_fit:.3f}**  (Q in m³/s, D in m)")
+    st.metric("Suggested D (m)", f"{D_ext:.2f}" if not np.isnan(D_ext) else "—")
+    if st.button("Apply suggested D (chart fit)"):
+        if not np.isnan(D_ext):
+            st.session_state["D_pen"] = float(D_ext)
+            st.success(f"Applied D = {D_ext:.2f} m to the Penstock Geometry panel (re-run to see effect).")
+
+with tabB:
+    V_target = st.slider("Target velocity V (m/s)", 2.0, 8.0, 4.5, 0.1)
+    D_vel = D_from_velocity(Q_for_sizing, V_target) if Q_for_sizing > 0 else float("nan")
+    st.metric("Suggested D (m)", f"{D_vel:.2f}" if not np.isnan(D_vel) else "—")
+    if st.button("Apply suggested D (velocity)"):
+        if not np.isnan(D_vel):
+            st.session_state["D_pen"] = float(D_vel)
+            st.success(f"Applied D = {D_vel:.2f} m to the Penstock Geometry panel (re-run to see effect).")
+
+with tabC:
+    hf_allow = st.number_input("Allowable head loss h_f (m)", 1.0, 100.0, 15.0, 0.5)
+    eps_used = eps if (mode_f != "Manual (slider)" and eps is not None) else 3e-4
+    T_used = T_C if (mode_f != "Manual (slider)" and T_C is not None) else 15.0
+    D_iter, f_it, Re_it, v_it, hf_it = D_from_headloss(Q_for_sizing, L_pen, hf_allow,
+                                                       eps=eps_used, Ksum=K_sum_global,
+                                                       T_C=T_used)
+    st.metric("Suggested D (m)", f"{D_iter:.2f}" if not np.isnan(D_iter) else "—")
+    st.caption(f"At that D: f≈{f_it:.4f}, Re≈{Re_it:.2e}, v≈{v_it:.2f} m/s, hf≈{hf_it:.2f} m")
+    if st.button("Apply suggested D (head-loss)"):
+        if not np.isnan(D_iter):
+            st.session_state["D_pen"] = float(D_iter)
+            st.success(f"Applied D = {D_iter:.2f} m to the Penstock Geometry panel (re-run to see effect).")
 
 # Mini Moody chart
 if mode_f != "Manual (slider)":
@@ -491,8 +565,8 @@ if mode_f != "Manual (slider)":
     axm.legend(loc="best", fontsize=9)
     st.pyplot(fig_m)
 
-# ------------------------------- Section 4: System Curve ------------------
-st.header("4) System Power Curve (didactic)")
+# ------------------------------- Section 5: System Curve ------------------
+st.header("5) System Power Curve (didactic)")
 Q_max_total = out_max["Q_total"]
 if np.isnan(Q_max_total) or Q_max_total <= 0:
     Q_max_total = max(1.0, (P_max * 1e6) / (RHO * G * max(min_head, 1.0) * max(eta_t, 0.6)))
@@ -518,11 +592,11 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-# --------------------- Section 5 (modular): Rock Cover & Lining ----------
+# --------------------- Section 6 (modular): Rock Cover & Lining ----------
 rock_summary = rock_cover_and_lining_ui()  # returns dict (for export)
 
-# ------------------------------- Section 6: Surge Tank -------------------
-st.header("6) Surge Tank — First Cut")
+# ------------------------------- Section 7: Surge Tank -------------------
+st.header("7) Surge Tank — First Cut")
 Ah = area_circle(D_pen)  # per conduit; for multi-branch, use local area at the tank location
 Lh = st.number_input("Headrace length to surge tank L_h (m)", 100.0, 100000.0, 15000.0, 100.0)
 ratio = st.number_input("Area ratio A_s/A_h (-)", 1.0, 10.0, 4.0, 0.1)
@@ -534,8 +608,8 @@ c2.metric("A_s (m²)", f"{surge['As']:.2f}")
 c3.metric("Natural period T_n (s)", f"{surge['Tn']:.1f}")
 st.caption("Rule-of-thumb only. Real designs require full water-hammer/transient analysis.")
 
-# ------------------------------- Section 7: Equations --------------------
-st.header("7) Core Equations (for teaching)")
+# ------------------------------- Section 8: Equations --------------------
+st.header("8) Core Equations (for teaching)")
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining)", "Surge/Waterhammer"])
 with tabH:
     st.markdown("#### Continuity"); st.latex(r"Q = A \, v")
@@ -557,8 +631,8 @@ with tabS:
     st.latex(r"A_s = k \, A_h, \quad \omega_n = \sqrt{\frac{g A_h}{L_h A_s}}, \quad T_n = \frac{2\pi}{\omega_n}")
     st.caption("Use only as a teaching baseline; proper design requires transient simulation (e.g., method of characteristics).")
 
-# ------------------------------- Section 8: Reference Tables -------------
-st.header("8) Reference Tables (typical classroom values)")
+# ------------------------------- Section 9: Reference Tables -------------
+st.header("9) Reference Tables (typical classroom values)")
 with st.expander("📚 Friction Factors (Darcy) — typical ranges & sources", expanded=False):
     df_f = pd.DataFrame({
         "Material": ["New steel (welded)", "New steel (riveted)", "Concrete (smooth)", "Concrete (rough)", "PVC/Plastic"],
@@ -579,8 +653,8 @@ with st.expander("📚 Local Loss Coefficients ΣK — indicative ranges & notes
     st.table(df_k)
     st.caption("Typical ΣK for well-designed penstock trunks: ~2–5 (teaching values).")
 
-# ------------------------------- Section 9: Downloads -------------------
-st.header("9) Downloads & Bibliography")
+# ------------------------------- Section 10: Downloads -------------------
+st.header("10) Downloads & Bibliography")
 bundle = {
     "reservoirs": {"upper": {"HWL": HWL_u, "LWL": LWL_u}, "lower": {"HWL": HWL_l, "TWL": TWL_l}},
     "penstock": {"N": N_pen, "D": D_pen, "L": L_pen,
@@ -606,9 +680,9 @@ flat = {
     "SigmaK": K_sum_global, "eta_t": eta_t,
     "P_design_MW": P_design, "P_max_MW": P_max,
     "hnet_design_m": out_design["h_net"], "Q_total_design_m3s": out_design["Q_total"],
-    "v_design_ms": out_design["v"], "hf_design_m": out_design["hf"],
+    "v_design_ms": out_design_flow["v"], "hf_design_m": out_design["hf"],
     "hnet_max_m": out_max["h_net"], "Q_total_max_m3s": out_max["Q_total"],
-    "v_max_ms": out_max["v"], "hf_max_m": out_max["hf"],
+    "v_max_ms": out_max_flow["v"], "hf_max_m": out_max["hf"],
     "T_C": (T_C if mode_f != "Manual (slider)" else None),
     "eps_m": (eps if mode_f != "Manual (slider)" else None),
     "rel_rough": (out_design["rel_rough"] if mode_f != "Manual (slider)" else None),
