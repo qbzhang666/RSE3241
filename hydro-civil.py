@@ -166,19 +166,30 @@ def rock_cover_and_lining_ui():
     ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
     ax.axvline(ri, color="k", ls=":", label=f"ri={ri:.2f} m")
     ax.axvline(re, color="k", ls="--", label=f"re={re:.2f} m")
-    ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa), color="red", alpha=0.2,
-                    label="Cracking risk")
-    ax.set_xlabel("Radius r (m)"); ax.set_ylabel("Hoop stress σθ (MPa)")
+    ax.fill_between(
+        r_plot, sigma_profile, ft_MPa,
+        where=(sigma_profile > ft_MPa), color="red", alpha=0.2, label="Cracking risk"
+    )
+    ax.set_xlabel("Radius r (m)")
+    ax.set_ylabel("Hoop stress σθ (MPa)")
     ax.set_title("Lining hoop stress distribution")
-    ax.grid(True, linestyle="--", alpha=0.35); ax.legend(loc="best")
+    ax.grid(True, linestyle="--", alpha=0.35)
+    ax.legend(loc="best")
+
+    # >>> Limit vertical axis to 0–100 MPa (per concrete tensile range)
+    ax.set_ylim(0, 100)
+
     st.pyplot(fig_s)
 
     c1, c2, c3 = st.columns(3)
     c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
     c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
-    c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
-              help=("Stress exceeds tensile strength; increase thickness or confinement."
-                    if sigma_outer > ft_MPa else "Within tensile capacity at outer face."))
+    c3.metric(
+        "Status",
+        "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
+        help=("Stress exceeds tensile strength; increase thickness or confinement."
+              if sigma_outer > ft_MPa else "Within tensile capacity at outer face.")
+    )
 
     return {
         "hs": hs, "alpha_deg": alpha, "ri_m": ri, "t_m": t, "re_m": re,
