@@ -307,8 +307,8 @@ for comp, kval in components.items():
 st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
 
 # compute for design (gross head) and max (min head)
-out_design = compute_block(P_design, gross_head, hf_guess=25.0)
-out_max = compute_block(P_max, min_head, hf_guess=40.0)
+out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
+out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
 
 # summary table (cloud-safe formatting)
 results_basic = pd.DataFrame({
