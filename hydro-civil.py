@@ -375,21 +375,29 @@ else:
         eps = st.number_input("Custom ε (m)", 0.0, 0.01,
                               float(st.session_state.get("eps_custom", rl[rough_choice] if rl[rough_choice] else 0.00030)),
                               0.00001, format="%.5f") if rough_choice == "Custom..." else rl[rough_choice]
-# Mini Moody chart
+# ---------- Mini Moody chart (moved here to avoid NameError) ----------
+# Place this AFTER out_design_flow / out_max_flow are computed in Section 3
 if mode_f != "Manual (slider)":
-    st.subheader("Mini Moody diagram (your operating point)")
+    st.subheader("Mini Moody diagram (your operating points)")
     Re_vals = np.logspace(3, 8, 300)
     epsD_list = [0.0, 1e-6, 1e-5, 1e-4, 5e-4, 1e-3]
+
     fig_m, axm = plt.subplots(figsize=(7.5, 5))
     for rr in epsD_list:
         f_line = [f_moody_swamee_jain(Re, rr) for Re in Re_vals]
         axm.plot(Re_vals, f_line, lw=1.5, label=f"ε/D={rr:g}")
-    if not np.isnan(out_design["Re"]):
-        axm.scatter([out_design["Re"]], [out_design["f"]], c="tab:green", s=50, label="Design point")
-    if not np.isnan(out_max["Re"]):
-        axm.scatter([out_max["Re"]], [out_max["f"]], c="tab:red", s=50, label="Max point")
+
+    # Plot your operating points from the flow-only calc (Ksum = 0)
+    if ("Re" in out_design_flow) and (not np.isnan(out_design_flow["Re"])) and (not np.isnan(out_design_flow["f"])):
+        axm.scatter([out_design_flow["Re"]], [out_design_flow["f"]],
+                    s=60, label="Design point", zorder=5)
+    if ("Re" in out_max_flow) and (not np.isnan(out_max_flow["Re"])) and (not np.isnan(out_max_flow["f"])):
+        axm.scatter([out_max_flow["Re"]], [out_max_flow["f"]],
+                    s=60, label="Max point", zorder=5)
+
     axm.set_xscale("log"); axm.set_yscale("log")
-    axm.set_xlabel("Reynolds number Re"); axm.set_ylabel("Darcy friction factor f")
+    axm.set_xlabel("Reynolds number Re")
+    axm.set_ylabel("Darcy friction factor f")
     axm.set_title("Moody chart (Swamee–Jain approximation)")
     axm.grid(True, which="both", ls="--", alpha=0.35)
     axm.legend(loc="best", fontsize=9)
