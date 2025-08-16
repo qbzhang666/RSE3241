@@ -237,8 +237,14 @@ else:
 # ------------------------------- Section 3: Losses & iteration -----------------------
 st.header("3) Discharges, Velocities, Head Losses")
 
-def compute_block(P_MW, h_span, hf_guess=30.0):
+def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
+    """
+    Two-pass iteration:
+    1) assume hf_guess → get Q, v, Re (if Moody) → f
+    2) recompute hf with f → update h_net, Q, v, hf
+    """
     A = area_circle(D_pen)
+    # pass 1
     h_net = h_span - hf_guess
     Q_total = Q_from_power(P_MW, h_net, eta_t)
     Q_per = safe_div(Q_total, N_pen)
@@ -252,14 +258,30 @@ def compute_block(P_MW, h_span, hf_guess=30.0):
         rel_rough = safe_div(eps, D_pen)
         f_used = f_moody_swamee_jain(Re, rel_rough)
 
-    # ❌ ERROR was here, using undefined "Ksum_global"
-    hf = headloss_darcy(f_used, L_pen, D_pen, v, Ksum_global)
+    hf = headloss_darcy(f_used, L_pen, D_pen, v, Ksum=Ksum)
+
+    # pass 2 (refine)
+    h_net2 = h_span - hf
+    Q_total2 = Q_from_power(P_MW, h_net2, eta_t)
+    Q_per2 = safe_div(Q_total2, N_pen)
+    v2 = safe_div(Q_per2, A)
+
+    if mode_f == "Manual (slider)":
+        f_used2 = f
+        Re2 = safe_div(v2 * D_pen, water_nu_kinematic_m2s(20.0))  # dummy Re
+    else:
+        nu2 = water_nu_kinematic_m2s(T_C)
+        Re2 = safe_div(v2 * D_pen, nu2)
+        rel_rough2 = safe_div(eps, D_pen)
+        f_used2 = f_moody_swamee_jain(Re2, rel_rough2)
+
+    hf2 = headloss_darcy(f_used2, L_pen, D_pen, v2, Ksum=Ksum)
 
     return dict(
-        f=f_used, Re=Re, v=v, Q_total=Q_total, Q_per=Q_per,
-        h_net=h_net, hf=hf
+        f=f_used2, Re=Re2, v=v2, Q_total=Q_total2, Q_per=Q_per2,
+        h_net=h_net2, hf=hf2,
+        rel_rough=(safe_div(eps, D_pen) if mode_f != "Manual (slider)" else None)
     )
-
 
 # local loss builder
 st.subheader("Local loss components (ΣK)")
