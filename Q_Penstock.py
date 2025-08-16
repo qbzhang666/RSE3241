@@ -2,7 +2,6 @@ import streamlit as st
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from scipy.optimize import fsolve
 
 # Constants
 PHO = 1000  # Density of water (kg/m³)
@@ -27,6 +26,18 @@ def calculate_power(Q, H_g, eff_turb, eff_gener, head_loss):
     """Calculate electrical power output"""
     return (eff_turb/100 * eff_gener/100 * PHO * G * Q * (H_g - head_loss)) / 1000
 
+def bisection_solver(f, a, c, tol=1e-8, max_iter=100):
+    """Bisection method for root finding"""
+    for _ in range(max_iter):
+        b = (a + c) / 2
+        if abs(c - a) < tol:
+            return b
+        if f(a) * f(b) < 0:
+            c = b
+        else:
+            a = b
+    return b
+
 def main():
     st.set_page_config(
         page_title="Optimal Flow and Penstock Diameter",
@@ -43,6 +54,10 @@ def main():
     
     # Create tabs for input and results
     tab1, tab2 = st.tabs(["Input Data", "Results & Visualization"])
+    
+    # Initialize variables
+    flow_discharge = electrical_power = penstock_diameter = None
+    results = {}
     
     with tab1:
         col1, col2 = st.columns(2)
@@ -63,19 +78,19 @@ def main():
                 ]
             )
             
-            if "flow discharge" in known_variable and "Optimal" in known_variable:
+            if known_variable == "Only flow discharge (Optimal)":
                 flow_discharge = st.number_input(
                     "Flow discharge [m³/s]",
                     min_value=0.01,
                     value=1.0
                 )
-            elif "electrical power" in known_variable:
+            elif known_variable == "Only electrical power (Optimal)":
                 electrical_power = st.number_input(
                     "Electrical Power [kW]",
                     min_value=1.0,
                     value=100.0
                 )
-            else:
+            else:  # Penstock Diameter and Flow
                 flow_discharge = st.number_input(
                     "Flow discharge [m³/s]",
                     min_value=0.01,
@@ -150,6 +165,7 @@ def main():
         if st.button("Calculate and Plot", type="primary"):
             # Convert inputs
             k_m = roughness / 1000  # mm to m
+            eta = turbine_eff/100 * generator_eff/100  # combined efficiency
             
             # Determine turbine coefficients
             if turbine_type == "Impulse Turbine":
@@ -157,62 +173,115 @@ def main():
             else:  # Reaction Turbine
                 K_N = 1
             
-            # Perform calculations based on known variable
-            if "flow discharge" in known_variable and "Optimal" in known_variable:
-                Q = flow_discharge
-                # Bisection method to find optimal diameter
-                a, c, e = 1e-10, 100.0, 1e-8
-                const = 14.0/45.0 * G * gross_head / Q**2
+            try:
+                # Mode 1: Only flow discharge (Optimal)
+                if known_variable == "Only flow discharge (Optimal)":
+                    Q = flow_discharge
+                    # Define function for bisection solver
+                    const = 14.0/45.0 * G * gross_head / Q**2
+                    
+                    def f1(D):
+                        A = math.pi * D**2 / 4
+                        v = Q / A
+                        Re = v * D / viscosity
+                        f = friction_factor(Re, D, k_m)
+                        term = (f * penstock_length/D + sum_losses + K_N * ratio_areas**2) / A**2
+                        return term - const
+                    
+                    # Find optimal diameter
+                    D_opt = bisection_solver(f1, 1e-10, 100.0)
+                    head_loss = calculate_head_loss(penstock_length, D_opt, Q, k_m, viscosity)
+                    power = calculate_power(Q, gross_head, turbine_eff, generator_eff, head_loss)
+                    head_loss_percent = head_loss / gross_head * 100
+                    
+                    results = {
+                        "power": power,
+                        "head_loss_percent": head_loss_percent,
+                        "diameter_mm": D_opt * 1000,
+                        "flow_lps": Q * 1000
+                    }
                 
-                def f1(D):
-                    A = math.pi * D**2 / 4
-                    v = Q / A
-                    Re = v * D / viscosity
-                    f = friction_factor(Re, D, k_m)
-                    term = (f * penstock_length/D + sum_losses + K_N * ratio_areas**2) / A**2
-                    return term - const
+                # Mode 2: Only electrical power (Optimal)
+                elif known_variable == "Only electrical power (Optimal)":
+                    P_el = electrical_power * 1000  # Convert to watts
+                    
+                    # Calculate optimal flow
+                    Q = (45/38) * P_el / (eta * PHO * G * gross_head)
+                    
+                    # Define function for bisection solver
+                    const = 14.0/45.0 * G * gross_head / Q**2
+                    
+                    def f1(D):
+                        A = math.pi * D**2 / 4
+                        v = Q / A
+                        Re = v * D / viscosity
+                        f = friction_factor(Re, D, k_m)
+                        term = (f * penstock_length/D + sum_losses + K_N * ratio_areas**2) / A**2
+                        return term - const
+                    
+                    # Find optimal diameter
+                    D_opt = bisection_solver(f1, 1e-10, 100.0)
+                    head_loss = calculate_head_loss(penstock_length, D_opt, Q, k_m, viscosity)
+                    power = calculate_power(Q, gross_head, turbine_eff, generator_eff, head_loss)
+                    head_loss_percent = head_loss / gross_head * 100
+                    
+                    results = {
+                        "power": power,
+                        "head_loss_percent": head_loss_percent,
+                        "diameter_mm": D_opt * 1000,
+                        "flow_lps": Q * 1000
+                    }
                 
-                # Bisection iteration
-                for _ in range(100):
-                    b = (a + c) / 2
-                    if abs(c - a) < e:
-                        break
-                    if f1(a) * f1(b) < 0:
-                        c = b
-                    else:
-                        a = b
-                
-                D_opt = b
-                head_loss = calculate_head_loss(penstock_length, D_opt, Q, k_m, viscosity)
-                power = calculate_power(Q, gross_head, turbine_eff, generator_eff, head_loss)
-                head_loss_percent = head_loss / gross_head * 100
+                # Mode 3: Penstock Diameter and Flow (No optimal)
+                else:
+                    Q = flow_discharge
+                    D = penstock_diameter
+                    head_loss = calculate_head_loss(penstock_length, D, Q, k_m, viscosity)
+                    power = calculate_power(Q, gross_head, turbine_eff, generator_eff, head_loss)
+                    head_loss_percent = head_loss / gross_head * 100
+                    
+                    results = {
+                        "power": power,
+                        "head_loss_percent": head_loss_percent,
+                        "diameter_mm": D * 1000,
+                        "flow_lps": Q * 1000
+                    }
                 
                 # Display results
                 st.success("Calculation completed successfully!")
                 st.subheader("Results")
+                
                 col1, col2, col3, col4 = st.columns(4)
-                col1.metric("Optimal Electrical Power [kW]", f"{power:.2f}")
-                col2.metric("Head Loss [%]", f"{head_loss_percent:.2f}")
-                col3.metric("Optimal Diameter [mm]", f"{D_opt*1000:.2f}")
-                col4.metric("Optimal Flow [Liters/s]", f"{Q*1000:.2f}")
+                col1.metric("Electrical Power [kW]", f"{results['power']:.2f}")
+                col2.metric("Head Loss [%]", f"{results['head_loss_percent']:.2f}")
+                col3.metric("Diameter [mm]", f"{results['diameter_mm']:.2f}")
+                col4.metric("Flow [Liters/s]", f"{results['flow_lps']:.2f}")
                 
                 # Generate plot
-                generate_plot(gross_head, Q, power, turbine_eff, generator_eff, K_N, ratio_areas, head_loss)
-            
-            # Add other calculation modes here...
-            else:
-                st.warning("Selected calculation mode is not implemented yet")
+                generate_plot(gross_head, Q, results['power'], 
+                              turbine_eff, generator_eff, K_N, 
+                              ratio_areas, head_loss)
+                
+            except Exception as e:
+                st.error(f"Calculation error: {str(e)}")
 
 def generate_plot(H_g, Q, P, eff_turb, eff_gener, K_N, AP_AN, head_loss):
     """Generate dimensionless power vs flow plot"""
     eta = eff_turb/100 * eff_gener/100
-    A3 = (math.pi * (0.3968)**2 / 4) / AP_AN  # Reference area
+    ref_diameter = 0.3968  # Reference diameter from example
+    ref_area = math.pi * ref_diameter**2 / 4
+    A3 = ref_area / AP_AN  # Reference area
+    
+    # Calculate reference values
     P_ref = (4/3) * PHO * G * H_g * A3 * math.sqrt((1/3)*G*H_g) / 1000
     Q_ref = 2 * A3 * math.sqrt((1/3)*G*H_g)
     
     Qplus_actual = Q / Q_ref
     Pplus_actual = P / P_ref
-    CL = (2 * G * H_g * head_loss) / Q**2 * (math.pi * (0.3968)**2 / 4)**2
+    
+    # Calculate CL and Beta values
+    A = math.pi * (ref_diameter)**2 / 4
+    CL = (2 * G * H_g * head_loss) / Q**2 * A**2
     Beta = [CL/(2*AP_AN**2), CL/AP_AN**2, 2*CL/AP_AN**2]
     
     # Prepare plot data
@@ -221,6 +290,7 @@ def generate_plot(H_g, Q, P, eff_turb, eff_gener, K_N, AP_AN, head_loss):
     labels = [f'β = {Beta[0]:.5f}', f'β = {Beta[1]:.5f} (Data)', f'β = {Beta[2]:.5f}']
     
     for i in range(3):
+        # Calculate maximum Qplus for this Beta
         Qplus_max = math.sqrt(1.5/(3*Beta[i]))
         Qplus = np.linspace(0, Qplus_max*1.1, 100)
         Pplus = eta * (1.5 * Qplus - Beta[i] * Qplus**3)
