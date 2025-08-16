@@ -1,8 +1,7 @@
 # PHES Design Teaching App — with Moody helper (Swamee–Jain) for f(Re, ε/D)
-# Reservoir head, penstock hydraulics, lining stress, losses, surge tanks
+# Reservoir head, penstock hydraulics, lining stress (modular), losses, surge tanks
 # Classroom-friendly; robust on Streamlit Cloud; no Styler usage
 
-import io
 import json
 import math
 import numpy as np
@@ -19,20 +18,13 @@ RHO = 1000.0    # kg/m³  (held constant for teaching; you can make it T-depende
 
 # ------------------------------- Water properties ------------------------
 def water_mu_dynamic_PaS(T_C: float) -> float:
-    """
-    Dynamic viscosity (Pa·s) of water vs temperature (°C).
-    Simple curve fit good for 0–50°C classroom range.
-    """
-    # Viscosity in mPa·s via empirical (Korson-like) then convert to Pa·s
-    # mu_mPa_s ≈ 2.414e-5 * 10^(247.8/(T_K-140))  [note: that formula returns Pa·s directly]
+    """Dynamic viscosity (Pa·s) of water vs temperature (°C)."""
     T_K = T_C + 273.15
-    mu = 2.414e-5 * 10**(247.8/(T_K - 140))  # Pa·s
-    return mu
+    return 2.414e-5 * 10**(247.8/(T_K - 140))  # Pa·s
 
 def water_nu_kinematic_m2s(T_C: float, rho=RHO) -> float:
     """Kinematic viscosity ν = μ/ρ in m²/s."""
-    mu = water_mu_dynamic_PaS(T_C)
-    return mu / rho
+    return water_mu_dynamic_PaS(T_C) / rho
 
 # ------------------------------- Geometry & algebra ----------------------
 def safe_div(a, b):
@@ -57,33 +49,22 @@ def headloss_darcy(f, L, D, v, Ksum=0.0):
 def f_moody_swamee_jain(Re, rel_rough):
     """
     Swamee–Jain explicit approximation to Colebrook-White (turbulent).
-    Re: Reynolds number, rel_rough: ε/D (dimensionless).
-    Also handles laminar and transitional ranges smoothly for teaching.
+    Also smooth handling for laminar (<2000) and transitional (2000–4000).
     """
     Re = float(Re)
     if np.isnan(Re) or Re <= 0:
         return float("nan")
-
-    # Laminar: f = 64/Re
     if Re < 2000:
         return 64.0 / Re
-
-    # Fully turbulent explicit (Swamee–Jain)
     f_turb = 0.25 / (math.log10(rel_rough/3.7 + 5.74/(Re**0.9)))**2
-
-    # Transitional (2000–4000): linear blend laminar↔turbulent (didactic)
     if Re < 4000:
         f_lam = 64.0 / Re
-        w = (Re - 2000.0) / 2000.0  # 0→1
+        w = (Re - 2000.0) / 2000.0
         return (1 - w)*f_lam + w*f_turb
-
     return f_turb
 
 def roughness_library():
-    """
-    Absolute roughness ε [m] — indicative teaching values.
-    Sources: USBR/USACE/ASCE typical tables.
-    """
+    """Absolute roughness ε [m] — indicative teaching values."""
     return {
         "New steel (welded)": 0.000045,
         "New steel (riveted)": 0.00015,
@@ -137,6 +118,75 @@ def surge_tank_first_cut(Ah, Lh, ratio=4.0):
     Tn = 2 * math.pi / omega_n
     return dict(As=As, omega_n=omega_n, Tn=Tn)
 
+# --------------------- Rock Cover & Lining UI (modular) ------------------
+def rock_cover_and_lining_ui():
+    """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
+    st.header("5) Pressure Tunnel: Rock Cover & Lining Stress")
+
+    # Rock cover inputs
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        hs = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 300.0, 1.0)
+    with c2:
+        alpha = st.number_input("Tunnel inclination α (deg)", 0.0, 90.0, 20.0, 1.0)
+    with c3:
+        ri = st.number_input("Lining inner radius r_i (m)", 0.2, 10.0, 3.15, 0.05)
+    with c4:
+        t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
+
+    re = ri + t
+    gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
+    CRV = snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=gamma_R)
+    FRV = norwegian_FRV(CRV, hs, alpha, gamma_w=9.81, gamma_R=gamma_R)
+
+    cc1, cc2 = st.columns(2)
+    cc1.metric("Snowy vertical cover C_RV (m)", f"{CRV:.1f}")
+    cc2.metric("Norwegian factor F_RV (-)", f"{FRV:.2f}")
+    st.markdown("**Target**: Typically F_RV ≥ 1.2–1.5 (site-dependent).")
+
+    # Lining stress
+    st.subheader("Lining Hoop Stress (Lame solution)")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        pi_MPa = st.number_input("Internal water pressure p_i (MPa)", 0.1, 20.0, 2.0, 0.1, key="pi_MPa")
+    with c2:
+        pext = st.number_input("External confinement p_ext (MPa)", 0.0, 20.0, 0.0, 0.1, key="pext")
+    with c3:
+        ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1, key="ft_MPa")
+
+    sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # evaluated at outer face (display)
+    pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
+
+    # Stress profile
+    r_plot = np.linspace(ri * 1.001, re, 200)
+    sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
+
+    fig_s, ax = plt.subplots(figsize=(8, 4.5))
+    ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
+    ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
+    ax.axvline(ri, color="k", ls=":", label=f"ri={ri:.2f} m")
+    ax.axvline(re, color="k", ls="--", label=f"re={re:.2f} m")
+    ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa), color="red", alpha=0.2,
+                    label="Cracking risk")
+    ax.set_xlabel("Radius r (m)"); ax.set_ylabel("Hoop stress σθ (MPa)")
+    ax.set_title("Lining hoop stress distribution")
+    ax.grid(True, linestyle="--", alpha=0.35); ax.legend(loc="best")
+    st.pyplot(fig_s)
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
+    c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
+    c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
+              help=("Stress exceeds tensile strength; increase thickness or confinement."
+                    if sigma_outer > ft_MPa else "Within tensile capacity at outer face."))
+
+    return {
+        "hs": hs, "alpha_deg": alpha, "ri_m": ri, "t_m": t, "re_m": re,
+        "gamma_R_kNpm3": gamma_R, "CRV_m": CRV, "FRV": FRV,
+        "pi_MPa": pi_MPa, "pext_MPa": pext, "ft_MPa": ft_MPa,
+        "sigma_outer_MPa": sigma_outer, "pext_required_MPa": pext_req
+    }
+
 # ------------------------------- App Shell -------------------------------
 st.set_page_config(page_title="PHES Design Teaching App (with Moody)", layout="wide")
 st.title("Pumped Hydro Energy Storage — Design Teaching App")
@@ -175,11 +225,10 @@ with c2:
     HWL_l = st.number_input("Lower HWL (m)", 0.0, 3000.0, float(st.session_state.get("HWL_l", 450.0)), 1.0)
     TWL_l = st.number_input("Lower TWL (m)", 0.0, 3000.0, float(st.session_state.get("TWL_l", 420.0)), 1.0)
 
-gross_head = HWL_u - TWL_l             # maximum operating head (rating head often near this)
-min_head = LWL_u - HWL_l               # minimum operating head (worst for power)
+gross_head = HWL_u - TWL_l
+min_head = LWL_u - HWL_l
 head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))
 
-# Visualization (simple)
 fig_res, ax = plt.subplots(figsize=(8, 5))
 ax.bar(["Upper"], [HWL_u - LWL_u], bottom=LWL_u, color="#3498DB", alpha=0.75, width=0.4)
 ax.bar(["Lower"], [HWL_l - TWL_l], bottom=TWL_l, color="#2ECC71", alpha=0.75, width=0.4)
@@ -187,8 +236,7 @@ ax.annotate("", xy=(0, HWL_u), xytext=(0, TWL_l), arrowprops=dict(arrowstyle="<-
 ax.text(-0.1, (HWL_u + TWL_l)/2, f"Gross ≈ {gross_head:.1f} m", color="#E74C3C", va="center")
 ax.annotate("", xy=(0.2, LWL_u), xytext=(0.2, HWL_l), arrowprops=dict(arrowstyle="<->", color="#27AE60", lw=2))
 ax.text(0.1, (LWL_u + HWL_l)/2, f"Min ≈ {min_head:.1f} m", color="#27AE60", va="center")
-ax.set_ylabel("Elevation (m)")
-ax.set_title("Reservoir Operating Range")
+ax.set_ylabel("Elevation (m)"); ax.set_title("Reservoir Operating Range")
 ax.grid(True, linestyle="--", alpha=0.35)
 st.pyplot(fig_res)
 
@@ -214,13 +262,9 @@ mode_f = st.radio("Choose how to set Darcy friction factor f:",
                   ["Manual (slider)", "Compute from Moody (Swamee–Jain)"], index=1)
 
 if mode_f == "Manual (slider)":
-    # classic way
     f = st.slider("Friction factor f (Darcy)", 0.005, 0.03, 0.015, 0.001)
-    rough_choice = "—"
-    eps = None
-    T_C = None
+    rough_choice = "—"; eps = None; T_C = None
 else:
-    # Compute from Re and ε/D
     colA, colB, colC = st.columns(3)
     with colA:
         T_C = st.number_input("Water temperature (°C)", 0.0, 60.0, float(st.session_state.get("T_C", 20.0)), 0.5)
@@ -229,20 +273,14 @@ else:
         rough_choice = st.selectbox("Material / absolute roughness ε (m)", list(rl.keys()),
                                     index=list(rl.keys()).index(st.session_state.get("rough_choice","Concrete (smooth)")))
     with colC:
-        if rough_choice == "Custom...":
-            eps = st.number_input("Custom ε (m)", 0.0, 0.01, float(st.session_state.get("eps_custom", 0.00030)), 0.00001, format="%.5f")
-        else:
-            eps = rl[rough_choice]
+        eps = st.number_input("Custom ε (m)", 0.0, 0.01,
+                              float(st.session_state.get("eps_custom", rl[rough_choice] if rl[rough_choice] else 0.00030)),
+                              0.00001, format="%.5f") if rough_choice == "Custom..." else rl[rough_choice]
 
 # ------------------------------- Section 3: Losses & iteration -----------------------
 st.header("3) Discharges, Velocities, Head Losses")
-
 def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
-    """
-    Two-pass iteration:
-    1) assume hf_guess → get Q, v, Re (if Moody) → f
-    2) recompute hf with f → update h_net, Q, v, hf
-    """
+    """Two-pass iteration to refine f and h_f."""
     A = area_circle(D_pen)
     # pass 1
     h_net = h_span - hf_guess
@@ -268,7 +306,7 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
 
     if mode_f == "Manual (slider)":
         f_used2 = f
-        Re2 = safe_div(v2 * D_pen, water_nu_kinematic_m2s(20.0))  # dummy Re
+        Re2 = safe_div(v2 * D_pen, water_nu_kinematic_m2s(20.0))  # placeholder
     else:
         nu2 = water_nu_kinematic_m2s(T_C)
         Re2 = safe_div(v2 * D_pen, nu2)
@@ -283,34 +321,28 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
         rel_rough=(safe_div(eps, D_pen) if mode_f != "Manual (slider)" else None)
     )
 
-# local loss builder
+# Local loss builder
 st.subheader("Local loss components (ΣK)")
 components = {
-    "Entrance (bellmouth)": 0.15,
-    "Entrance (square)": 0.50,
-    "90° bend": 0.25,
-    "45° bend": 0.15,
-    "Gate valve (open)": 0.20,
-    "Butterfly valve (open)": 0.30,
-    "T-junction": 0.40,
-    "Exit": 1.00
+    "Entrance (bellmouth)": 0.15, "Entrance (square)": 0.50,
+    "90° bend": 0.25, "45° bend": 0.15,
+    "Gate valve (open)": 0.20, "Butterfly valve (open)": 0.30,
+    "T-junction": 0.40, "Exit": 1.00
 }
 K_sum_global = 0.0
 cols = st.columns(4)
-i = 0
-for comp, kval in components.items():
+for i, (comp, kval) in enumerate(components.items()):
     default_on = comp in ["Entrance (bellmouth)", "90° bend", "Exit"]
     with cols[i % 4]:
         if st.checkbox(comp, value=default_on):
             K_sum_global += kval
-    i += 1
 st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
 
-# compute for design (gross head) and max (min head)
+# Compute for design (gross head) and max (min head)
 out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
 out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
 
-# summary table (cloud-safe formatting)
+# Summary table
 results_basic = pd.DataFrame({
     "Case": ["Design", "Maximum"],
     "Net head h_net (m)": [out_design["h_net"], out_max["h_net"]],
@@ -355,17 +387,15 @@ elif v_max >= 4.0:
 else:
     st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
 
-# ------------------------------- Mini Moody plot ------------------------
-if mode_f != "Manual (slider)":
+# Mini Moody chart
+if mode_f != "Manual (slider)"):
     st.subheader("Mini Moody diagram (your operating point)")
-    # Prepare f vs Re family for a few ε/D values
     Re_vals = np.logspace(3, 8, 300)
-    epsD_list = [0.0, 1e-6, 1e-5, 1e-4, 5e-4, 1e-3]  # smooth → rough
+    epsD_list = [0.0, 1e-6, 1e-5, 1e-4, 5e-4, 1e-3]
     fig_m, axm = plt.subplots(figsize=(7.5, 5))
     for rr in epsD_list:
         f_line = [f_moody_swamee_jain(Re, rr) for Re in Re_vals]
         axm.plot(Re_vals, f_line, lw=1.5, label=f"ε/D={rr:g}")
-    # add your two points
     if not np.isnan(out_design["Re"]):
         axm.scatter([out_design["Re"]], [out_design["f"]], c="tab:green", s=50, label="Design point")
     if not np.isnan(out_max["Re"]):
@@ -388,7 +418,6 @@ h_net_design = out_design["h_net"]; h_net_min = out_max["h_net"]
 if any(np.isnan([h_net_design, h_net_min])):
     h_net_design, h_net_min = max(gross_head - 10, 1.0), max(min_head - 10, 0.5)
 
-# Quadratic head drop with Q is illustrative only
 h_net_curve = h_net_design - (h_net_design - h_net_min) * (Q_grid / max(Q_max_total, 1e-6))**2
 P_curve = RHO * G * Q_grid * h_net_curve * eta_t / 1e6
 
@@ -405,62 +434,8 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-# ------------------------------- Section 5: Rock Cover & Lining -----------
-st.header("5) Pressure Tunnel: Rock Cover & Lining Stress")
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    hs = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 300.0, 1.0)
-with c2:
-    alpha = st.number_input("Tunnel inclination α (deg)", 0.0, 90.0, 20.0, 1.0)
-with c3:
-    ri = st.number_input("Lining inner radius r_i (m)", 0.2, 10.0, 3.15, 0.05)
-with c4:
-    t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
-
-re = ri + t
-gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
-CRV = snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=gamma_R)
-FRV = norwegian_FRV(CRV, hs, alpha, gamma_w=9.81, gamma_R=gamma_R)
-
-c1, c2 = st.columns(2)
-c1.metric("Snowy vertical cover C_RV (m)", f"{CRV:.1f}")
-c2.metric("Norwegian factor F_RV (-)", f"{FRV:.2f}")
-st.markdown("**Target**: Typically F_RV ≥ 1.2–1.5 (site-dependent).")
-
-st.subheader("Lining Hoop Stress (Lame solution)")
-c1, c2, c3 = st.columns(3)
-with c1:
-    pi_MPa = st.number_input("Internal water pressure p_i (MPa)", 0.1, 20.0, 2.0, 0.1)
-with c2:
-    pext = st.number_input("External confinement p_ext (MPa)", 0.0, 20.0, 0.0, 0.1)
-with c3:
-    ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1)
-
-sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # evaluated at outer face (display)
-pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
-
-# Stress profile
-r_plot = np.linspace(ri * 1.001, re, 200)
-sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
-
-fig_s, ax = plt.subplots(figsize=(8, 4.5))
-ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
-ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
-ax.axvline(ri, color="k", ls=":", label=f"ri={ri:.2f} m")
-ax.axvline(re, color="k", ls="--", label=f"re={re:.2f} m")
-ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa), color="red", alpha=0.2,
-                label="Cracking risk")
-ax.set_xlabel("Radius r (m)"); ax.set_ylabel("Hoop stress σθ (MPa)")
-ax.set_title("Lining hoop stress distribution")
-ax.grid(True, linestyle="--", alpha=0.35); ax.legend(loc="best")
-st.pyplot(fig_s)
-
-c1, c2, c3 = st.columns(3)
-c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
-c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
-c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
-          help=("Stress exceeds tensile strength; increase thickness or confinement."
-                if sigma_outer > ft_MPa else "Within tensile capacity at outer face."))
+# --------------------- Section 5 (modular): Rock Cover & Lining ----------
+rock_summary = rock_cover_and_lining_ui()  # returns dict (if you want to save/export)
 
 # ------------------------------- Section 6: Optional hf = k·Q^n Fit ------
 st.header("6) (Optional) Loss Curve Fit  h_f = k·Qⁿ  from Anchors")
@@ -502,7 +477,7 @@ else:
 
 # ------------------------------- Section 7: Surge Tank -------------------
 st.header("7) Surge Tank — First Cut")
-Ah = area_circle(D_pen)  # per conduit; for multiple branches, use local area at the tank location
+Ah = area_circle(D_pen)  # per conduit; for multi-branch, use local area at the tank location
 Lh = st.number_input("Headrace length to surge tank L_h (m)", 100.0, 100000.0, 15000.0, 100.0)
 ratio = st.number_input("Area ratio A_s/A_h (-)", 1.0, 10.0, 4.0, 0.1)
 surge = surge_tank_first_cut(Ah, Lh, ratio=ratio)
@@ -515,29 +490,22 @@ st.caption("Rule-of-thumb only. Real designs require full water-hammer/transient
 
 # ------------------------------- Section 8: Equations --------------------
 st.header("8) Core Equations (for teaching)")
-
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining)", "Surge/Waterhammer"])
-
 with tabH:
-    st.markdown("#### Continuity")
-    st.latex(r"Q = A \, v")
+    st.markdown("#### Continuity"); st.latex(r"Q = A \, v")
     st.markdown("#### Bernoulli (with losses)")
     st.latex(r"\frac{P_1}{\rho g} + \frac{v_1^2}{2g} + z_1 = \frac{P_2}{\rho g} + \frac{v_2^2}{2g} + z_2 + h_f")
-    st.markdown("#### Turbine Power")
-    st.latex(r"P = \rho g Q H_{\text{net}} \eta_t")
+    st.markdown("#### Turbine Power"); st.latex(r"P = \rho g Q H_{\text{net}} \eta_t")
     st.markdown("#### Darcy–Weisbach Head Loss (with local losses)")
     st.latex(r"h_f = \left(f \frac{L}{D} + \sum K \right) \frac{v^2}{2g}")
-
 with tabM:
     st.markdown("#### Lame (thick-walled cylinder) — hoop stress")
     st.latex(r"\sigma_\theta(r) = \frac{p_i (r^2 + r_i^2) - 2 p_e r^2}{r^2 - r_i^2}")
     st.markdown("#### Required external confinement (didactic inner-fibre check)")
     st.latex(r"p_{e,\text{req}} \approx \frac{(p_i - f_t) (r_o^2 - r_i^2)}{2 r_o^2}")
-    st.markdown("#### Snowy vertical cover")
-    st.latex(r"C_{RV} = \frac{h_s \, \gamma_w}{\gamma_R}")
+    st.markdown("#### Snowy vertical cover"); st.latex(r"C_{RV} = \frac{h_s \, \gamma_w}{\gamma_R}")
     st.markdown("#### Norwegian valley-side stability factor")
     st.latex(r"F_{RV} = \frac{C_{RV} \, \gamma_R \cos\alpha}{h_s \, \gamma_w}")
-
 with tabS:
     st.markdown("#### First-cut surge tank sizing (simple oscillator)")
     st.latex(r"A_s = k \, A_h, \quad \omega_n = \sqrt{\frac{g A_h}{L_h A_s}}, \quad T_n = \frac{2\pi}{\omega_n}")
@@ -545,7 +513,6 @@ with tabS:
 
 # ------------------------------- Section 9: Reference Tables -------------
 st.header("9) Reference Tables (typical classroom values)")
-
 with st.expander("📚 Friction Factors (Darcy) — typical ranges & sources", expanded=False):
     df_f = pd.DataFrame({
         "Material": ["New steel (welded)", "New steel (riveted)", "Concrete (smooth)", "Concrete (rough)", "PVC/Plastic"],
@@ -554,7 +521,6 @@ with st.expander("📚 Friction Factors (Darcy) — typical ranges & sources", e
         "Source (teaching)": ["ASCE (2017)","USBR (1987)","ACI 351.3R (2018)","USACE EM (2008)","AWWA (2012)"]
     })
     st.table(df_f)
-
 with st.expander("📚 Local Loss Coefficients ΣK — indicative ranges & notes", expanded=False):
     df_k = pd.DataFrame({
         "Component": ["Entrance (bellmouth)", "Entrance (square)", "90° bend", "45° bend", "Gate valve (open)",
@@ -569,7 +535,6 @@ with st.expander("📚 Local Loss Coefficients ΣK — indicative ranges & notes
 
 # ------------------------------- Section 10: Downloads -------------------
 st.header("10) Downloads & Bibliography")
-
 bundle = {
     "reservoirs": {"upper": {"HWL": HWL_u, "LWL": LWL_u}, "lower": {"HWL": HWL_l, "TWL": TWL_l}},
     "penstock": {"N": N_pen, "D": D_pen, "L": L_pen,
@@ -581,7 +546,8 @@ bundle = {
                  "SigmaK": K_sum_global},
     "efficiency": {"eta_t": eta_t},
     "operating": {"design": out_design, "max": out_max},
-    "surge": {"Ah": area_circle(D_pen), **surge}
+    "surge": {"Ah": area_circle(D_pen), **surge},
+    "rock_cover_lining": rock_summary
 }
 st.download_button("Download JSON", data=json.dumps(bundle, indent=2), file_name="phes_results.json")
 
@@ -601,8 +567,8 @@ flat = {
     "eps_m": (eps if mode_f != "Manual (slider)" else None),
     "rel_rough": (out_design["rel_rough"] if mode_f != "Manual (slider)" else None),
 }
-csv_bytes = pd.DataFrame([flat]).to_csv(index=False).encode("utf-8")
-st.download_button("Download CSV (parameters)", data=csv_bytes, file_name="phes_parameters.csv")
+st.download_button("Download CSV (parameters)", data=pd.DataFrame([flat]).to_csv(index=False).encode("utf-8"),
+                   file_name="phes_parameters.csv")
 
 st.markdown("""
 **Bibliography (teaching references)**  
@@ -613,5 +579,4 @@ st.markdown("""
 - Chaudhry, M.H. (2014). *Applied Hydraulic Transients*.  
 - Gordon, J.L. (2001). *Hydraulics of Hydroelectric Power*.  
 """)
-
 st.caption("Educational tool • Use for teaching & scoping only • © Your Course / Lab")
