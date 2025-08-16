@@ -482,14 +482,6 @@ st.markdown(
     """
 )
 
-**Teaching references** (typical):
-- USBR Design Standards / Hydraulic Design of Hydropower Plants (penstocks & conveyance).
-- USACE Engineering Manuals (hydraulic design / local loss coefficients).
-- ASCE Manuals; ACI 351.3R (friction & material ranges).
-- Gordon, *Hydraulics of Hydroelectric Power*; Chaudhry, *Applied Hydraulic Transients*.
-""")
-
-
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
 
