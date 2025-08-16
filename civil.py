@@ -1,5 +1,5 @@
 # PHES / Hydropower Design Teaching App (Snowy 2.0 & Kidston)
-# Enhanced version with improved UI, calculations, and visualization
+# Enhanced version with professional equation formatting
 
 import math
 import numpy as np
@@ -199,6 +199,20 @@ with st.expander("Key Equations"):
     st.markdown("- \( P \) = Internal pressure (Pa)")
     st.markdown("- \( D \) = Diameter (m)")
     st.markdown("- \( t \) = Wall thickness (m)")
+    
+    st.subheader("Lame's Equations (Thick-Walled Cylinder)")
+    st.latex(r"\sigma_r = A - \frac{B}{r^2}")
+    st.latex(r"\sigma_\theta = A + \frac{B}{r^2}")
+    st.latex(r"A = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2}")
+    st.latex(r"B = \frac{(p_i - p_e) r_i^2 r_o^2}{r_o^2 - r_i^2}")
+    st.markdown("Where:")
+    st.markdown("- \( \sigma_r \) = Radial stress (Pa)")
+    st.markdown("- \( \sigma_\theta \) = Hoop stress (Pa)")
+    st.markdown("- \( r \) = Radius at point of interest (m)")
+    st.markdown("- \( r_i \) = Internal radius (m)")
+    st.markdown("- \( r_o \) = External radius (m)")
+    st.markdown("- \( p_i \) = Internal pressure (Pa)")
+    st.markdown("- \( p_e \) = External pressure (Pa)")
 
 # ======================== MATERIAL PROPERTIES ========================
 st.header("📦 Material Properties")
@@ -414,6 +428,14 @@ with col1:
         Where:
         \[ A = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} \]
         \[ B = \frac{(p_i - p_e) r_i^2 r_o^2}{r_o^2 - r_i^2} \]
+        
+        - \( \sigma_r \) = Radial stress (Pa)
+        - \( \sigma_\theta \) = Hoop stress (Pa)
+        - \( r \) = Radius at point of interest (m)
+        - \( r_i \) = Internal radius (m)
+        - \( r_o \) = External radius (m)
+        - \( p_i \) = Internal pressure (Pa)
+        - \( p_e \) = External pressure (Pa)
         """)
 
 with col2:
