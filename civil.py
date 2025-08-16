@@ -299,27 +299,27 @@ with col2:
     
     # Calculate stresses
     internal_pressure = (pressure_head * RHO * G) / 1e6  # Convert to MPa
-    D = penstock_dia * 1000  # mm
-    t = thickness  # mm
-    r_i = D/2  # internal radius (mm)
+    D = penstock_dia  # m
+    t = thickness / 1000  # Convert mm to m
+    r_i = D/2  # internal radius (m)
     
-    # Hoop stress (Lame's equation)
+    # Hoop stress at inner surface (simplified for display)
     hoop_stress = (internal_pressure * r_i) / t
     
     # Crack width calculation
     steel_stress = hoop_stress * (D/(2*t)) / (reinforcement_ratio/100)
-    crack_width = 0.1 * (steel_stress/steel_yield) * (cover + 10)  # Simplified model
+    crack_width = 0.1 * (steel_stress/steel_yield) * (cover/1000 + 0.01)  # Convert to meters
     
-    # Visualization - CORRECTED AXES PER REQUEST
+    # Visualization - using meters for distance
     fig = go.Figure()
     
-    # Add stress distribution (swap axes)
-    r = np.linspace(r_i, r_i + t, 50)
-    distance = r - r_i  # Distance from inner surface (mm)
+    # Add stress distribution
+    r = np.linspace(r_i, r_i + t, 50)  # Radius values (m)
+    distance = r - r_i  # Distance from inner surface (m)
     sigma_theta = (internal_pressure * r_i**2) / (r**2) * ((r_i + t)**2 + r_i**2) / ((r_i + t)**2 - r_i**2)
     sigma_r = -internal_pressure * r_i**2 / r**2 * (1 - (r_i + t)**2 / r_i**2)
     
-    # Plot with distance on x-axis, stress on y-axis
+    # Plot with distance on x-axis (m), stress on y-axis (MPa)
     fig.add_trace(go.Scatter(
         x=distance, 
         y=sigma_theta, 
@@ -338,7 +338,7 @@ with col2:
     
     fig.update_layout(
         title='Stress Distribution Through Lining Thickness',
-        xaxis_title='Distance from Inner Surface (mm)',
+        xaxis_title='Distance from Inner Surface (m)',
         yaxis_title='Stress (MPa)',
         legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
         height=400
@@ -354,14 +354,14 @@ with col2:
             f"{internal_pressure:.2f} MPa", 
             f"{hoop_stress:.1f} MPa",
             f"{steel_stress:.1f} MPa",
-            f"{crack_width:.3f} mm",
+            f"{crack_width*1000:.3f} mm",  # Convert back to mm for display
             f"{tens_strength/hoop_stress:.2f}"
         ],
         "Status": [
             "Design",
             "✅ Safe" if hoop_stress < 0.4*comp_strength else "⚠️ High",
             "✅ Below Yield" if steel_stress < 0.8*steel_yield else "⚠️ Near Yield",
-            "✅ Acceptable" if crack_width < 0.3 else "⚠️ Excessive",
+            "✅ Acceptable" if crack_width*1000 < 0.3 else "⚠️ Excessive",
             "✅ Adequate" if tens_strength/hoop_stress > 1.5 else "⚠️ Insufficient"
         ]
     }
@@ -375,7 +375,7 @@ with col2:
         st.warning("High hoop stress detected. Consider:")
         st.markdown("- Increase lining thickness")
         st.markdown("- Use higher grade concrete")
-    elif crack_width > 0.3:
+    elif crack_width*1000 > 0.3:  # Convert back to mm for comparison
         st.warning("Excessive crack width predicted. Consider:")
         st.markdown("- Increase reinforcement ratio")
         st.markdown("- Decrease bar spacing")
