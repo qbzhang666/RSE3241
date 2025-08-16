@@ -435,48 +435,10 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # --------------------- Section 5 (modular): Rock Cover & Lining ----------
-rock_summary = rock_cover_and_lining_ui()  # returns dict (if you want to save/export)
+rock_summary = rock_cover_and_lining_ui()  # returns dict (for export)
 
-# ------------------------------- Section 6: Optional hf = k·Q^n Fit ------
-st.header("6) (Optional) Loss Curve Fit  h_f = k·Qⁿ  from Anchors")
-c1, c2, c3 = st.columns(3)
-with c1:
-    P1 = st.number_input("Anchor P₁ (MW)", 10.0, 5000.0, 1000.0, 10.0)
-with c2:
-    hf1 = st.number_input("h_f at P₁ (m)", 0.0, 500.0, 28.0, 0.1)
-with c3:
-    P2 = st.number_input("Anchor P₂ (MW)", 10.0, 5000.0, 2000.0, 10.0)
-hf2 = st.number_input("h_f at P₂ (m)", 0.0, 500.0, 70.0, 0.1)
-
-def fit_hf_k_n_from_anchors(h_gross, eta_t, anchors):
-    (P1_, hf1_), (P2_, hf2_) = anchors
-    Q1 = Q_from_power(P1_, h_gross - hf1_, eta_t)
-    Q2 = Q_from_power(P2_, h_gross - hf2_, eta_t)
-    if any(np.isnan([Q1, Q2])) or Q1 <= 0 or Q2 <= 0 or hf1_ <= 0 or hf2_ <= 0:
-        return float("nan"), float("nan")
-    n = math.log(hf2_ / hf1_) / math.log(Q2 / Q1)
-    k = hf1_ / (Q1**n)
-    return k, n
-
-k_fit, n_fit = fit_hf_k_n_from_anchors(gross_head, eta_t, [(P1, hf1), (P2, hf2)])
-if not (np.isnan(k_fit) or np.isnan(n_fit)):
-    st.info(f"Fitted curve:  h_f ≈ {k_fit:.6g} · Q^{n_fit:.3f}   (Q in m³/s, h_f in m)")
-    Q_show = np.linspace(0.1, max(1.2 * out_max["Q_total"], 10.0), 200)
-    hf_show = k_fit * Q_show**n_fit
-    fig_fit = make_subplots(specs=[[{"secondary_y": False}]])
-    fig_fit.add_trace(go.Scatter(x=Q_show, y=hf_show, name="h_f(Q) fit", line=dict(width=3)))
-    fig_fit.add_trace(go.Scatter(x=[out_design["Q_total"]], y=[out_design["hf"]],
-                                 mode="markers", name="Design point", marker=dict(size=10)))
-    fig_fit.add_trace(go.Scatter(x=[out_max["Q_total"]], y=[out_max["hf"]],
-                                 mode="markers", name="Max point", marker=dict(size=10)))
-    fig_fit.update_layout(title="Fitted head-loss curve (didactic)",
-                          xaxis_title="Total Q (m³/s)", yaxis_title="h_f (m)", height=420)
-    st.plotly_chart(fig_fit, use_container_width=True)
-else:
-    st.caption("Provide sensible anchors to view a fitted h_f = k·Qⁿ curve.")
-
-# ------------------------------- Section 7: Surge Tank -------------------
-st.header("7) Surge Tank — First Cut")
+# ------------------------------- Section 6: Surge Tank -------------------
+st.header("6) Surge Tank — First Cut")
 Ah = area_circle(D_pen)  # per conduit; for multi-branch, use local area at the tank location
 Lh = st.number_input("Headrace length to surge tank L_h (m)", 100.0, 100000.0, 15000.0, 100.0)
 ratio = st.number_input("Area ratio A_s/A_h (-)", 1.0, 10.0, 4.0, 0.1)
@@ -488,8 +450,8 @@ c2.metric("A_s (m²)", f"{surge['As']:.2f}")
 c3.metric("Natural period T_n (s)", f"{surge['Tn']:.1f}")
 st.caption("Rule-of-thumb only. Real designs require full water-hammer/transient analysis.")
 
-# ------------------------------- Section 8: Equations --------------------
-st.header("8) Core Equations (for teaching)")
+# ------------------------------- Section 7: Equations --------------------
+st.header("7) Core Equations (for teaching)")
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining)", "Surge/Waterhammer"])
 with tabH:
     st.markdown("#### Continuity"); st.latex(r"Q = A \, v")
@@ -511,8 +473,8 @@ with tabS:
     st.latex(r"A_s = k \, A_h, \quad \omega_n = \sqrt{\frac{g A_h}{L_h A_s}}, \quad T_n = \frac{2\pi}{\omega_n}")
     st.caption("Use only as a teaching baseline; proper design requires transient simulation (e.g., method of characteristics).")
 
-# ------------------------------- Section 9: Reference Tables -------------
-st.header("9) Reference Tables (typical classroom values)")
+# ------------------------------- Section 8: Reference Tables -------------
+st.header("8) Reference Tables (typical classroom values)")
 with st.expander("📚 Friction Factors (Darcy) — typical ranges & sources", expanded=False):
     df_f = pd.DataFrame({
         "Material": ["New steel (welded)", "New steel (riveted)", "Concrete (smooth)", "Concrete (rough)", "PVC/Plastic"],
@@ -533,8 +495,8 @@ with st.expander("📚 Local Loss Coefficients ΣK — indicative ranges & notes
     st.table(df_k)
     st.caption("Typical ΣK for well-designed penstock trunks: ~2–5 (teaching values).")
 
-# ------------------------------- Section 10: Downloads -------------------
-st.header("10) Downloads & Bibliography")
+# ------------------------------- Section 9: Downloads -------------------
+st.header("9) Downloads & Bibliography")
 bundle = {
     "reservoirs": {"upper": {"HWL": HWL_u, "LWL": LWL_u}, "lower": {"HWL": HWL_l, "TWL": TWL_l}},
     "penstock": {"N": N_pen, "D": D_pen, "L": L_pen,
@@ -567,8 +529,11 @@ flat = {
     "eps_m": (eps if mode_f != "Manual (slider)" else None),
     "rel_rough": (out_design["rel_rough"] if mode_f != "Manual (slider)" else None),
 }
-st.download_button("Download CSV (parameters)", data=pd.DataFrame([flat]).to_csv(index=False).encode("utf-8"),
-                   file_name="phes_parameters.csv")
+st.download_button(
+    "Download CSV (parameters)",
+    data=pd.DataFrame([flat]).to_csv(index=False).encode("utf-8"),
+    file_name="phes_parameters.csv"
+)
 
 st.markdown("""
 **Bibliography (teaching references)**  
