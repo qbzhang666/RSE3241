@@ -176,8 +176,8 @@ def rock_cover_and_lining_ui():
     ax.grid(True, linestyle="--", alpha=0.35)
     ax.legend(loc="best")
 
-    # >>> Limit vertical axis to 0–100 MPa (per concrete tensile range)
-    ax.set_ylim(0, 100)
+    # >>> Limit vertical axis to 0–200 MPa (per concrete tensile range)
+    ax.set_ylim(0, 200)
 
     st.pyplot(fig_s)
 
