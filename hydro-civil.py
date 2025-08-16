@@ -238,8 +238,11 @@ with c2:
 
 gross_head = HWL_u - TWL_l
 min_head = LWL_u - HWL_l
+
+# Head fluctuation ratio = (LWL - TWL) / (HWL - TWL)
 head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))
 
+# Visual
 fig_res, ax = plt.subplots(figsize=(8, 5))
 ax.bar(["Upper"], [HWL_u - LWL_u], bottom=LWL_u, color="#3498DB", alpha=0.75, width=0.4)
 ax.bar(["Lower"], [HWL_l - TWL_l], bottom=TWL_l, color="#2ECC71", alpha=0.75, width=0.4)
@@ -247,14 +250,42 @@ ax.annotate("", xy=(0, HWL_u), xytext=(0, TWL_l), arrowprops=dict(arrowstyle="<-
 ax.text(-0.1, (HWL_u + TWL_l)/2, f"Gross ≈ {gross_head:.1f} m", color="#E74C3C", va="center")
 ax.annotate("", xy=(0.2, LWL_u), xytext=(0.2, HWL_l), arrowprops=dict(arrowstyle="<->", color="#27AE60", lw=2))
 ax.text(0.1, (LWL_u + HWL_l)/2, f"Min ≈ {min_head:.1f} m", color="#27AE60", va="center")
-ax.set_ylabel("Elevation (m)"); ax.set_title("Reservoir Operating Range")
+ax.set_ylabel("Elevation (m)")
+ax.set_title("Reservoir Operating Range")
 ax.grid(True, linestyle="--", alpha=0.35)
 st.pyplot(fig_res)
 
+# Metrics
 m1, m2, m3 = st.columns(3)
 m1.metric("Gross head (m)", f"{gross_head:.1f}")
 m2.metric("Min head (m)", f"{min_head:.1f}")
-m3.metric("Head fluctuation ratio (LWL→TWL)", f"{head_fluct_ratio:.3f}")
+m3.metric("Head fluct. ratio  (LWL−TWL)/(HWL−TWL)", f"{head_fluct_ratio:.3f}")
+
+# --- Turbine type & head fluctuation validation (NEW) ---
+turbine_type = st.selectbox("Turbine type for head fluctuation check",
+                            ["Francis", "Kaplan", "Custom limit…"], index=0)
+
+if turbine_type == "Francis":
+    hf_limit = 0.70
+elif turbine_type == "Kaplan":
+    hf_limit = 0.55
+else:
+    hf_limit = st.number_input("Custom head fluctuation limit (-)", 0.10, 0.95, 0.70, 0.01)
+
+# Validation message
+if np.isnan(head_fluct_ratio):
+    st.info("Head fluctuation ratio unavailable (check your reservoir inputs).")
+else:
+    st.write(f"**Head fluctuation ratio:** {head_fluct_ratio:.3f}  •  **Limit ({turbine_type})**: {hf_limit:.2f}")
+    if head_fluct_ratio <= hf_limit:
+        if head_fluct_ratio >= 0.9 * hf_limit:
+            st.warning("⚠️ Within limit but close to the maximum recommended value. Consider widening HWL↔LWL range or raising TWL.")
+        else:
+            st.success("✅ Passes turbine head fluctuation criterion.")
+    else:
+        st.error("❌ Exceeds recommended head fluctuation limit for the selected turbine. "
+                 "Try reducing (LWL − TWL) or increasing (HWL − TWL).")
+
 
 # ------------------------------- Section 2: Penstock & Moody -------------------------
 st.header("2) Penstock Geometry & Efficiencies (with Moody)")
