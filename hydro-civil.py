@@ -226,6 +226,7 @@ with st.sidebar:
 
 # ------------------------------- Section 1: Reservoirs -------------------------------
 st.header("1) Reservoir Levels & Rating Head")
+
 c1, c2 = st.columns(2)
 with c1:
     st.markdown("**Upper reservoir**")
@@ -236,13 +237,12 @@ with c2:
     HWL_l = st.number_input("Lower HWL (m)", 0.0, 3000.0, float(st.session_state.get("HWL_l", 450.0)), 1.0)
     TWL_l = st.number_input("Lower TWL (m)", 0.0, 3000.0, float(st.session_state.get("TWL_l", 420.0)), 1.0)
 
-gross_head = HWL_u - TWL_l
-min_head = LWL_u - HWL_l
+# Heads
+gross_head = HWL_u - TWL_l                # HWL_u – TWL_l
+min_head   = LWL_u - HWL_l                # LWL_u – HWL_l  (worst case)
+head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))  # (LWL – TWL)/(HWL – TWL)
 
-# Head fluctuation ratio = (LWL - TWL) / (HWL - TWL)
-head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))
-
-# Visual
+# Visualization
 fig_res, ax = plt.subplots(figsize=(8, 5))
 ax.bar(["Upper"], [HWL_u - LWL_u], bottom=LWL_u, color="#3498DB", alpha=0.75, width=0.4)
 ax.bar(["Lower"], [HWL_l - TWL_l], bottom=TWL_l, color="#2ECC71", alpha=0.75, width=0.4)
@@ -259,32 +259,47 @@ st.pyplot(fig_res)
 m1, m2, m3 = st.columns(3)
 m1.metric("Gross head (m)", f"{gross_head:.1f}")
 m2.metric("Min head (m)", f"{min_head:.1f}")
-m3.metric("Head fluct. ratio  (LWL−TWL)/(HWL−TWL)", f"{head_fluct_ratio:.3f}")
+m3.metric("Head fluctuation ratio (LWL→TWL)", f"{head_fluct_ratio:.3f}")
 
-# --- Turbine type & head fluctuation validation (NEW) ---
-turbine_type = st.selectbox("Turbine type for head fluctuation check",
-                            ["Francis", "Kaplan", "Custom limit…"], index=0)
+# --- Head fluctuation criterion (treated as LOWER LIMIT) ---
+st.markdown("**Head fluctuation rate**")
+st.latex(r"\text{HFR} = \frac{LWL - TWL}{HWL - TWL}")
 
-if turbine_type == "Francis":
-    hf_limit = 0.70
-elif turbine_type == "Kaplan":
-    hf_limit = 0.55
+crit_col1, crit_col2 = st.columns([2, 1])
+with crit_col1:
+    turbine_choice = st.selectbox(
+        "Criterion (lower limit, choose turbine type or none):",
+        ["None (no check)", "Francis (≥ 0.70)", "Kaplan (≥ 0.55)"],
+        index=1  # default to Francis
+    )
+with crit_col2:
+    # Allow a custom lower limit when "None" isn't selected
+    custom_limit = st.number_input("Custom lower limit (optional)", 0.0, 1.0, 0.70, 0.01)
+
+# Determine the active lower limit
+if turbine_choice.startswith("Francis"):
+    limit = 0.70
+elif turbine_choice.startswith("Kaplan"):
+    limit = 0.55
+elif turbine_choice.startswith("None"):
+    limit = None
 else:
-    hf_limit = st.number_input("Custom head fluctuation limit (-)", 0.10, 0.95, 0.70, 0.01)
+    limit = None
 
-# Validation message
-if np.isnan(head_fluct_ratio):
-    st.info("Head fluctuation ratio unavailable (check your reservoir inputs).")
-else:
-    st.write(f"**Head fluctuation ratio:** {head_fluct_ratio:.3f}  •  **Limit ({turbine_type})**: {hf_limit:.2f}")
-    if head_fluct_ratio <= hf_limit:
-        if head_fluct_ratio >= 0.9 * hf_limit:
-            st.warning("⚠️ Within limit but close to the maximum recommended value. Consider widening HWL↔LWL range or raising TWL.")
-        else:
-            st.success("✅ Passes turbine head fluctuation criterion.")
+# If user typed a custom value and a turbine type isn't "None", let the typed value override
+if not (limit is None) and custom_limit is not None:
+    limit = float(custom_limit)
+
+# Validate as LOWER limit: HFR >= limit
+if limit is not None and not np.isnan(head_fluct_ratio):
+    st.markdown(f"**HFR:** {head_fluct_ratio:.3f}  •  **Lower limit:** {limit:.2f}")
+    if head_fluct_ratio >= limit:
+        st.success("Meets the recommended **minimum** head fluctuation requirement (HFR ≥ limit).")
     else:
-        st.error("❌ Exceeds recommended head fluctuation limit for the selected turbine. "
-                 "Try reducing (LWL − TWL) or increasing (HWL − TWL).")
+        st.error(
+            "Below the recommended **minimum** head fluctuation. "
+            "Consider **raising LWL** (reduce operating drawdown) or **increasing gross head** (increase HWL − TWL)."
+        )
 
 
 # ------------------------------- Section 2: Penstock & Moody -------------------------
