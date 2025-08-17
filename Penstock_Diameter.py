@@ -107,7 +107,8 @@ def estimate_penstock_diameter(Q, H_g, L, target_loss_percent=10,
         # Store iteration history
         history.append({
             "iteration": i+1,
-            "diameter": D,
+            "diameter_m": D,
+            "diameter_mm": D * 1000,
             "velocity": v,
             "reynolds": Re,
             "friction": f,
@@ -209,13 +210,6 @@ def main():
             step=10.0,
             help="Length of the penstock pipe"
         )
-        roughness = st.number_input(
-            "Roughness Height [mm]",
-            min_value=0.001,
-            value=0.045,
-            step=0.01,
-            help="Surface roughness of penstock material"
-        )
         material = st.selectbox(
             "Penstock Material",
             ["Steel (smooth)", "Concrete", "HDPE", "Custom"],
@@ -230,23 +224,23 @@ def main():
             roughness = 1.0
         elif material == "HDPE":
             roughness = 0.0015
+        else:  # Custom
+            roughness = st.number_input(
+                "Custom Roughness Height [mm]",
+                min_value=0.001,
+                value=0.045,
+                step=0.01,
+                help="Surface roughness of penstock material"
+            )
     
     with col3:
-        nu = st.number_input(
-            "Kinematic Viscosity (ν) [m²/s]",
-            min_value=1e-7,
-            format="%e",
-            value=1.000e-06,
-            step=1e-7,
-            help="Water viscosity at operating temperature"
-        )
         temp = st.slider(
             "Water Temperature [°C]",
             min_value=0,
             max_value=40,
             value=15,
             step=1,
-            help="Affects water viscosity (0°C: ν=1.79e-6, 20°C: ν=1.00e-6)"
+            help="Affects water viscosity"
         )
         
         # Update viscosity based on temperature
@@ -260,137 +254,160 @@ def main():
             nu = 0.80e-6
         elif temp == 40:
             nu = 0.66e-6
+        else:
+            # Default value for temperatures not specified
+            nu = 1.00e-6
+            
+        st.info(f"Kinematic Viscosity: {nu:.2e} m²/s at {temp}°C")
     
     if st.button("Calculate Optimal Diameter", type="primary", use_container_width=True):
         # Convert roughness to meters
         roughness_m = roughness / 1000
         
-        # Perform calculation
-        with st.spinner("Calculating optimal diameter..."):
-            results = estimate_penstock_diameter(
-                Q=Q,
-                H_g=H_g,
-                L=L,
-                target_loss_percent=target_loss,
-                roughness=roughness_m,
-                nu=nu
-            )
-        
-        # Display results
-        st.markdown('<div class="result-box">', unsafe_allow_html=True)
-        st.subheader("Results")
-        
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Optimal Diameter", f"{results['diameter_mm']:.1f} mm", f"{results['diameter_m']:.3f} m")
-        col2.metric("Head Loss", f"{results['head_loss_percent']:.2f}%", f"{results['head_loss_m']:.2f} m")
-        col3.metric("Flow Velocity", f"{results['velocity_mps']:.2f} m/s", 
-                   "Good" if 3 <= results['velocity_mps'] <= 6 else "Check")
-        
-        st.caption("Velocity guide: 3-6 m/s (concrete), 4-8 m/s (steel)")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Plot iteration history
-        history = results['history']
-        iterations = [h['iteration'] for h in history]
-        diameters = [h['diameter_mm'] for h in history]
-        losses = [h['loss_percent'] for h in history]
-        velocities = [h['velocity'] for h in history]
-        
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-        
-        # Diameter convergence
-        ax1.plot(iterations, diameters, 'bo-')
-        ax1.axhline(y=results['diameter_mm'], color='r', linestyle='--')
-        ax1.set_title('Diameter Convergence')
-        ax1.set_xlabel('Iteration')
-        ax1.set_ylabel('Diameter (mm)')
-        ax1.grid(True, linestyle='--', alpha=0.7)
-        
-        # Head loss convergence
-        ax2.plot(iterations, losses, 'go-')
-        ax2.axhline(y=target_loss, color='r', linestyle='--', label='Target')
-        ax2.set_title('Head Loss Convergence')
-        ax2.set_xlabel('Iteration')
-        ax2.set_ylabel('Head Loss (%)')
-        ax2.legend()
-        ax2.grid(True, linestyle='--', alpha=0.7)
-        
-        st.pyplot(fig)
-        
-        # Velocity vs Diameter plot
-        diameters_range = np.linspace(results['diameter_m']*0.5, results['diameter_m']*1.5, 50)
-        velocities_range = [Q / (math.pi * d**2 / 4) for d in diameters_range]
-        
-        fig2, ax = plt.subplots(figsize=(10, 5))
-        ax.plot([d*1000 for d in diameters_range], velocities_range, 'b-')
-        ax.axvline(x=results['diameter_mm'], color='r', linestyle='--', label='Optimal')
-        ax.axhline(y=3, color='g', linestyle='-.', label='Min Recommended')
-        ax.axhline(y=6, color='g', linestyle='-.', label='Max Recommended')
-        ax.set_title('Velocity vs Diameter')
-        ax.set_xlabel('Diameter (mm)')
-        ax.set_ylabel('Velocity (m/s)')
-        ax.legend()
-        ax.grid(True, linestyle='--', alpha=0.7)
-        
-        st.pyplot(fig2)
-        
-        # Engineering formulas
-        st.markdown('<div class="section">', unsafe_allow_html=True)
-        st.subheader("Engineering Formulas")
-        
-        st.markdown("""
-        **1. Darcy-Weisbach Head Loss Equation:**
-        """)
-        st.latex(r'''
-        h_f = f \frac{L}{D} \frac{v^2}{2g}
-        ''')
-        
-        st.markdown("""
-        **2. Flow Velocity:**
-        """)
-        st.latex(r'''
-        v = \frac{Q}{A} = \frac{4Q}{\pi D^2}
-        ''')
-        
-        st.markdown("""
-        **3. Reynolds Number:**
-        """)
-        st.latex(r'''
-        Re = \frac{vD}{\nu}
-        ''')
-        
-        st.markdown("""
-        **4. Swamee-Jain Friction Factor (Turbulent Flow):**
-        """)
-        st.latex(r'''
-        f = \frac{0.25}{\left[ \log_{10} \left( \frac{\varepsilon / D}{3.7} + \frac{5.74}{Re^{0.9}} \right) \right]^2}
-        ''')
-        
-        st.markdown("""
-        **5. Iterative Solution Process:**
-        1. Start with initial diameter estimate
-        2. Calculate velocity, Reynolds number, friction factor
-        3. Compute head loss
-        4. Compare with target head loss
-        5. Adjust diameter and repeat until convergence
-        """)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Material reference table
-        st.markdown("""
-        <div class="section">
-        <h3>Penstock Material Reference</h3>
-        
-        | Material | Roughness (mm) | Typical Use | Velocity Range (m/s) |
-        |----------|---------------|-------------|----------------------|
-        | Steel (smooth) | 0.045 | Large projects | 4-8 |
-        | Concrete | 0.3-3.0 | Pressure tunnels | 3-6 |
-        | HDPE | 0.0015 | Small projects | 2-4 |
-        | Wood stave | 0.5-1.0 | Historical | 2-5 |
-        | PVC | 0.0015 | Small installations | 2-4 |
-        </div>
-        """, unsafe_allow_html=True)
+        try:
+            # Perform calculation
+            with st.spinner("Calculating optimal diameter..."):
+                results = estimate_penstock_diameter(
+                    Q=Q,
+                    H_g=H_g,
+                    L=L,
+                    target_loss_percent=target_loss,
+                    roughness=roughness_m,
+                    nu=nu
+                )
+            
+            # Display results
+            st.markdown('<div class="result-box">', unsafe_allow_html=True)
+            st.subheader("Results")
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Optimal Diameter", f"{results['diameter_mm']:.1f} mm", f"{results['diameter_m']:.3f} m")
+            col2.metric("Head Loss", f"{results['head_loss_percent']:.2f}%", f"{results['head_loss_m']:.2f} m")
+            
+            velocity_status = "Good" if 3 <= results['velocity_mps'] <= 6 else "Check"
+            velocity_color = "green" if 3 <= results['velocity_mps'] <= 6 else "red"
+            col3.metric("Flow Velocity", 
+                        f"{results['velocity_mps']:.2f} m/s", 
+                        velocity_status,
+                        delta_color=velocity_color)
+            
+            st.caption("Velocity guide: 3-6 m/s (concrete), 4-8 m/s (steel)")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Plot iteration history
+            if results['history']:
+                history = results['history']
+                iterations = [h['iteration'] for h in history]
+                diameters = [h['diameter_mm'] for h in history]  # Fixed: using diameter_mm
+                losses = [h['loss_percent'] for h in history]
+                
+                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+                
+                # Diameter convergence
+                ax1.plot(iterations, diameters, 'bo-')
+                ax1.axhline(y=results['diameter_mm'], color='r', linestyle='--')
+                ax1.set_title('Diameter Convergence')
+                ax1.set_xlabel('Iteration')
+                ax1.set_ylabel('Diameter (mm)')
+                ax1.grid(True, linestyle='--', alpha=0.7)
+                
+                # Head loss convergence
+                ax2.plot(iterations, losses, 'go-')
+                ax2.axhline(y=target_loss, color='r', linestyle='--', label='Target')
+                ax2.set_title('Head Loss Convergence')
+                ax2.set_xlabel('Iteration')
+                ax2.set_ylabel('Head Loss (%)')
+                ax2.legend()
+                ax2.grid(True, linestyle='--', alpha=0.7)
+                
+                st.pyplot(fig)
+                
+                # Velocity vs Diameter plot
+                diameters_range = np.linspace(results['diameter_m']*0.5, results['diameter_m']*1.5, 50)
+                velocities_range = [Q / (math.pi * d**2 / 4) for d in diameters_range]
+                
+                fig2, ax = plt.subplots(figsize=(10, 5))
+                ax.plot([d*1000 for d in diameters_range], velocities_range, 'b-')
+                ax.axvline(x=results['diameter_mm'], color='r', linestyle='--', label='Optimal')
+                ax.axhline(y=3, color='g', linestyle='-.', label='Min Recommended')
+                ax.axhline(y=6, color='g', linestyle='-.', label='Max Recommended')
+                ax.set_title('Velocity vs Diameter')
+                ax.set_xlabel('Diameter (mm)')
+                ax.set_ylabel('Velocity (m/s)')
+                ax.legend()
+                ax.grid(True, linestyle='--', alpha=0.7)
+                
+                st.pyplot(fig2)
+            else:
+                st.warning("No iteration history available for plotting")
+            
+            # Engineering formulas
+            st.markdown('<div class="section">', unsafe_allow_html=True)
+            st.subheader("Engineering Formulas")
+            
+            st.markdown("""
+            **1. Darcy-Weisbach Head Loss Equation:**
+            """)
+            st.latex(r'''
+            h_f = f \frac{L}{D} \frac{v^2}{2g}
+            ''')
+            
+            st.markdown("""
+            **2. Flow Velocity:**
+            """)
+            st.latex(r'''
+            v = \frac{Q}{A} = \frac{4Q}{\pi D^2}
+            ''')
+            
+            st.markdown("""
+            **3. Reynolds Number:**
+            """)
+            st.latex(r'''
+            Re = \frac{vD}{\nu}
+            ''')
+            
+            st.markdown("""
+            **4. Swamee-Jain Friction Factor (Turbulent Flow):**
+            """)
+            st.latex(r'''
+            f = \frac{0.25}{\left[ \log_{10} \left( \frac{\varepsilon / D}{3.7} + \frac{5.74}{Re^{0.9}} \right) \right]^2}
+            ''')
+            
+            st.markdown("""
+            **5. Iterative Solution Process:**
+            1. Start with initial diameter estimate
+            2. Calculate velocity, Reynolds number, friction factor
+            3. Compute head loss
+            4. Compare with target head loss
+            5. Adjust diameter and repeat until convergence
+            """)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Material reference table
+            st.markdown("""
+            <div class="section">
+            <h3>Penstock Material Reference</h3>
+            
+            | Material | Roughness (mm) | Typical Use | Velocity Range (m/s) |
+            |----------|---------------|-------------|----------------------|
+            | Steel (smooth) | 0.045 | Large projects | 4-8 |
+            | Concrete | 0.3-3.0 | Pressure tunnels | 3-6 |
+            | HDPE | 0.0015 | Small projects | 2-4 |
+            | Wood stave | 0.5-1.0 | Historical | 2-5 |
+            | PVC | 0.0015 | Small installations | 2-4 |
+            </div>
+            """, unsafe_allow_html=True)
+            
+        except Exception as e:
+            st.error(f"Calculation error: {str(e)}")
+            st.info("""
+            **Troubleshooting Tips:**
+            - Check that all input values are positive numbers
+            - Ensure flow rates and diameters are reasonable
+            - Try adjusting the target head loss percentage
+            - The calculation might not converge for extreme values
+            """)
 
 if __name__ == "__main__":
     main()
