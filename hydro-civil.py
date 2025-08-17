@@ -429,10 +429,6 @@ with st.expander("How is L computed? (figures / equations)"):
         r"(explicit Swamee–Jain form in this app)."
     )
 
-
-Here's the complete, fixed code:
-
-python
 # ---------------------------- Quick diameter-by-velocity helper ----------------------------
 st.subheader("Quick diameter from target velocity")
 
