@@ -399,8 +399,61 @@ def Re_quick(Q_total, N, D, nu):
     """One-line Reynolds: Re = 4 Q_total / (pi * N * D * nu)"""
     return safe_div(4.0 * Q_total, math.pi * N * D * nu)
 
-Re_quick_design = Re_quick(out_design_flow["Q_total"], N_pen, D_pen, nu_used)
-Re_quick_max    = Re_quick(out_max_flow["Q_total"],    N_pen, D_pen, nu_used)
+# ---- Quick Reynolds check (robust to tuple/dict) ----
+
+def _coerce_flow(res):
+    """Return a dict with keys Q_total, Qp, v, Re from either a dict or a tuple/list."""
+    if isinstance(res, dict):
+        return {
+            "Q_total": res.get("Q_total", float("nan")),
+            "Qp":      res.get("Q_per",  res.get("Qp", float("nan"))),
+            "v":       res.get("v", float("nan")),
+            "Re":      res.get("Re", float("nan")),
+        }
+    elif isinstance(res, (list, tuple)):
+        # Assume order: (Q_total, Qp, v, Re)
+        vals = list(res) + [float("nan")] * 4  # pad to length 4
+        return {"Q_total": vals[0], "Qp": vals[1], "v": vals[2], "Re": vals[3]}
+    else:
+        return {"Q_total": float("nan"), "Qp": float("nan"), "v": float("nan"), "Re": float("nan")}
+
+design_flow = _coerce_flow(out_design_flow)
+max_flow    = _coerce_flow(out_max_flow)
+
+# Viscosity to use for the check (same T as your Moody block if available)
+nu_used = water_nu_kinematic_m2s(
+    T_C if (mode_f != "Manual (slider)" and T_C is not None) else 20.0
+)
+
+def Re_quick(Q_total, N_pen, D, nu):
+    """Re = ( (Q_total/N_pen) / (πD²/4) ) * D / ν"""
+    A = math.pi * D**2 / 4.0
+    v = (Q_total / max(N_pen, 1)) / A
+    return v * D / nu
+
+Re_quick_design = Re_quick(design_flow["Q_total"], N_pen, D_pen, nu_used)
+Re_quick_max    = Re_quick(max_flow["Q_total"],    N_pen, D_pen, nu_used)
+
+# (Optional) Compare quick vs. computed values if present
+try:
+    if not np.isnan(design_flow["Re"]):
+        st.caption(f"Quick Re (design): {Re_quick_design:,.0f}  •  From flow block: {design_flow['Re']:,.0f}")
+    else:
+        st.caption(f"Quick Re (design): {Re_quick_design:,.0f}")
+    if not np.isnan(max_flow["Re"]):
+        st.caption(f"Quick Re (max): {Re_quick_max:,.0f}  •  From flow block: {max_flow['Re']:,.0f}")
+    else:
+        st.caption(f"Quick Re (max): {Re_quick_max:,.0f}")
+except Exception:
+    # Keep UI resilient even if any value is NaN
+    st.caption(f"Quick Re (design): {Re_quick_design:,.0f} • Quick Re (max): {Re_quick_max:,.0f}")
+
+with st.expander("Show equations used (Reynolds quick check)"):
+    st.latex(r"A = \frac{\pi D^{2}}{4}")
+    st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}}")
+    st.latex(r"v = \frac{Q_p}{A}")
+    st.latex(r"\mathrm{Re} = \frac{v D}{\nu}")
+
 
 def pct_diff(a, b):
     return float("nan") if (np.isnan(a) or np.isnan(b) or b == 0) else 100.0 * (a - b) / b
