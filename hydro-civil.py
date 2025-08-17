@@ -330,7 +330,7 @@ with left:
         st.caption("No CSV? Edit a small table below (chainage increasing):")
         df_profile = pd.DataFrame({
             "Chainage_m": [0, 500, 1000, 1500, 2000, 2300],           # demo values
-            "Elevation_m": [NWL_u, NWL_u-1, NWL_u-3, NWL_u-8, 450, 360],
+            "Elevation_m": [NWL_u, NWL_u-1, NWL_u-3, NWL_u-8, 700, 450],
         })
         df_profile = st.data_editor(df_profile, num_rows="dynamic", use_container_width=True)
 
