@@ -203,7 +203,18 @@ with st.sidebar:
                 P1=250.0, P2=500.0,
                 P_design=500.0, N_pen=2
             ))
-
+    # Power
+    P_design = st.number_input(
+        "Design power (MW)", 1.0, 5000.0, 
+        float(st.session_state.get("P_design", 2000.0)), 10.0
+    )
+    # Machine numbers
+    N = st.number_input(
+        "Units (N)", 1, 20, int(st.session_state.get("N", 6)), 1
+    )
+    N_pen = st.number_input(
+        "Number of penstocks", 1, 20, int(st.session_state.get("N_pen", 6)), 1
+    )   
     # Efficiencies
     eta_t = st.number_input(
         "Turbine efficiency ηₜ", 0.70, 1.00, 
@@ -213,19 +224,7 @@ with st.sidebar:
         "Pump efficiency ηₚ (ref.)", 0.60, 1.00, 0.88, 0.01
     )
 
-    # Machine numbers
-    N = st.number_input(
-        "Units (N)", 1, 20, int(st.session_state.get("N", 6)), 1
-    )
-    N_pen = st.number_input(
-        "Number of penstocks", 1, 20, int(st.session_state.get("N_pen", 6)), 1
-    )
 
-    # Power
-    P_design = st.number_input(
-        "Design power (MW)", 1.0, 5000.0, 
-        float(st.session_state.get("P_design", 2000.0)), 10.0
-    )
 
     st.caption("All units SI; water ρ=1000 kg/m³, g=9.81 m/s².")
 # ------------------------------- Section 1: Reservoirs -------------------------------
@@ -570,7 +569,7 @@ to the pipe diameter \\( D \\). It is dimensionless and, together with the Reyno
 
 
 # -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
-st.header("3) Discharges & Velocities")
+st.header("4) Discharges & Velocities")
 
 def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
     """Two-pass iteration to refine f and h_f for given Ksum."""
