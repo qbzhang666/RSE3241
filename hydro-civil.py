@@ -394,9 +394,6 @@ with st.expander("How is L computed? (figures / equations)"):
         r"with friction factor \( f = f(\mathrm{Re}, \varepsilon/D) \) obtained from the Moody relation "
         r"(explicit Swamee–Jain form in this app)."
     )
-else:
-    st.info("Provide a profile (CSV or editor) with columns Chainage_m and Elevation_m to estimate L.")
-
 
 # ---------------------------- Quick diameter-by-velocity helper ----------------------------
 st.subheader("Quick diameter from target velocity")
