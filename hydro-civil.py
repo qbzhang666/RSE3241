@@ -589,7 +589,7 @@ for i, (comp, kval) in enumerate(components.items()):
             K_sum_global += kval
 st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
 
-# Compute with ΣK to show hf and f
+# Compute with ΣK to show h_f and f (two-pass block)
 out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
 out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
 
@@ -612,7 +612,7 @@ st.dataframe(
 
 # Diameter Estimator (three methods)
 st.subheader("Diameter estimator (pick a method)")
-Q_for_sizing = out_design_flow["Q_total"] or 0.0
+Q_for_sizing = out_design_flow.get("Q_total", float("nan")) or 0.0
 
 tabA, tabB, tabC = st.tabs(["Chart extrapolation", "Velocity target", "Head-loss target"])
 
@@ -627,7 +627,8 @@ with tabA:
             st.success(f"Applied D = {D_ext:.2f} m to the Penstock Geometry panel (re-run to see effect).")
 
 with tabB:
-    V_target = st.slider("Target velocity V (m/s)", 2.0, 8.0, 4.5, 0.1)
+    V_target = st.slider("Target velocity V (m/s)", 2.0, 8.0, 4.5, 0.1,
+                         help="Pick a reasonable operating velocity; see Section 3 velocity guidance.")
     D_vel = D_from_velocity(Q_for_sizing, V_target) if Q_for_sizing > 0 else float("nan")
     st.metric("Suggested D (m)", f"{D_vel:.2f}" if not np.isnan(D_vel) else "—")
     if st.button("Apply suggested D (velocity)"):
@@ -636,18 +637,43 @@ with tabB:
             st.success(f"Applied D = {D_vel:.2f} m to the Penstock Geometry panel (re-run to see effect).")
 
 with tabC:
-    hf_allow = st.number_input("Allowable head loss h_f (m)", 1.0, 100.0, 15.0, 0.5)
+    hf_allow = st.number_input("Allowable head loss h_f (m)", 1.0, 100.0, 15.0, 0.5,
+                               help="Total Darcy–Weisbach + local losses allowance along the penstock.")
     eps_used = eps if (mode_f != "Manual (slider)" and eps is not None) else 3e-4
-    T_used = T_C if (mode_f != "Manual (slider)" and T_C is not None) else 15.0
+    T_used   = T_C if (mode_f != "Manual (slider)" and T_C is not None) else 15.0
     D_iter, f_it, Re_it, v_it, hf_it = D_from_headloss(Q_for_sizing, L_pen, hf_allow,
                                                        eps=eps_used, Ksum=K_sum_global,
                                                        T_C=T_used)
     st.metric("Suggested D (m)", f"{D_iter:.2f}" if not np.isnan(D_iter) else "—")
-    st.caption(f"At that D: f≈{f_it:.4f}, Re≈{Re_it:.2e}, v≈{v_it:.2f} m/s, hf≈{hf_it:.2f} m")
+    st.caption(f"At that D: f≈{f_it:.4f}, Re≈{Re_it:.2e}, v≈{v_it:.2f} m/s, h_f≈{hf_it:.2f} m")
     if st.button("Apply suggested D (head-loss)"):
         if not np.isnan(D_iter):
             st.session_state["D_pen"] = float(D_iter)
             st.success(f"Applied D = {D_iter:.2f} m to the Penstock Geometry panel (re-run to see effect).")
+
+# ---- Figures / Equations reference (Section 4) ----
+with st.expander("Show figures / equations used (Section 4)"):
+    st.markdown("**Core relations**")
+    st.latex(r"h_f = \left(f \frac{L}{D} + \sum K \right)\frac{v^2}{2g}")
+    st.latex(r"f \approx \frac{0.25}{\left[\log_{10}\!\left(\frac{\varepsilon}{3.7D} + \frac{5.74}{\mathrm{Re}^{0.9}}\right)\right]^2}\quad\text{(Swamee–Jain)}")
+    st.latex(r"\mathrm{Re}=\frac{vD}{\nu},\quad A=\frac{\pi D^2}{4},\quad v=\frac{Q_p}{A},\quad Q_p=\frac{Q_{\text{total}}}{N_{\text{pen}}}")
+    st.latex(r"\frac{\varepsilon}{D}\;\text{(relative roughness)}")
+    st.markdown("**Diameter sizing ideas**")
+    st.latex(r"D\;=\;\sqrt{\frac{4Q}{\pi V_{\text{target}}}}\quad\text{(velocity target)}")
+    st.latex(r"\text{Find }D\text{ s.t. }h_f(D)\approx h_{f,\text{allow}}\quad\text{(iterate with }f(\mathrm{Re},\varepsilon/D)\text{)}")
+    st.markdown("**Figures**")
+    st.markdown(
+        "- *Moody diagram:* friction factor **f** vs **Re** and **ε/D** (your ‘Mini Moody’ plot in Section 2/3).\n"
+        "- *Head-loss breakdown:* Darcy–Weisbach main loss plus selected local loss coefficients (ΣK) above."
+    )
+    st.markdown("**Teaching references**")
+    st.markdown(
+        "- USBR **Design of Small Dams** (3rd ed., 1987), Penstocks & hydraulics chapters.\n"
+        "- USACE EM 1110-2-1602 / Idelchik: typical **ΣK** ranges and local-loss data.\n"
+        "- AWWA / ASCE tables: indicative absolute roughness **ε** for common materials.\n"
+        "- Swamee, P.K. & Jain, A.K. (1976): explicit friction-factor formula used here."
+    )
+
 
 # ------------------------------- Section 5: System Curve ------------------
 st.header("5) System Power Curve (didactic)")
