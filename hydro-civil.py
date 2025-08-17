@@ -1303,89 +1303,93 @@ st.dataframe(
 )
 
 
-# Diameter Estimator and Verification (three methods)
+# ---------------- Diameter Estimator and Verification ----------------
 st.subheader("Diameter Estimator and Verification")
-Q_for_sizing = out_design_flow.get("Q_total", float("nan")) or 0.0
+
+# --- Get per-penstock design flow robustly ---
+Qp_for_sizing = out_design_flow.get("Q_per", float("nan"))
+if (np.isnan(Qp_for_sizing) or Qp_for_sizing <= 0) and not np.isnan(out_design_flow.get("Q_total", float("nan"))):
+    # fallback from total flow if available
+    try:
+        Qp_for_sizing = out_design_flow["Q_total"] / max(1, int(N_pen))
+    except Exception:
+        Qp_for_sizing = float("nan")
+
+# Show what we're sizing with
+st.metric("Design per-penstock flow \(Q_p\) (m³/s)",
+          f"{Qp_for_sizing:.3f}" if not np.isnan(Qp_for_sizing) else "—")
 
 tabA, tabB, tabC = st.tabs(["Chart extrapolation", "Velocity target", "Head-loss target"])
 
+# ---------- A) Chart extrapolation ----------
 with tabA:
     a_fit, b_fit, D_of_Q = fit_extrapolate_Q_to_D(Q_chart, D_chart)
-    D_ext = float(D_of_Q(Q_for_sizing)) if Q_for_sizing > 0 else float("nan")
-    
-    # Display metric and equation
+    D_ext = float(D_of_Q(Qp_for_sizing)) if (Qp_for_sizing > 0) else float("nan")
+
     st.write(f"Fitted curve: **D ≈ {a_fit:.3f} · Q^{b_fit:.3f}**  (Q in m³/s, D in m)")
     st.metric("Suggested D (m)", f"{D_ext:.2f}" if not np.isnan(D_ext) else "—")
-    
-    # Create the visualization
+
     fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Plot original data points
-    ax.plot(Q_chart, D_chart, 'bo', markersize=8, label="Reference Data")
-    
-    # Generate and plot fitted curve
-    Q_range = np.linspace(0, 500, 500)  # Extended to 500 m³/s
-    D_fitted = a_fit * Q_range ** b_fit
-    ax.plot(Q_range, D_fitted, 'r-', linewidth=2, 
-            label=f"Fitted Curve: D = {a_fit:.3f}·Q^{b_fit:.3f}")
-    
-    # Highlight the design point
+    ax.plot(Q_chart, D_chart, 'bo', ms=8, label="Reference data")
+    Q_range = np.linspace(0, 500, 500)
+    ax.plot(Q_range, a_fit * Q_range**b_fit, 'r-', lw=2,
+            label=f"Fit: D = {a_fit:.3f}·Q^{b_fit:.3f}")
     if not np.isnan(D_ext):
-        ax.plot(Q_for_sizing, D_ext, 'go', markersize=10, 
-                label=f"Design Point (Q={Q_for_sizing:.1f} m³/s)")
-        ax.annotate(f'D = {D_ext:.2f} m', 
-                    (Q_for_sizing, D_ext),
-                    textcoords="offset points", 
-                    xytext=(10,-15),
-                    ha='left',
-                    fontsize=12,
-                    arrowprops=dict(arrowstyle="->", color="green"))
-    
-    # Set axis limits
-    ax.set_xlim(0, 500)
-    ax.set_ylim(0, 12)
-    
-    # Configure plot appearance
-    ax.set_xlabel("Design Discharge (m³/s)", fontsize=12)
-    ax.set_ylabel("Penstock Diameter (m)", fontsize=12)
-    ax.set_title("Diameter vs Discharge Relationship", fontsize=14)
-    ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend(loc='upper left')
-    
-    # Display the plot
+        ax.plot(Qp_for_sizing, D_ext, 'go', ms=10, label=f"Design Qp={Qp_for_sizing:.1f}")
+        ax.annotate(f"D={D_ext:.2f} m", (Qp_for_sizing, D_ext),
+                    xytext=(10, -15), textcoords="offset points",
+                    ha='left', arrowprops=dict(arrowstyle="->", color="green"))
+    ax.set_xlim(0, 500); ax.set_ylim(0, 12)
+    ax.set_xlabel("Per-penstock discharge Qp (m³/s)")
+    ax.set_ylabel("Penstock diameter D (m)")
+    ax.set_title("Diameter vs discharge")
+    ax.grid(True, ls="--", alpha=0.7); ax.legend(loc="upper left")
     st.pyplot(fig)
-    
-    # Apply button
-    if st.button("Apply suggested D (chart fit)"):
+
+    if st.button("Apply suggested D (chart fit)", key="btn_apply_chart"):
         if not np.isnan(D_ext):
             st.session_state["D_pen"] = float(D_ext)
-            st.success(f"Applied D = {D_ext:.2f} m to the Penstock Geometry panel (re-run to see effect).")
+            st.success(f"Applied D = {D_ext:.2f} m to the Penstock Geometry panel.")
+        else:
+            st.warning("Need a valid Qp to compute D from the chart fit.")
 
-
+# ---------- B) Velocity target ----------
 with tabB:
     V_target = st.slider("Target velocity V (m/s)", 2.0, 8.0, 4.5, 0.1,
-                         help="Pick a reasonable operating velocity; see Section 3 velocity guidance.")
-    D_vel = D_from_velocity(Q_for_sizing, V_target) if Q_for_sizing > 0 else float("nan")
+                         help="Pick an operating velocity (see velocity guidance above).")
+    D_vel = D_from_velocity(Qp_for_sizing, V_target) if (Qp_for_sizing > 0) else float("nan")
     st.metric("Suggested D (m)", f"{D_vel:.2f}" if not np.isnan(D_vel) else "—")
-    if st.button("Apply suggested D (velocity)"):
+
+    if st.button("Apply suggested D (velocity)", key="btn_apply_vel"):
         if not np.isnan(D_vel):
             st.session_state["D_pen"] = float(D_vel)
-            st.success(f"Applied D = {D_vel:.2f} m to the Penstock Geometry panel (re-run to see effect).")
+            st.success(f"Applied D = {D_vel:.2f} m to the Penstock Geometry panel.")
+        else:
+            st.warning("Set design power, gross head, ηₜ and number of penstocks first so Qp is available.")
 
+# ---------- C) Head-loss target ----------
 with tabC:
     hf_allow = st.number_input("Allowable head loss h_f (m)", 1.0, 100.0, 15.0, 0.5,
-                               help="Total Darcy–Weisbach + local losses allowance along the penstock.")
+                               help="Total Darcy–Weisbach + local losses allowance.")
     eps_used = eps if (mode_f != "Manual (slider)" and eps is not None) else 3e-4
     T_used   = T_C if (mode_f != "Manual (slider)" and T_C is not None) else 15.0
-    D_iter, f_it, Re_it, v_it, hf_it = D_from_headloss(Q_for_sizing, L_pen, hf_allow,
-                                                       eps=eps_used, Ksum=K_sum_global,
-                                                       T_C=T_used)
+
+    if Qp_for_sizing > 0 and L_pen > 0:
+        D_iter, f_it, Re_it, v_it, hf_it = D_from_headloss(Qp_for_sizing, L_pen, hf_allow,
+                                                           eps=eps_used, Ksum=K_sum_global, T_C=T_used)
+    else:
+        D_iter, f_it, Re_it, v_it, hf_it = (float("nan"),)*5
+
     st.metric("Suggested D (m)", f"{D_iter:.2f}" if not np.isnan(D_iter) else "—")
     st.caption(f"At that D: f≈{f_it:.4f}, Re≈{Re_it:.2e}, v≈{v_it:.2f} m/s, h_f≈{hf_it:.2f} m")
-    if st.button("Apply suggested D (head-loss)"):
+
+    if st.button("Apply suggested D (head-loss)", key="btn_apply_hloss"):
         if not np.isnan(D_iter):
             st.session_state["D_pen"] = float(D_iter)
-            st.success(f"Applied D = {D_iter:.2f} m to the Penstock Geometry panel (re-run to see effect).")
+            st.success(f"Applied D = {D_iter:.2f} m to the Penstock Geometry panel.")
+        else:
+            st.warning("Need valid Qp and L to run the head-loss-target method.")
+
 
 # ---- Figures / Equations reference (Section 4) ----
 with st.expander("Show figures / equations used (Section 4)"):
