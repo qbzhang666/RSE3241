@@ -282,7 +282,178 @@ if limit is not None and not np.isnan(head_fluct_ratio):
         st.error("Below the recommended **minimum** head fluctuation. "
                  "Consider **raising LWL** or **increasing HWL − TWL**.")
 
-# ------------------------------- Section 2: Penstock & Moody -------------------------
+# ---------------------------- Section 2: Waterway profile & L estimator ----------------------------
+st.subheader("Waterway profile & penstock length estimator")
+
+# UI: CSV or quick editor
+left, right = st.columns([2, 1])
+with left:
+    csv_file = st.file_uploader("Upload CSV with columns: Chainage_m, Elevation_m",
+                                type=["csv"], key="profile_csv")
+    if csv_file:
+        df_profile = pd.read_csv(csv_file)
+    else:
+        st.caption("No CSV? Edit a small table below (chainage increasing):")
+        df_profile = pd.DataFrame({
+            "Chainage_m": [0, 500, 1000, 1500, 2000, 2300],           # demo values
+            "Elevation_m": [NWL_u, NWL_u-1, NWL_u-3, NWL_u-8, 450, 360],
+        })
+        df_profile = st.data_editor(df_profile, num_rows="dynamic", use_container_width=True)
+
+with right:
+    uploaded_img = st.file_uploader("(Optional) Profile image (png/jpg)", type=["png","jpg","jpeg"],
+                                    key="profile_img")
+
+# Validate columns
+valid_cols = {"Chainage_m", "Elevation_m"}
+if set(df_profile.columns) >= valid_cols and len(df_profile) >= 2:
+    # sort by chainage just in case
+    df_profile = df_profile.sort_values("Chainage_m").reset_index(drop=True)
+
+    # Small, compact profile figure
+    fig_prof, axp = plt.subplots(figsize=(6, 2.8), dpi=120)
+    axp.plot(df_profile["Chainage_m"], df_profile["Elevation_m"], lw=2, color="#1f77b4")
+    axp.set_xlabel("Chainage (m)")
+    axp.set_ylabel("Elevation (m)")
+    axp.set_title("Waterway long-section (compact)")
+    axp.grid(True, linestyle="--", alpha=0.35)
+    st.pyplot(fig_prof, use_container_width=False)
+
+    if uploaded_img:
+        st.image(uploaded_img, caption="Uploaded profile image", use_column_width=True)
+
+    # Pick the start/end chainages that bound the PRESSURIZED line (head tank → turbine)
+    ch_min, ch_max = float(df_profile["Chainage_m"].min()), float(df_profile["Chainage_m"].max())
+    c1, c2, c3 = st.columns([1,1,1])
+    with c1:
+        ch_start = st.number_input("Head-tank outlet chainage (m)", min_value=ch_min, max_value=ch_max,
+                                   value=ch_min, step=10.0, format="%.1f")
+    with c2:
+        ch_end = st.number_input("Turbine inlet chainage (m)", min_value=ch_min, max_value=ch_max,
+                                 value=ch_max, step=10.0, format="%.1f")
+    with c3:
+        h_draft = st.number_input("Runner draft below TWL_l (m)", 0.0, 200.0, 5.0, 0.5)
+
+    # Slice profile between ch_start and ch_end
+    ch_lo, ch_hi = (ch_start, ch_end) if ch_start <= ch_end else (ch_end, ch_start)
+    mask = (df_profile["Chainage_m"] >= ch_lo) & (df_profile["Chainage_m"] <= ch_hi)
+    sub = df_profile.loc[mask].copy()
+    # Ensure endpoints exist exactly at ch_start/ch_end by linear interpolation if needed
+    for target in [ch_lo, ch_hi]:
+        if not np.any(np.isclose(sub["Chainage_m"], target)):
+            # interpolate elevation at 'target'
+            above = df_profile[df_profile["Chainage_m"] >= target].iloc[0]
+            below = df_profile[df_profile["Chainage_m"] <= target].iloc[-1]
+            if above["Chainage_m"] == below["Chainage_m"]:
+                zt = float(above["Elevation_m"])
+            else:
+                w = (target - below["Chainage_m"]) / (above["Chainage_m"] - below["Chainage_m"])
+                zt = float((1-w)*below["Elevation_m"] + w*above["Elevation_m"])
+            sub = pd.concat([sub, pd.DataFrame({"Chainage_m":[target], "Elevation_m":[zt]})], ignore_index=True)
+            sub = sub.sort_values("Chainage_m").reset_index(drop=True)
+
+    # Compute center-line length along the polyline
+    dx = np.diff(sub["Chainage_m"].values)
+    dz = np.diff(sub["Elevation_m"].values)
+    seg_len = np.sqrt(dx**2 + dz**2)
+    L_pen_est = float(seg_len.sum())
+
+    # Simple diagnostics
+    Lh = float(ch_hi - ch_lo)
+    dz_tot = float(sub["Elevation_m"].iloc[-1] - sub["Elevation_m"].iloc[0])
+    runner_CL = TWL_l - h_draft  # informational only
+
+    colm1, colm2, colm3 = st.columns(3)
+    colm1.metric("Horizontal run Δx (m)", f"{Lh:.1f}")
+    colm2.metric("Elevation change Δz (m)", f"{dz_tot:.1f}")
+    colm3.metric("Penstock center-line L (m)", f"{L_pen_est:.1f}")
+
+    # Apply to Step 2
+    if st.button("Apply L to Step 2 (Penstock length)"):
+        st.session_state["L_penstock"] = L_pen_est
+        st.success(f"Applied L = {L_pen_est:.1f} m to the 'Penstock length L' field in Step 2.")
+
+    # Reference & equations (collapsed)
+    with st.expander("How is L computed? (figures / equations)"):
+        st.markdown(
+            r"""
+**Pressurized length definition:** distance along the pipe centerline from the head-tank outlet
+to the turbine inlet (include short powerhouse run). Do **not** include the open-channel headrace.
+
+**Polyline summation**
+
+For successive profile points \(i=0,\dots,n\) with chainage \(x_i\) and elevation \(z_i\),
+the total center-line length \(L\) is
+\[
+L=\sum_{i=0}^{n-1} \sqrt{(x_{i+1}-x_i)^2 + (z_{i+1}-z_i)^2 }.
+\]
+
+**Single-slope approximation (optional)**
+\[
+L \approx \sqrt{(\Delta x)^2 + (\Delta z)^2 }.
+\]
+
+These lengths are then used in Darcy–Weisbach head loss
+\[
+h_f=\left(f\frac{L}{D}+\sum K\right)\frac{v^2}{2g},
+\]
+with \(f=f(Re,\varepsilon/D)\) from the Moody relationship (Swamee–Jain explicit form in the app).
+            """
+        )
+else:
+    st.info("Provide a profile (CSV or editor) with columns Chainage_m and Elevation_m to estimate L.")
+
+# ---------------------------- Quick diameter-by-velocity helper ----------------------------
+st.subheader("Quick diameter from target velocity")
+
+# Get design per-penstock discharge from your flow block
+Qp_design = float(out_design_flow.get("Q_per", float("nan")))
+
+colv1, colv2, colv3 = st.columns(3)
+with colv1:
+    st.metric("Design per-penstock flow Qₚ (m³/s)",
+              f"{Qp_design:.3f}" if not np.isnan(Qp_design) else "—")
+with colv2:
+    v_target = st.slider("Target velocity v (m/s)", 2.0, 8.0, 4.5, 0.1)
+with colv3:
+    # D = sqrt(4 Q / (π v))
+    D_suggest = math.sqrt(4.0 * Qp_design / (math.pi * v_target)) if Qp_design > 0 else float("nan")
+    st.metric("Suggested diameter D (m)", f"{D_suggest:.3f}" if not np.isnan(D_suggest) else "—")
+
+# Apply to Step 2 (Penstock diameter)
+if st.button("Apply D to Step 2 (Penstock diameter)"):
+    if not np.isnan(D_suggest):
+        st.session_state["D_pen"] = float(D_suggest)
+        st.success(f"Applied D = {D_suggest:.3f} m to the 'Penstock diameter D' field in Step 2.")
+    else:
+        st.warning("No valid Qₚ available yet. Run Section 3 to compute discharges first.")
+
+# Reference / equations (compact)
+with st.expander("Figures & equations used (diameter by velocity)"):
+    st.markdown(
+        r"""
+**Per-penstock flow from continuity**
+\[
+Q_p = \frac{Q_{\text{total}}}{N_{\text{pen}}},\qquad
+A = \frac{\pi D^2}{4},\qquad
+v = \frac{Q_p}{A}
+\]
+
+**Solve for diameter from target velocity**
+\[
+D = \sqrt{\frac{4\,Q_p}{\pi\,v}}
+\]
+
+This \(D\) can be used as a starting point, then refined with head-loss checks:
+\[
+h_f=\left(f\frac{L}{D}+\sum K\right)\frac{v^2}{2g},\qquad
+f \approx \frac{0.25}{\left[\log_{10}\!\left(\frac{\varepsilon}{3.7D}+\frac{5.74}{\mathrm{Re}^{0.9}}\right)\right]^2}
+\]
+(Swamee–Jain for turbulent flow).
+        """
+    )
+
+# ------------------------------- Section 3: Penstock & Moody -------------------------
 st.header("2) Penstock Geometry & Efficiencies (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
