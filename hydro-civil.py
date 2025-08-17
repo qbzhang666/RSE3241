@@ -692,23 +692,37 @@ st.dataframe(
 st.caption(f"Quick-Re uses ν at T = {T_for_nu:.1f} °C.")
 
 with st.expander("Show equations used (Reynolds quick check)"):
+
+    # Cross-sectional area
     st.latex(r"A = \frac{\pi D^{2}}{4}")
-    st.markdown("Cross-sectional area of a circular penstock (m²).")
+    st.caption("The cross-sectional area of the penstock (A) is calculated from its diameter (D).")
 
+    # Flow per penstock
     st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}}")
-    st.markdown("Flow rate per penstock, obtained by dividing the total flow by the number of penstocks.")
+    st.caption("The discharge per penstock (Qp) is obtained by dividing the total discharge (Qtotal) by the number of penstocks (Npen).")
 
+    # Velocity from flow and area
     st.latex(r"v = \frac{Q_p}{A}")
-    st.markdown("Mean flow velocity in one penstock (m/s), from discharge divided by area.")
+    st.caption("The mean velocity (v) inside each penstock is calculated using Qp and A. "
+               "⚠️ Note: This is the *calculated velocity*, not the target velocity set by the design slider.")
 
+    # Reynolds number
     st.latex(r"\mathrm{Re} = \frac{v D}{\nu}")
-    st.markdown("Reynolds number definition using velocity $v$, diameter $D$, and kinematic viscosity $\\nu$.")
+    st.caption("The Reynolds number is calculated from the mean velocity (v), penstock diameter (D), and kinematic viscosity (ν).")
 
+    # Combined formula
     st.latex(r"\boxed{\;\mathrm{Re}=\dfrac{4\,Q_\text{total}}{\pi\,N_\text{pen}\,D\,\nu}\;}")
-    st.markdown("Simplified Reynolds number expression by substituting $v = Q_p/A$. "
-                "This shortcut avoids the intermediate velocity calculation and is algebraically equivalent "
-                "for circular pipes.")
+    st.caption("Combining the above expressions gives a compact formula for Re in terms of total discharge, "
+               "number of penstocks, diameter, and viscosity.")
 
+    # Optional: compare slider velocity vs calculated velocity
+    if 'v_target' in locals() and 'v_calc' in locals():
+        st.write(f"🎯 Target velocity (slider): {v_target:.2f} m/s")
+        st.write(f"📐 Calculated mean velocity: {v_calc:.2f} m/s")
+        if abs(v_target - v_calc) > 0.5:
+            st.warning("The calculated velocity differs significantly from the target velocity set by the slider.")
+        else:
+            st.success("Calculated velocity is close to the target velocity.")
 
 # ---------- Mini Moody chart (AFTER flows exist) ----------
 if (mode_f != "Manual (slider)"):
