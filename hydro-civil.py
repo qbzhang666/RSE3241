@@ -431,49 +431,49 @@ with st.expander("How is L computed? (figures / equations)"):
 # ---------------------------- Quick diameter-by-velocity helper ----------------------------
 st.subheader("Quick diameter from target velocity")
 
-rho = 1000.0  # kg/m³
-g   = 9.81    # m/s²
+# Compute total design flow and per-penstock flow from sidebar inputs + Section 1 head
+P_design = st.session_state.get("P_design", float("nan"))     # MW
+eta_t    = st.session_state.get("eta_t",  float("nan"))       # -
+N_pen    = st.session_state.get("N_pen",  0)                  # count
+H_g      = gross_head                                         # from Section 1
 
-# Use the live variables you already defined earlier in the app:
-#   P_design (MW) from the sidebar
-#   eta_t (-) from the sidebar
-#   N_pen (count) from the sidebar
-#   gross_head (m) from Section 1
-P_design_MW = float(P_design)
-H_g         = float(gross_head)
-eta_live    = float(eta_t)
-Npen_live   = int(N_pen)
+Q_total_design = float("nan")
+Qp_design      = float("nan")
 
-# Compute design per-penstock flow (kept internal)
-Qp_design = float("nan")
-if (P_design_MW > 0) and (H_g > 0) and (eta_live > 0) and (Npen_live > 0):
-    Q_total_design = (P_design_MW * 1e6) / (rho * g * H_g * eta_live)  # m³/s
-    Qp_design = Q_total_design / Npen_live
+if (not np.isnan(P_design)) and (not np.isnan(eta_t)) and (H_g is not None) and (H_g > 0) and (eta_t > 0) and (N_pen > 0):
+    Q_total_design = (P_design * 1e6) / (RHO * G * H_g * eta_t)  # m³/s
+    Qp_design      = Q_total_design / N_pen
 
-colv_left, colv_mid, colv_right = st.columns([1, 2, 1])
+# Two-column layout
+col_left, col_right = st.columns([1.2, 1.8])
 
-# LEFT: Show Q_p
-with colv_left:
-    if not np.isnan(Qp_design):
-        st.metric("Design per-penstock flow Qₚ (m³/s)", f"{Qp_design:.3f}")
-    else:
-        st.metric("Design per-penstock flow Qₚ (m³/s)", "—")
-        st.caption(":red[Set Design power, ηₜ, # penstocks and complete Section 1 (H_g).]")
+# LEFT: Total & per-penstock flows
+with col_left:
+    st.metric(
+        "Total design flow Q_total (m³/s)",
+        f"{Q_total_design:.3f}" if not np.isnan(Q_total_design) else "—"
+    )
+    st.metric(
+        "Design per-penstock flow Qₚ (m³/s)",
+        f"{Qp_design:.3f}" if not np.isnan(Qp_design) else "—"
+    )
+    if np.isnan(Q_total_design):
+        st.caption(
+            ":red[Set **Design power (MW)**, **ηₜ**, **# penstocks**, and complete **Section 1** to get H_g.]"
+        )
 
-# MIDDLE: velocity slider
-with colv_mid:
+# RIGHT: Target velocity slider + suggested diameter
+with col_right:
     v_target = st.slider("Target velocity v (m/s)", 1.0, 10.0, 4.0, 0.1, format="%.1f")
-
-# RIGHT: suggested diameter & auto-apply
-with colv_right:
     if not np.isnan(Qp_design) and v_target > 0:
         D_suggested = math.sqrt(4.0 * Qp_design / (math.pi * v_target))
         st.metric("Suggested diameter D (m)", f"{D_suggested:.3f}")
+        # auto-apply to model
         st.session_state["D_pen"] = float(D_suggested)
         st.caption("✔ Diameter has been applied automatically to the model.")
     else:
         st.metric("Suggested diameter D (m)", "—")
-        st.caption(":red[Provide inputs first.]")
+        st.caption(":red[Provide valid inputs to compute D.]")
 
 # Reference / equations
 with st.expander("Figures & equations used (diameter by velocity)"):
