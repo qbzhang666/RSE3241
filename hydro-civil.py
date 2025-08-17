@@ -503,27 +503,28 @@ with c2:
 
 st.subheader("Turbine Center Line (CL) and Draft Head")
 
-# Create two columns: theory on left, visualization on right
+# --- two columns: theory | curve viz ---
 col1, col2 = st.columns([1, 1.5])
 
 with col1:
-    st.markdown("""
-    ### Turbine Center Setting
-    The turbine center is set at the elevation corresponding to the draft head below the low water level (LWL) of the lower pond:
-    
-    \[ \text{Turbine Center CL} = \text{LWL} - h_{\text{draft}} \]
-    
-    Where:
-    - **LWL**: Low Water Level in the lower pond (m)
-    - **h<sub>draft</sub>**: Draft head - vertical distance between turbine centerline and water surface (m)
-    
-    Draft head represents the portion of hydraulic head below the turbine and is crucial for proper water flow through the turbine outlet.
-    """)
+    st.markdown(r"""
+### Turbine Center Setting
+
+The turbine centreline is set a **draft head** below the **lower reservoir TWL** determined in **1) Reservoir Levels, NWL & Rating Head**:
+
+\[
+\text{Turbine CL elevation} \;=\; \text{TWL}_{\ell} \;-\; h_{\text{draft}}
+\]
+
+**Where**
+- \( \text{TWL}_{\ell} \) = Lower reservoir tailwater level (m) — taken from Section 1  
+- \( h_{\text{draft}} \) = Draft head (m), the vertical distance from the water surface to the turbine centreline
+""")
 
 with col2:
     st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
 
-    # --- reference points taken from your curve ---
+    # --- reference points digitized from your purple curve ---
     xk = np.array([100, 200, 300, 400, 500, 600], dtype=float)
     yk = np.array([-23, -33, -42, -50, -58, -66], dtype=float)
 
@@ -532,25 +533,20 @@ with col2:
     x = np.linspace(0, 600, 500)
     y = np.polyval(coef, x)
 
-    # figure
     fig, ax = plt.subplots(figsize=(10, 6))
-
-    # curve
     ax.plot(x, y, color="#8A2BE2", lw=3, label="Fitted curve")
     ax.plot(xk, yk, "o", color="#8A2BE2", mfc="white", ms=7, label="Reference points")
 
-    # annotate key points
     for xi, yi in zip(xk, yk):
         ax.text(xi + 6, yi - 1.0, f"({int(xi)}, {yi:.0f})", fontsize=9, va="center")
 
-    # axis setup
+    # Axis: 0 at bottom, negatives upward (as in the screenshot)
     ax.set_xlim(-10, 610)
-    ax.set_ylim(0, -70)   # inverted: 0 at bottom, negatives go upward
+    ax.set_ylim(0, -70)
     ax.set_xlabel("Maximum pumping head (m)", fontsize=12)
     ax.set_ylabel("Draft head (m)", fontsize=12)
     ax.set_title("Relationship: Pumping head vs Draft head", fontsize=14)
 
-    # grid lines
     for yref in range(-70, 1, 10):
         ax.axhline(yref, color="gray", linestyle=":", alpha=0.4)
     for xref in [0, 100, 200, 300, 400, 500, 600]:
@@ -560,52 +556,57 @@ with col2:
     ax.legend(loc="upper right", fontsize=9)
     st.pyplot(fig)
 
-# Draft head input section
+# ----------------- Inputs that use Step 1 values -----------------
 st.subheader("Set Turbine Center Elevation")
-st.markdown("Configure the turbine position relative to the Low Water Level (LWL) in the lower pond:")
 
-# Input controls in columns
+# Pull lower TWL directly from Section 1 (already defined earlier)
+# If you keep TWL_l in session_state, you can do: TWL_l = st.session_state.get("TWL_l", TWL_l)
+lower_TWL = float(TWL_l)  # TWL_l was defined in Section 1
+
 col_a, col_b = st.columns(2)
-
 with col_a:
-    lwl = st.number_input("Low Water Level (LWL) elevation (m)", 
-                          value=100.0, min_value=0.0, step=0.5)
-    
+    st.metric("Lower TWL (from Section 1)", f"{lower_TWL:.2f} m")
+
 with col_b:
-    turbine_elevation = st.number_input(
-        "Turbine Center elevation relative to LWL (m) - negative = below water",
-        min_value=-100.0, max_value=0.0, value=-10.0, step=0.5
+    # User sets the **draft head below TWL** (positive number)
+    h_draft = st.number_input(
+        "Draft head below lower TWL (m)",
+        min_value=0.0, max_value=100.0, value=5.0, step=0.5
     )
 
-# Calculate and display draft head
-h_draft = abs(turbine_elevation)
-turbine_abs = lwl + turbine_elevation
+# Compute turbine CL elevation
+turbine_abs = lower_TWL - h_draft
 
-st.metric("Calculated Draft Head", f"{h_draft:.2f} m")
-st.metric("Absolute Turbine Center Elevation", f"{turbine_abs:.2f} m")
+st.metric("Calculated Turbine CL elevation", f"{turbine_abs:.2f} m")
 
-# Visualization of water levels
+# ----------------- Simple vertical sketch -----------------
 st.subheader("Water Level Diagram")
 fig2, ax2 = plt.subplots(figsize=(10, 4))
 
-# Draw water levels
-ax2.axhline(lwl, color='blue', linewidth=3, label="LWL (Lower Pond)")
-ax2.axhline(turbine_abs, color='red', linewidth=2, linestyle='-', label="Turbine Center")
-ax2.axhline(lwl - h_draft, color='darkblue', linewidth=1, linestyle='--', label="Max Lower Level")
+# Water line at TWL
+ax2.axhline(lower_TWL, color='blue', linewidth=3, label="Lower TWL")
+# Turbine CL line
+ax2.axhline(turbine_abs, color='red', linewidth=2, linestyle='-', label="Turbine CL")
 
-# Draw draft head indicator
-ax2.annotate('', xy=(0.5, lwl), xytext=(0.5, turbine_abs),
-             arrowprops=dict(arrowstyle='<->', color='green', linewidth=2))
-ax2.text(0.55, (lwl + turbine_abs)/2, f"Draft Head = {h_draft:.1f}m", 
-         fontsize=12, va='center', color='green')
+# Draft head arrow
+ax2.annotate(
+    '', xy=(0.5, lower_TWL), xytext=(0.5, turbine_abs),
+    arrowprops=dict(arrowstyle='<->', color='green', linewidth=2)
+)
+ax2.text(
+    0.55, (lower_TWL + turbine_abs) / 2,
+    f"Draft head = {h_draft:.1f} m",
+    fontsize=12, va='center', color='green'
+)
 
-# Configure plot
-ax2.set_ylim(turbine_abs - 5, lwl + 5)
+# Formatting
+pad = max(2.0, 0.5 * max(1.0, h_draft))
+ax2.set_ylim(turbine_abs - pad, lower_TWL + pad)
 ax2.set_xlim(0, 1)
-ax2.set_yticks([lwl, turbine_abs])
-ax2.set_yticklabels([f"LWL: {lwl}m", f"Turbine: {turbine_abs:.1f}m"])
+ax2.set_yticks([turbine_abs, lower_TWL])
+ax2.set_yticklabels([f"Turbine CL: {turbine_abs:.2f} m", f"Lower TWL: {lower_TWL:.2f} m"])
 ax2.set_xticks([])
-ax2.set_title("Turbine Position Relative to Water Levels", fontsize=12)
+ax2.set_title("Turbine Position Relative to Lower TWL", fontsize=12)
 ax2.grid(True, axis='y', alpha=0.3)
 ax2.legend(loc='upper right')
 
