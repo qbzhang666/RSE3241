@@ -490,9 +490,9 @@ with st.expander("Figures & equations used (diameter by velocity)"):
 st.subheader("Penstock Geometry")
 c1, c2 = st.columns(2)
 with c1:
-    D_pen = st.number_input("Penstock diameter D (m)", 0.5, 12.0, float(st.session_state.get("D_pen", 3.5)), 0.1)
-with c2:
     L_pen = st.number_input("Penstock length L (m)", 10.0, 50000.0, float(st.session_state.get("L_penstock", 500.0)), 10.0)
+with c2:
+    D_pen = st.number_input("Penstock diameter D (m)", 0.5, 12.0, float(st.session_state.get("D_pen", 3.5)), 0.1)
     
 # ------------------------------- Section 3: Penstock & Moody -------------------------
 st.header("3) Penstock Efficiencies (with Moody)")
