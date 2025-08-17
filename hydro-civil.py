@@ -995,51 +995,39 @@ st.markdown(
     - $g$ = gravitational acceleration (9.81 m/s²)  
     """
 )
-# --- Show results in table ---
-df_hmajor = pd.DataFrame({
+# --- Combined hydraulics summary (Design & Maximum) ------------------------
+# Note: gross_head is the NWL_u − TWL_l used for the Design case,
+#       min_head   is the LWL_u − HWL_l used for the Maximum case.
+
+df_hydraulics = pd.DataFrame({
     "Case": ["Design", "Maximum"],
-    "f (Darcy)": [out_design_flow.get("f", float("nan")),
-                  out_max_flow.get("f", float("nan"))],
-    "v (m/s)":   [out_design_flow.get("v", float("nan")),
-                  out_max_flow.get("v", float("nan"))],
-    "L (m)":     [L_pen, L_pen],           # pipe length (constant for both cases)
-    "d_h (m)":   [D_pen, D_pen],           # hydraulic diameter (constant for both cases)
-    "Δh_major (m)": [h_major_design, h_major_max],
+    "Gross head H_g (m)":   [gross_head,                min_head],
+    "Net head h_net (m)":   [out_design_flow["h_net"],  out_max_flow["h_net"]],
+    "f (Darcy)":            [out_design_flow.get("f", float("nan")),
+                             out_max_flow.get("f",    float("nan"))],
+    "Reynolds Re (–)":      [out_design_flow["Re"],     out_max_flow["Re"]],
+    "Total Q (m³/s)":       [out_design_flow["Q_total"],out_max_flow["Q_total"]],
+    "Per-penstock Q (m³/s)":[out_design_flow["Q_per"],  out_max_flow["Q_per"]],
+    "Velocity v (m/s)":     [out_design_flow["v"],      out_max_flow["v"]],
+    "L (m)":                [L_pen,                     L_pen],   # centerline pipe length
+    "d_h (m)":              [D_pen,                     D_pen],   # hydraulic diameter
+    "Δh_major (m)":         [h_major_design,            h_major_max],  # Darcy–Weisbach major loss
 })
 
 st.dataframe(
-    df_hmajor,
+    df_hydraulics,
     use_container_width=True,
     column_config={
-        "f (Darcy)": st.column_config.NumberColumn(format="%.4f"),
-        "v (m/s)": st.column_config.NumberColumn(format="%.2f"),
-        "L (m)": st.column_config.NumberColumn(format="%.1f"),
-        "d_h (m)": st.column_config.NumberColumn(format="%.3f"),
-        "Δh_major (m)": st.column_config.NumberColumn(format="%.2f"),
-    }
-)
-
-
-# -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
-st.subheader("Velocity checks")
-
-# Table for Q & v only
-results_flow = pd.DataFrame({
-    "Case": ["Design", "Maximum"],
-    "Net head h_net (m)": [out_design_flow["h_net"], out_max_flow["h_net"]],
-    "Reynolds Re (-)": [out_design_flow["Re"], out_max_flow["Re"]],
-    "Total Q (m³/s)": [out_design_flow["Q_total"], out_max_flow["Q_total"]],
-    "Per-penstock Q (m³/s)": [out_design_flow["Q_per"], out_max_flow["Q_per"]],
-    "Velocity v (m/s)": [out_design_flow["v"], out_max_flow["v"]],
-})
-st.dataframe(
-    results_flow, use_container_width=True,
-    column_config={
-        "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
-        "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
-        "Total Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
+        "Gross head H_g (m)":    st.column_config.NumberColumn(format="%.2f"),
+        "Net head h_net (m)":    st.column_config.NumberColumn(format="%.2f"),
+        "f (Darcy)":             st.column_config.NumberColumn(format="%.4f"),
+        "Reynolds Re (–)":       st.column_config.NumberColumn(format="%.0f"),
+        "Total Q (m³/s)":        st.column_config.NumberColumn(format="%.2f"),
         "Per-penstock Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
-        "Velocity v (m/s)": st.column_config.NumberColumn(format="%.2f"),
+        "Velocity v (m/s)":      st.column_config.NumberColumn(format="%.2f"),
+        "L (m)":                 st.column_config.NumberColumn(format="%.1f"),
+        "d_h (m)":               st.column_config.NumberColumn(format="%.3f"),
+        "Δh_major (m)":          st.column_config.NumberColumn(format="%.2f"),
     }
 )
 
