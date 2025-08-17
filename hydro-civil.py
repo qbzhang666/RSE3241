@@ -616,9 +616,18 @@ with col_b:
         disabled=not allow_override
     )
 
-# Compute absolute turbine center elevation using current draft head
+# Lower reservoir tailwater level (m), from Section 1
+lower_TWL = float(TWL_l) if not np.isnan(TWL_l) else st.number_input(
+    "Lower TWL (m) — fallback input",
+    min_value=0.0, value=420.0, step=0.5,
+    help="Auto-filled from Section 1 when available."
+)
+
+# Draft head
 h_draft = float(st.session_state["h_draft"])
-turbine_abs = lwl - h_draft
+
+# Turbine center elevation
+turbine_abs = lower_TWL - h_draft
 
 c1, c2 = st.columns(2)
 with c1:
@@ -626,11 +635,9 @@ with c1:
 with c2:
     st.metric("Turbine center elevation (abs.)", f"{turbine_abs:.2f} m")
 
-
-# Compute turbine CL elevation
-turbine_abs = lower_TWL - h_draft
-
+# Duplicate metric if you want to emphasise
 st.metric("Calculated Turbine CL elevation", f"{turbine_abs:.2f} m")
+
 
 # ----------------- Simple vertical sketch -----------------
 st.subheader("Water Level Diagram")
