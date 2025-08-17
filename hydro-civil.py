@@ -314,7 +314,7 @@ else:
                               0.00001, format="%.5f") if rough_choice == "Custom..." else rl[rough_choice]
 
 # --- Absolute roughness reference + live ε/D for current D_pen ---
-with st.expander("What is ε/D? (click to expand)"):
+with st.expander("Refer to ε (click to expand)"):
 
     st.markdown("### Roughness reference & your current ε/D")
 
@@ -490,28 +490,32 @@ with st.expander("Show equations used (Reynolds quick check)"):
     st.latex(r"\boxed{\;\mathrm{Re}=\dfrac{4\,Q_\text{total}}{\pi\,N_\text{pen}\,D\,\nu}\;}")
 
 # ---------- Mini Moody chart (AFTER flows exist) ----------
-if (mode_f != "Manual (slider)"):
+if mode_f != "Manual (slider)":
     st.subheader("Mini Moody diagram (your operating points)")
     Re_vals = np.logspace(3, 8, 300)
     epsD_list = [0.0, 1e-6, 1e-5, 1e-4, 5e-4, 1e-3]
 
-    fig_m, axm = plt.subplots(figsize=(7.5, 5))
+    # Smaller figure
+    fig_m, axm = plt.subplots(figsize=(6, 4))
     for rr in epsD_list:
         f_line = [f_moody_swamee_jain(Re, rr) for Re in Re_vals]
-        axm.plot(Re_vals, f_line, lw=1.5, label=f"ε/D={rr:g}")
+        axm.plot(Re_vals, f_line, lw=1.2, label=f"ε/D={rr:g}")
 
+    # Plot operating points (smaller markers)
     for label, out_pt in (("Design point", out_design_flow), ("Max point", out_max_flow)):
         Re_pt = out_pt.get("Re", np.nan)
         f_pt  = out_pt.get("f",  np.nan)
         if (not np.isnan(Re_pt)) and (not np.isnan(f_pt)):
-            axm.scatter([Re_pt], [f_pt], s=60, zorder=5, label=label)
+            axm.scatter([Re_pt], [f_pt], s=40, zorder=5, label=label)
 
     axm.set_xscale("log"); axm.set_yscale("log")
     axm.set_xlabel("Reynolds number Re")
     axm.set_ylabel("Darcy friction factor f")
     axm.set_title("Moody chart (Swamee–Jain approximation)")
     axm.grid(True, which="both", ls="--", alpha=0.35)
-    axm.legend(loc="best", fontsize=9)
+    axm.legend(loc="best", fontsize=8, frameon=False)
+
+    # Render the smaller figure
     st.pyplot(fig_m)
 
 # Table for Q & v only
