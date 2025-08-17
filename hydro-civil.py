@@ -978,27 +978,23 @@ h_major_max = major_head_loss(
     v       = out_max_flow.get("v", float("nan"))
 )
 
-# --- Show equation first ---
+# --- Show equation first --- 
 st.markdown(
     r"""
     ### Darcy–Weisbach Equation for Major Head Loss
-    \[
-    \$$
-\Delta h_f \;=\; \lambda \;\frac{L}{d_h}\; \frac{v^{2}}{2g}
-$$
 
-where  
-- $ \lambda $ = Darcy friction factor  
-- $ L $ = pipe length (m)  
-- $ d_h $ = hydraulic diameter (m)  
-- $ v $ = mean velocity (m/s)  
-- $ g $ = gravitational acceleration (9.81 m/s²)  
-"""
-    )
-    \]
+    $$
+    \Delta h_f \;=\; \lambda \;\frac{L}{d_h}\; \frac{v^{2}}{2g}
+    $$
+
+    where  
+    - $\lambda$ = Darcy friction factor  
+    - $L$ = pipe length (m)  
+    - $d_h$ = hydraulic diameter (m)  
+    - $v$ = mean velocity (m/s)  
+    - $g$ = gravitational acceleration (9.81 m/s²)  
     """
 )
-
 # --- Show results in table ---
 df_hmajor = pd.DataFrame({
     "Case": ["Design", "Maximum"],
