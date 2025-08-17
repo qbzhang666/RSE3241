@@ -1328,9 +1328,7 @@ st.dataframe(
         "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
     }
 )
-st.suheader("4) Effective Head")
-st.subheader("4) Effective Head")
-
+st.header("4) Effective Head")
 # --- Equations in LaTeX ---
 with st.expander("Head Loss & Net Head Equations (click to expand)"):
 
