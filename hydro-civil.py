@@ -1002,18 +1002,22 @@ df_hmajor = pd.DataFrame({
                   out_max_flow.get("f", float("nan"))],
     "v (m/s)":   [out_design_flow.get("v", float("nan")),
                   out_max_flow.get("v", float("nan"))],
+    "L (m)":     [L_pen, L_pen],           # pipe length (constant for both cases)
+    "d_h (m)":   [D_pen, D_pen],           # hydraulic diameter (constant for both cases)
     "Δh_major (m)": [h_major_design, h_major_max],
 })
+
 st.dataframe(
     df_hmajor,
     use_container_width=True,
     column_config={
         "f (Darcy)": st.column_config.NumberColumn(format="%.4f"),
         "v (m/s)": st.column_config.NumberColumn(format="%.2f"),
+        "L (m)": st.column_config.NumberColumn(format="%.1f"),
+        "d_h (m)": st.column_config.NumberColumn(format="%.3f"),
         "Δh_major (m)": st.column_config.NumberColumn(format="%.2f"),
     }
 )
-
 
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
