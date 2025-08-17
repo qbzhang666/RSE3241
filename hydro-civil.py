@@ -500,6 +500,116 @@ with c1:
     L_pen = st.number_input("Penstock length L (m)", 10.0, 50000.0, float(st.session_state.get("L_penstock", 500.0)), 10.0)
 with c2:
     D_pen = st.number_input("Penstock diameter D (m)", 0.5, 12.0, float(st.session_state.get("D_pen", 3.5)), 0.1)
+
+st.subheader("Turbine Center Line (CL) and Draft Head")
+
+# Create two columns: theory on left, visualization on right
+col1, col2 = st.columns([1, 1.5])
+
+with col1:
+    st.markdown("""
+    ### Turbine Center Setting
+    The turbine center is set at the elevation corresponding to the draft head below the low water level (LWL) of the lower pond:
+    
+    \[ \text{Turbine Center CL} = \text{LWL} - h_{\text{draft}} \]
+    
+    Where:
+    - **LWL**: Low Water Level in the lower pond (m)
+    - **h<sub>draft</sub>**: Draft head - vertical distance between turbine centerline and water surface (m)
+    
+    Draft head represents the portion of hydraulic head below the turbine and is crucial for proper water flow through the turbine outlet.
+    """)
+
+with col2:
+    # Create the visualization
+    st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Generate data for the relationship
+    max_pumping_head = np.linspace(0, 600, 100)
+    draft_head = 40 * (1 - max_pumping_head/600)  # Linear relationship
+    
+    # Plot the relationship
+    ax.plot(max_pumping_head, draft_head, 'b-', linewidth=2.5)
+    
+    # Highlight key points
+    key_points = [0, 100, 200, 300, 400, 500, 600]
+    for point in key_points:
+        y_val = 40 * (1 - point/600)
+        ax.plot(point, y_val, 'ro', markersize=6)
+        ax.text(point+5, y_val+1.5, f"{point}m\n{y_val:.1f}m", 
+                fontsize=9, ha='left', va='center')
+    
+    # Configure axes
+    ax.set_xlim(-10, 610)
+    ax.set_ylim(-2, 42)
+    ax.set_xlabel("Maximum Pumping Head (m)", fontsize=12)
+    ax.set_ylabel("Draft Head (m)", fontsize=12)
+    ax.set_title("Relationship: Pumping Head vs Draft Head", fontsize=14)
+    ax.grid(True, linestyle='--', alpha=0.6)
+    
+    # Add reference lines
+    for y in [0, 10, 20, 30, 40]:
+        ax.axhline(y, color='gray', linestyle=':', alpha=0.4)
+    
+    for x in [0, 100, 200, 300, 400, 500, 600]:
+        ax.axvline(x, color='gray', linestyle=':', alpha=0.4)
+    
+    # Display the plot
+    st.pyplot(fig)
+
+# Draft head input section
+st.subheader("Set Turbine Center Elevation")
+st.markdown("Configure the turbine position relative to the Low Water Level (LWL) in the lower pond:")
+
+# Input controls in columns
+col_a, col_b = st.columns(2)
+
+with col_a:
+    lwl = st.number_input("Low Water Level (LWL) elevation (m)", 
+                          value=100.0, min_value=0.0, step=0.5)
+    
+with col_b:
+    turbine_elevation = st.number_input(
+        "Turbine Center elevation relative to LWL (m) - negative = below water",
+        min_value=-100.0, max_value=0.0, value=-10.0, step=0.5
+    )
+
+# Calculate and display draft head
+h_draft = abs(turbine_elevation)
+turbine_abs = lwl + turbine_elevation
+
+st.metric("Calculated Draft Head", f"{h_draft:.2f} m")
+st.metric("Absolute Turbine Center Elevation", f"{turbine_abs:.2f} m")
+
+# Visualization of water levels
+st.subheader("Water Level Diagram")
+fig2, ax2 = plt.subplots(figsize=(10, 4))
+
+# Draw water levels
+ax2.axhline(lwl, color='blue', linewidth=3, label="LWL (Lower Pond)")
+ax2.axhline(turbine_abs, color='red', linewidth=2, linestyle='-', label="Turbine Center")
+ax2.axhline(lwl - h_draft, color='darkblue', linewidth=1, linestyle='--', label="Max Lower Level")
+
+# Draw draft head indicator
+ax2.annotate('', xy=(0.5, lwl), xytext=(0.5, turbine_abs),
+             arrowprops=dict(arrowstyle='<->', color='green', linewidth=2))
+ax2.text(0.55, (lwl + turbine_abs)/2, f"Draft Head = {h_draft:.1f}m", 
+         fontsize=12, va='center', color='green')
+
+# Configure plot
+ax2.set_ylim(turbine_abs - 5, lwl + 5)
+ax2.set_xlim(0, 1)
+ax2.set_yticks([lwl, turbine_abs])
+ax2.set_yticklabels([f"LWL: {lwl}m", f"Turbine: {turbine_abs:.1f}m"])
+ax2.set_xticks([])
+ax2.set_title("Turbine Position Relative to Water Levels", fontsize=12)
+ax2.grid(True, axis='y', alpha=0.3)
+ax2.legend(loc='upper right')
+
+st.pyplot(fig2)
     
 # ------------------------------- Section 3: Penstock & Moody -------------------------
 st.header("3) Major Water Loss (with Moody)")
