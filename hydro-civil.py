@@ -631,9 +631,9 @@ turbine_abs = lower_TWL - h_draft
 
 c1, c2 = st.columns(2)
 with c1:
-    st.metric("Draft head used (from fit unless overridden)", f"{h_draft:.2f} m")
+    st.metric("Lower Reservoi TWL", f"{lower_TWL:.2f} m")
 with c2:
-    st.metric("Turbine center elevation (abs.)", f"{turbine_abs:.2f} m")
+    st.metric("Draft head used (from fit unless overridden)", f"{h_draft:.2f} m")
 
 # Duplicate metric if you want to emphasise
 st.metric("Calculated Turbine CL elevation", f"{turbine_abs:.2f} m")
