@@ -205,7 +205,7 @@ with st.sidebar:
             ))
     # Power
     P_design = st.number_input(
-        "Design power (MW)", 1.0, 5000.0, 
+        "Design power: P_{\text{design}} (MW)", 1.0, 5000.0, 
         float(st.session_state.get("P_design", 2000.0)), 10.0
     )
     # Machine numbers
@@ -213,7 +213,7 @@ with st.sidebar:
         "Units (N)", 1, 20, int(st.session_state.get("N", 6)), 1
     )
     N_pen = st.number_input(
-        "Number of penstocks", 1, 20, int(st.session_state.get("N_pen", 6)), 1
+        "Number of penstocks: N_{\text{pen}}", 1, 20, int(st.session_state.get("N_pen", 6)), 1
     )   
     # Efficiencies
     eta_t = st.number_input(
