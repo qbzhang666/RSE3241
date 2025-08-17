@@ -729,7 +729,7 @@ with st.expander("Show equations used (Reynolds quick check)"):
 
 # ---------- Mini Moody chart (AFTER flows exist) ----------
 if (mode_f != "Manual (slider)"):
-    st.subheader("Mini Moody diagram (your operating points)")
+    st.subheader("Moody Diagram for Friction Factor")
     Re_vals = np.logspace(3, 8, 300)
     epsD_list = [0.0, 1e-6, 1e-5, 1e-4, 5e-4, 1e-3]
 
@@ -854,6 +854,53 @@ st.dataframe(
 st.caption("Notes: Swamee–Jain is the explicit formula used by the app; "
            "Colebrook–White is the iterative reference; Haaland is another explicit correlation. "
            "All use the same Re and ε/D shown in the table.")
+
+# Reference expanders
+with st.expander("What is the Darcy–Weisbach equation? (click to expand)"):
+    st.markdown(
+        r"""
+        The Darcy–Weisbach equation expresses the head loss (or pressure loss) due to friction in a pipe:
+        
+        \[
+        \Delta h_f = \lambda \frac{L}{d_h} \frac{v^2}{2g}
+        \]
+        
+        where:
+        - \( \lambda \) = Darcy friction factor  
+        - \( L \) = pipe length (m)  
+        - \( d_h \) = hydraulic diameter (m)  
+        - \( v \) = velocity (m/s)  
+        - \( g \) = acceleration due to gravity (9.81 m/s²)  
+        """
+    )
+
+with st.expander("What is the Colebrook–White equation? (click to expand)"):
+    st.markdown(
+        r"""
+        The Colebrook–White equation is an implicit formula for the Darcy friction factor:
+        
+        \[
+        \frac{1}{\sqrt{\lambda}} = -2 \log_{10} \left( \frac{\varepsilon}{3.7 d_h} + \frac{2.51}{Re \sqrt{\lambda}} \right)
+        \]
+        
+        where:
+        - \( \varepsilon \) = absolute roughness (m)  
+        - \( d_h \) = hydraulic diameter (m)  
+        - \( Re = \frac{\rho v d_h}{\mu} \) = Reynolds number  
+        """
+    )
+
+with st.expander("What is the Moody Chart? (click to expand)"):
+    st.markdown(
+        r"""
+        The Moody Chart is a graphical representation of the Darcy friction factor \(\lambda\) 
+        as a function of Reynolds number \(Re\) and relative roughness \(\varepsilon/d_h\).  
+
+        - Useful for quickly estimating \(\lambda\) without solving Colebrook–White explicitly.  
+        - Covers laminar, transitional, and turbulent regimes.  
+        """
+    )
+
 
 
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
