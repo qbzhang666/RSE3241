@@ -853,10 +853,13 @@ else:
 
 # Collapsible equations (for Section 3)
 with st.expander("Velocity guidance (USBR)"):
-        - Low-pressure steel penstocks: *3 – 5 m/s*  
-        - Medium-pressure steel penstocks: *5 – 7 m/s*  
-        - High-pressure steel penstocks: *7 – 10 m/s*  
-        *Reference: USBR, Design of Small Dams, 3rd Ed. (1987), Ch. 10 – Penstocks.*
+    st.markdown(
+        """
+        - Low-pressure steel penstocks: *3 - 5 m/s*  
+        - Medium-pressure steel penstocks: *5 - 7 m/s*  
+        - High-pressure steel penstocks: *7 - 10 m/s*  
+
+        *Reference: USBR, Design of Small Dams, 3rd Ed. (1987), Ch. 10 - Penstocks.*
         """
     )
     
