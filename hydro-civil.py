@@ -432,14 +432,25 @@ with st.expander("How is L computed? (figures / equations)"):
 # ---------------------------- Quick diameter-by-velocity helper ----------------------------
 st.subheader("Quick diameter from target velocity")
 
-# Get design per-penstock discharge from your flow block
+# Define required constants
+rho = 1000  # Water density in kg/m³
+g = 9.81    # Gravitational acceleration in m/s²
+
+# Get required parameters from session state (ensure these exist in your app)
+P_design = st.session_state.get("P_design", float("nan"))  # Design power in Watts
+H_net = st.session_state.get("H_net", float("nan"))        # Net head in meters
+eta = st.session_state.get("eta", float("nan"))            # Turbine efficiency
+N_pen = st.session_state.get("N_pen", 0)                   # Number of penstocks
+
+# Initialize Qp_design with session value or NaN
 Qp_design = st.session_state.get("Q_per", float("nan"))
 
 colv1, colv2, colv3 = st.columns(3)
-# Calculate total design flow
+
+# Calculate total design flow and per-penstock flow
 try:
     # Power equation: P = ρ * g * H * Q * η
-    # => Q = P / (ρ * g * H * η)
+    # => Q_total = P / (ρ * g * H * η)
     Q_total_design = P_design / (rho * g * H_net * eta)
     
     # Calculate per-penstock flow
@@ -450,7 +461,7 @@ try:
 except (TypeError, ZeroDivisionError):
     Qp_design = float('nan')  # Handle missing/zero values
 
-# Display metric (assuming colv1 is a Streamlit column)
+# Display metric
 with colv1:
     st.metric(
         label="Design per-penstock flow Qₚ (m³/s)",
