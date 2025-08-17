@@ -478,7 +478,11 @@ with colv_right:
 # Reference / equations
 with st.expander("Figures & equations used (diameter by velocity)"):
     st.markdown("**Total design flow rate**")
-    st.latex(r"Q_{\text{total\_design}} = \frac{P_{\text{design\_MW}} \times 10^{6}}{\rho \cdot g \cdot H_g \cdot \eta_{\text{live}}}} \quad (\text{m}^3/\text{s})")
+    st.latex(r"""
+    Q_{\text{total,design}}
+    = \frac{ P_{\text{design}}\,10^{6} }{ \rho\, g\, H_g\, \eta_{\text{live}} }
+    \;\;[\mathrm{m}^3\,\mathrm{s}^{-1}]
+    """)
     
     st.markdown("**Per-penstock flow from continuity**")
     st.latex(r"Q_p = \frac{Q_{\text{total}}}{N_{\text{pen}}}")
