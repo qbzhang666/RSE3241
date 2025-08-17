@@ -315,47 +315,48 @@ else:
 
 # --- Absolute roughness reference + live ε/D for current D_pen ---
 with st.expander("What is ε/D? (click to expand)"):
-    
-st.markdown("### Roughness reference & your current ε/D")
 
-# Build reference table (from the same values your app uses)
-rlib = roughness_library()
-rows = []
-for mat, eps_val in rlib.items():
-    if eps_val is None:  # skip "Custom..."
-        continue
-    rows.append({
-        "Material": mat,
-        "ε (mm)": eps_val * 1e3,
-        "ε (m)": eps_val,
-        "ε/D (for your D)": (eps_val / D_pen) if D_pen else float("nan"),
-    })
-df_eps = pd.DataFrame(rows)
+    st.markdown("### Roughness reference & your current ε/D")
 
-# Display the table
-st.dataframe(
-    df_eps,
-    use_container_width=True,
-    column_config={
-        "ε (mm)": st.column_config.NumberColumn(format="%.3f"),
-        "ε (m)": st.column_config.NumberColumn(format="%.6f"),
-        "ε/D (for your D)": st.column_config.NumberColumn(format="%.6f"),
-    }
-)
+    # Build reference table (from the same values your app uses)
+    rlib = roughness_library()
+    rows = []
+    for mat, eps_val in rlib.items():
+        if eps_val is None:  # skip "Custom..."
+            continue
+        rows.append({
+            "Material": mat,
+            "ε (mm)": eps_val * 1e3,
+            "ε (m)": eps_val,
+            "ε/D (for your D)": (eps_val / D_pen) if D_pen else float("nan"),
+        })
+    df_eps = pd.DataFrame(rows)
 
-# Show the currently selected roughness & ε/D (works for both preset & custom)
-eps_current = None
-if mode_f == "Manual (slider)":
-    st.caption("Friction factor set manually; roughness not used for f.")
-else:
-    eps_current = eps if eps is not None else rlib.get(rough_choice, None)
+    # Display the table
+    st.dataframe(
+        df_eps,
+        use_container_width=True,
+        column_config={
+            "ε (mm)": st.column_config.NumberColumn(format="%.3f"),
+            "ε (m)": st.column_config.NumberColumn(format="%.6f"),
+            "ε/D (for your D)": st.column_config.NumberColumn(format="%.6f"),
+        }
+    )
 
-col_r1, col_r2 = st.columns(2)
-with col_r1:
-    st.metric("Selected ε (mm)", f"{(eps_current*1e3):.3f}" if eps_current else "—")
-with col_r2:
-    rr = (eps_current / D_pen) if (eps_current and D_pen) else float("nan")
-    st.metric("Relative roughness ε/D (–)", f"{rr:.6f}" if not np.isnan(rr) else "—")
+    # Show the currently selected roughness & ε/D (works for both preset & custom)
+    eps_current = None
+    if mode_f == "Manual (slider)":
+        st.caption("Friction factor set manually; roughness not used for f.")
+    else:
+        eps_current = eps if eps is not None else rlib.get(rough_choice, None)
+
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        st.metric("Selected ε (mm)", f"{(eps_current*1e3):.3f}" if eps_current else "—")
+    with col_r2:
+        rr = (eps_current / D_pen) if (eps_current and D_pen) else float("nan")
+        st.metric("Relative roughness ε/D (–)", f"{rr:.6f}" if not np.isnan(rr) else "—")
+
 
 with st.expander("What is ε/D? (click to expand)"):
     st.markdown("""
