@@ -1292,7 +1292,7 @@ if "v_target" in st.session_state and not np.isnan(v_calc):
 
 
 # --------------- Section 3: Head Losses & Diameter Sizing ----------------
-st.suheader("Minor Head Loss by Local loss components (ΣK)")
+st.subheader("Minor Head Loss by Local loss components (ΣK)")
 components = {
     "Entrance (bellmouth)": 0.15, "Entrance (square)": 0.50,
     "90° bend": 0.25, "45° bend": 0.15,
