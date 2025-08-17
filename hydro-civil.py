@@ -429,6 +429,10 @@ with st.expander("How is L computed? (figures / equations)"):
         r"(explicit Swamee–Jain form in this app)."
     )
 
+
+Here's the complete, fixed code:
+
+python
 # ---------------------------- Quick diameter-by-velocity helper ----------------------------
 st.subheader("Quick diameter from target velocity")
 
@@ -436,51 +440,77 @@ st.subheader("Quick diameter from target velocity")
 rho = 1000  # Water density in kg/m³
 g = 9.81    # Gravitational acceleration in m/s²
 
-# Get required parameters from session state (ensure these exist in your app)
+# Get required parameters from session state with proper defaults
 P_design = st.session_state.get("P_design", float("nan"))  # Design power in Watts
 H_net = st.session_state.get("H_net", float("nan"))        # Net head in meters
 eta = st.session_state.get("eta", float("nan"))            # Turbine efficiency
 N_pen = st.session_state.get("N_pen", 0)                   # Number of penstocks
 
-# Initialize Qp_design with session value or NaN
-Qp_design = st.session_state.get("Q_per", float("nan"))
+# Initialize Qp_design
+Qp_design = float('nan')
+
+# Calculate only if all required parameters are valid
+valid_params = (
+    not np.isnan(P_design) and 
+    not np.isnan(H_net) and 
+    not np.isnan(eta) and 
+    N_pen > 0 and 
+    H_net > 0 and 
+    eta > 0
+)
+
+if valid_params:
+    try:
+        Q_total_design = P_design / (rho * g * H_net * eta)
+        Qp_design = Q_total_design / N_pen
+    except (TypeError, ZeroDivisionError):
+        Qp_design = float('nan')
+else:
+    Qp_design = float('nan')
 
 colv1, colv2, colv3 = st.columns(3)
 
-# Calculate total design flow and per-penstock flow
-try:
-    # Power equation: P = ρ * g * H * Q * η
-    # => Q_total = P / (ρ * g * H * η)
-    Q_total_design = P_design / (rho * g * H_net * eta)
-    
-    # Calculate per-penstock flow
-    if N_pen > 0:
-        Qp_design = Q_total_design / N_pen
-    else:
-        Qp_design = float('nan')  # Handle invalid penstock count
-except (TypeError, ZeroDivisionError):
-    Qp_design = float('nan')  # Handle missing/zero values
-
-# Display metric
+# Column 1: Per-penstock flow metric
 with colv1:
+    # Display metric
     st.metric(
-        label="Design per-penstock flow Qₚ (m³/s)",
+        label="Design per-penstock flow \( Q_s \) (m³/s)",
         value=f"{Qp_design:.3f}" if not np.isnan(Qp_design) else "—"
     )
-with colv2:
-    v_target = st.slider("Target velocity v (m/s)", 1.0, 8.0, 4.0, 0.1)
-with colv3:
-    # D = sqrt(4 Q / (π v))
-    D_suggest = math.sqrt(4.0 * Qp_design / (math.pi * v_target)) if Qp_design > 0 else float("nan")
-    st.metric("Suggested diameter D (m)", f"{D_suggest:.3f}" if not np.isnan(D_suggest) else "—")
+    
+    # Show warning if no valid Qs
+    if np.isnan(Qp_design):
+        st.caption(":red[No valid \( Q_s \) available yet. Run Section 3 to compute **discharges** first.]")
 
-# Apply to Step 2 (Penstock diameter)
-if st.button("Apply D to Step 2 (Penstock diameter)"):
-    if not np.isnan(D_suggest):
-        st.session_state["D_pen"] = float(D_suggest)
-        st.success(f"Applied D = {D_suggest:.3f} m to the 'Penstock diameter D' field in Step 2.")
+# Column 2: Target velocity slider
+with colv2:
+    v_target = st.slider(
+        "Target velocity v (m/s)",
+        min_value=1.0,
+        max_value=10.0,
+        value=4.0,
+        step=0.1,
+        format="%.1f"
+    )
+
+# Column 3: Suggested diameter
+with colv3:
+    # Calculate diameter only if we have valid Qp_design
+    if not np.isnan(Qp_design) and v_target > 0:
+        D_suggested = (4 * Qp_design / (np.pi * v_target)) ** 0.5
+        st.metric("Suggested diameter D (m)", f"{D_suggested:.3f}")
     else:
-        st.warning("No valid Qₚ available yet. Run Section 3 to compute discharges first.")
+        st.metric("Suggested diameter D (m)", "—")
+
+# Apply button (only enabled when valid diameter is available)
+if not np.isnan(Qp_design) and v_target > 0:
+    D_suggested = (4 * Qp_design / (np.pi * v_target)) ** 0.5
+    if st.button("Apply D to Step 2 (Penstock diameter)"):
+        # Store diameter in session state
+        st.session_state.penstock_diameter = D_suggested
+        st.success(f"Diameter {D_suggested:.3f} m applied to Step 2!")
+else:
+    st.button("Apply D to Step 2 (Penstock diameter)", disabled=True)
 
 # Reference / equations (compact)
 with st.expander("Figures & equations used (diameter by velocity)"):
