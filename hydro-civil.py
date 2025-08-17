@@ -978,7 +978,17 @@ h_major_max = major_head_loss(
     v       = out_max_flow.get("v", float("nan"))
 )
 
-# Optional: show a small results table in Streamlit
+# --- Show equation first ---
+st.markdown(
+    r"""
+    ### Darcy–Weisbach Equation for Major Head Loss
+    \[
+    \Delta h_{\text{major}} = f \cdot \frac{L}{D_h} \cdot \frac{v^2}{2g}
+    \]
+    """
+)
+
+# --- Show results in table ---
 df_hmajor = pd.DataFrame({
     "Case": ["Design", "Maximum"],
     "f (Darcy)": [out_design_flow.get("f", float("nan")),
