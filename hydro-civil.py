@@ -673,7 +673,8 @@ ax2.legend(loc='upper right')
 st.pyplot(fig2)
     
 # ------------------------------- Section 3: Penstock & Moody -------------------------
-st.header("3) Major Water Loss (with Moody)")
+st.header("3) Head Loss of Hydraulic System")
+st.suheader("Major Water Loss (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
     P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", P_design)))
@@ -1289,43 +1290,9 @@ if "v_target" in st.session_state and not np.isnan(v_calc):
             f"📐 Calculated mean velocity: **{v_calc:.2f} m/s**"
         )
 
-# Velocity checks
-st.subheader("Velocity checks (USBR guidance)")
-v_design = out_design_flow["v"]; v_max = out_max_flow["v"]
-c1, c2 = st.columns(2)
-with c1:
-    st.metric("v_design (m/s)", f"{v_design:.2f}")
-    st.metric("v_max (m/s)", f"{v_max:.2f}")
-with c2:
-    st.markdown("- **Recommended range:** 4–6 m/s (concrete penstocks)")
-    st.markdown("- **Absolute max:** ~7 m/s (short duration)")
 
-if v_max > 7.0:
-    st.error("⚠️ Dangerous velocity (exceeds ~7 m/s). Revisit D or layout.")
-elif v_max > 6.0:
-    st.warning("⚠️ Above recommended 6 m/s. Acceptable only for short periods.")
-elif v_max >= 4.0:
-    st.success("✓ Within recommended 4–6 m/s range.")
-else:
-    st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
-
-# Collapsible equations (for Section 3)
-with st.expander("Velocity guidance (USBR)"):
-    st.markdown(
-        """
-        - Low-pressure steel penstocks: *3 - 5 m/s*  
-        - Medium-pressure steel penstocks: *5 - 7 m/s*  
-        - High-pressure steel penstocks: *7 - 10 m/s*  
-
-        *Reference: USBR, Design of Small Dams, 3rd Ed. (1987), Ch. 10 - Penstocks.*
-        """
-    )
-
-# --------------- Section 4: Head Losses & Diameter Sizing ----------------
-st.header("4) Minor Head Loss")
-
-# Local loss builder (ΣK)
-st.subheader("Local loss components (ΣK)")
+# --------------- Section 3: Head Losses & Diameter Sizing ----------------
+st.suheader("Minor Head Loss by Local loss components (ΣK)")
 components = {
     "Entrance (bellmouth)": 0.15, "Entrance (square)": 0.50,
     "90° bend": 0.25, "45° bend": 0.15,
@@ -1361,6 +1328,8 @@ st.dataframe(
         "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
     }
 )
+st.suheader("4) Effective Head")
+st.subheader("4) Effective Head")
 
 # --- Equations in LaTeX ---
 with st.expander("Head Loss & Net Head Equations (click to expand)"):
@@ -1391,9 +1360,60 @@ with st.expander("Head Loss & Net Head Equations (click to expand)"):
     st.latex(r"h_{f,\text{minor}} = \Sigma K_\text{selected} \cdot \frac{v^2}{2g}")
     st.latex(r"h_f = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g} + \Sigma K_\text{selected} \cdot \frac{v^2}{2g}")
 
-# ---------------- Effective Head and Diameter Estimator and Verification ----------------
-st.header("5) Effective Head and Penstock Diameter Verification")
 
+# ---------------- Show numerical results ----------------
+st.subheader("Calculated Results")
+
+# Assuming these were computed in your pipeline already:
+hf_major = out_design.get("hf_major", float("nan"))
+hf_minor = out_design.get("hf_minor", float("nan"))
+hf_total = out_design.get("hf_total", float("nan"))
+H_gross  = out_design.get("gross_head", float("nan"))
+H_net    = out_design.get("net_head", float("nan"))
+Re       = out_design.get("Re", float("nan"))
+
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("h_f major (m)", f"{hf_major:.2f}")
+c2.metric("h_f minor (m)", f"{hf_minor:.2f}")
+c3.metric("h_f total (m)", f"{hf_total:.2f}")
+c4.metric("Net head (m)", f"{H_net:.2f}")
+
+st.metric("Reynolds number", f"{Re:,.0f}")
+
+# ---------------- Diameter Estimator and Verification ----------------
+st.header("5) Penstock Diameter Verification")
+
+# Velocity checks
+st.subheader("Velocity checks (USBR guidance)")
+v_design = out_design_flow["v"]; v_max = out_max_flow["v"]
+c1, c2 = st.columns(2)
+with c1:
+    st.metric("v_design (m/s)", f"{v_design:.2f}")
+    st.metric("v_max (m/s)", f"{v_max:.2f}")
+with c2:
+    st.markdown("- **Recommended range:** 4–6 m/s (concrete penstocks)")
+    st.markdown("- **Absolute max:** ~7 m/s (short duration)")
+
+if v_max > 7.0:
+    st.error("⚠️ Dangerous velocity (exceeds ~7 m/s). Revisit D or layout.")
+elif v_max > 6.0:
+    st.warning("⚠️ Above recommended 6 m/s. Acceptable only for short periods.")
+elif v_max >= 4.0:
+    st.success("✓ Within recommended 4–6 m/s range.")
+else:
+    st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
+
+# Collapsible equations (for Section 3)
+with st.expander("Velocity guidance (USBR)"):
+    st.markdown(
+        """
+        - Low-pressure steel penstocks: *3 - 5 m/s*  
+        - Medium-pressure steel penstocks: *5 - 7 m/s*  
+        - High-pressure steel penstocks: *7 - 10 m/s*  
+
+        *Reference: USBR, Design of Small Dams, 3rd Ed. (1987), Ch. 10 - Penstocks.*
+        """
+    )
 # --- Get per-penstock design flow robustly ---
 Qp_for_sizing = out_design_flow.get("Q_per", float("nan"))
 if (np.isnan(Qp_for_sizing) or Qp_for_sizing <= 0) and not np.isnan(out_design_flow.get("Q_total", float("nan"))):
