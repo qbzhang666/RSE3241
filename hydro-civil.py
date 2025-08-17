@@ -521,44 +521,46 @@ with col1:
     """)
 
 with col2:
-    # Create the visualization
     st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
-    
-    # Create figure
+
+    # --- points digitized from the purple curve (≈ from your figure) ---
+    # (maximum pumping head, draft head)
+    xk = np.array([100, 200, 300, 400, 500, 600], dtype=float)
+    yk = np.array([-23, -33, -42, -50, -58, -66], dtype=float)
+
+    # fit a smooth cubic to capture the gentle curvature
+    coef = np.polyfit(xk, yk, 3)                    # cubic
+    x = np.linspace(0, 600, 500)
+    y = np.polyval(coef, x)
+
+    # figure
     fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Generate data for the relationship
-    max_pumping_head = np.linspace(0, 600, 100)
-    draft_head = 40 * (1 - max_pumping_head/600)  # Linear relationship
-    
-    # Plot the relationship
-    ax.plot(max_pumping_head, draft_head, 'b-', linewidth=2.5)
-    
-    # Highlight key points
-    key_points = [0, 100, 200, 300, 400, 500, 600]
-    for point in key_points:
-        y_val = 40 * (1 - point/600)
-        ax.plot(point, y_val, 'ro', markersize=6)
-        ax.text(point+5, y_val+1.5, f"{point}m\n{y_val:.1f}m", 
-                fontsize=9, ha='left', va='center')
-    
-    # Configure axes
+
+    # curve (purple, a bit thicker)
+    ax.plot(x, y, color="#8A2BE2", lw=3, label="Fitted curve")
+
+    # show the original key points
+    ax.plot(xk, yk, "o", color="#8A2BE2", mfc="white", ms=7, label="Reference points")
+    for xi, yi in zip(xk, yk):
+        ax.text(xi + 6, yi + 1.0, f"({int(xi)}, {yi:.0f})", fontsize=9, va="center")
+
+    # axes & grid to mimic the style in the figure
     ax.set_xlim(-10, 610)
-    ax.set_ylim(-2, 42)
-    ax.set_xlabel("Maximum Pumping Head (m)", fontsize=12)
-    ax.set_ylabel("Draft Head (m)", fontsize=12)
-    ax.set_title("Relationship: Pumping Head vs Draft Head", fontsize=14)
-    ax.grid(True, linestyle='--', alpha=0.6)
-    
-    # Add reference lines
-    for y in [0, 10, 20, 30, 40]:
-        ax.axhline(y, color='gray', linestyle=':', alpha=0.4)
-    
-    for x in [0, 100, 200, 300, 400, 500, 600]:
-        ax.axvline(x, color='gray', linestyle=':', alpha=0.4)
-    
-    # Display the plot
+    ax.set_ylim(-70, -18)
+    ax.set_xlabel("Maximum pumping head (m)", fontsize=12)
+    ax.set_ylabel("Draft head (m)", fontsize=12)
+    ax.set_title("Relationship: Pumping head vs Draft head", fontsize=14)
+
+    # reference grid
+    for yref in range(-70, -10, 10):
+        ax.axhline(yref, color="gray", linestyle=":", alpha=0.4)
+    for xref in [0, 100, 200, 300, 400, 500, 600]:
+        ax.axvline(xref, color="gray", linestyle=":", alpha=0.4)
+
+    ax.grid(False)
+    ax.legend(loc="lower left", fontsize=9)
     st.pyplot(fig)
+
 
 # Draft head input section
 st.subheader("Set Turbine Center Elevation")
