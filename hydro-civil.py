@@ -314,6 +314,8 @@ else:
                               0.00001, format="%.5f") if rough_choice == "Custom..." else rl[rough_choice]
 
 # --- Absolute roughness reference + live ε/D for current D_pen ---
+with st.expander("What is ε/D? (click to expand)"):
+    
 st.markdown("### Roughness reference & your current ε/D")
 
 # Build reference table (from the same values your app uses)
