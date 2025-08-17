@@ -586,10 +586,6 @@ to the pipe diameter \\( D \\). It is dimensionless and, together with the Reyno
 
     st.caption("Teaching sources: USBR (1987), AWWA, ASCE/USACE typical roughness tables.")
 
-
-# -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
-st.header("4) Discharges & Velocities")
-
 def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
     """Two-pass iteration to refine f and h_f for given Ksum."""
     A = area_circle(D_pen)
@@ -752,14 +748,17 @@ if (mode_f != "Manual (slider)"):
     st.pyplot(fig_m, clear_figure=True)
 
 
+# -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
+st.header("4) Discharges & Velocities")
+
 # Table for Q & v only
 results_flow = pd.DataFrame({
     "Case": ["Design", "Maximum"],
     "Net head h_net (m)": [out_design_flow["h_net"], out_max_flow["h_net"]],
     "Total Q (m³/s)": [out_design_flow["Q_total"], out_max_flow["Q_total"]],
+    "Reynolds Re (-)": [out_design_flow["Re"], out_max_flow["Re"]],
     "Per-penstock Q (m³/s)": [out_design_flow["Q_per"], out_max_flow["Q_per"]],
     "Velocity v (m/s)": [out_design_flow["v"], out_max_flow["v"]],
-    "Reynolds Re (-)": [out_design_flow["Re"], out_max_flow["Re"]],
 })
 st.dataframe(
     results_flow, use_container_width=True,
