@@ -693,10 +693,22 @@ st.caption(f"Quick-Re uses ν at T = {T_for_nu:.1f} °C.")
 
 with st.expander("Show equations used (Reynolds quick check)"):
     st.latex(r"A = \frac{\pi D^{2}}{4}")
+    st.markdown("Cross-sectional area of a circular penstock (m²).")
+
     st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}}")
+    st.markdown("Flow rate per penstock, obtained by dividing the total flow by the number of penstocks.")
+
     st.latex(r"v = \frac{Q_p}{A}")
+    st.markdown("Mean flow velocity in one penstock (m/s), from discharge divided by area.")
+
     st.latex(r"\mathrm{Re} = \frac{v D}{\nu}")
+    st.markdown("Reynolds number definition using velocity $v$, diameter $D$, and kinematic viscosity $\\nu$.")
+
     st.latex(r"\boxed{\;\mathrm{Re}=\dfrac{4\,Q_\text{total}}{\pi\,N_\text{pen}\,D\,\nu}\;}")
+    st.markdown("Simplified Reynolds number expression by substituting $v = Q_p/A$. "
+                "This shortcut avoids the intermediate velocity calculation and is algebraically equivalent "
+                "for circular pipes.")
+
 
 # ---------- Mini Moody chart (AFTER flows exist) ----------
 if (mode_f != "Manual (slider)"):
