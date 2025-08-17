@@ -855,16 +855,14 @@ st.caption("Notes: Swamee–Jain is the explicit formula used by the app; "
            "Colebrook–White is the iterative reference; Haaland is another explicit correlation. "
            "All use the same Re and ε/D shown in the table.")
 
-# Reference expanders
-
 with st.expander("What is the Darcy–Weisbach equation? (click to expand)"):
     st.markdown(
         r"""
         The Darcy–Weisbach equation expresses the head loss due to pipe friction:
 
-        \[
+        $$
         \Delta h_f = \lambda \frac{L}{d_h} \frac{v^2}{2g}
-        \]
+        $$
 
         where:  
         - \( \lambda \) = Darcy friction factor  
@@ -880,9 +878,9 @@ with st.expander("What is the Colebrook–White equation? (click to expand)"):
         r"""
         The Colebrook–White equation (implicit) defines the Darcy friction factor in turbulent flow:
 
-        \[
+        $$
         \frac{1}{\sqrt{\lambda}} = -2 \log_{10} \left( \frac{\varepsilon}{3.7 d_h} + \frac{2.51}{Re \sqrt{\lambda}} \right)
-        \]
+        $$
 
         where:  
         - \( \varepsilon \) = absolute roughness (m)  
@@ -907,14 +905,15 @@ with st.expander("What is the Haaland approximation? (click to expand)"):
         r"""
         The **Haaland equation** provides an explicit approximation for \( \lambda \), avoiding iterative solutions:
 
-        \[
+        $$
         \frac{1}{\sqrt{\lambda}} \approx -1.8 \log_{10} \left[ \left( \frac{\varepsilon}{3.7 d_h} \right)^{1.11} + \frac{6.9}{Re} \right]
-        \]
+        $$
 
         - Accuracy: within ~1–2% of Colebrook–White.  
         - Widely used in engineering applications for computational efficiency.  
         """
     )
+
 
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
