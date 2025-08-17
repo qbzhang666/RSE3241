@@ -995,41 +995,75 @@ st.markdown(
     - $g$ = gravitational acceleration (9.81 m/s²)  
     """
 )
-# --- Combined hydraulics summary (Design & Maximum) ------------------------
-# Note: gross_head is the NWL_u − TWL_l used for the Design case,
-#       min_head   is the LWL_u − HWL_l used for the Maximum case.
+# Pull losses returned by the two-pass block
+hf_model_design = out_design_flow.get("hf", float("nan"))
+hf_model_max    = out_max_flow.get("hf",    float("nan"))
+
+# Recompute Darcy–Weisbach loss from the displayed values
+hf_dw_design = major_head_loss(
+    f_darcy = out_design_flow.get("f", float("nan")),
+    L       = L_pen,
+    D_h     = D_pen,
+    v       = out_design_flow.get("v", float("nan"))
+)
+hf_dw_max = major_head_loss(
+    f_darcy = out_max_flow.get("f", float("nan")),
+    L       = L_pen,
+    D_h     = D_pen,
+    v       = out_max_flow.get("v", float("nan"))
+)
+
+# Net head recomputed from gross head and DW loss
+hnet_dw_design = gross_head - hf_dw_design
+hnet_dw_max    = min_head   - hf_dw_max
 
 df_hydraulics = pd.DataFrame({
     "Case": ["Design", "Maximum"],
-    "f (Darcy)":            [out_design_flow.get("f", float("nan")),
-                             out_max_flow.get("f",    float("nan"))],
-    "Reynolds Re (–)":      [out_design_flow["Re"],     out_max_flow["Re"]],
-    "Total Q (m³/s)":       [out_design_flow["Q_total"],out_max_flow["Q_total"]],
-    "Per-penstock Q (m³/s)":[out_design_flow["Q_per"],  out_max_flow["Q_per"]],
-    "Velocity v (m/s)":     [out_design_flow["v"],      out_max_flow["v"]],
-    "L (m)":                [L_pen,                     L_pen],   # centerline pipe length
-    "d_h (m)":              [D_pen,                     D_pen],   # hydraulic diameter
-    "Δh_major (m)":         [h_major_design,            h_major_max],  # Darcy–Weisbach major loss
-    "Gross head H_g (m)":   [gross_head,                min_head],
-    "Net head h_net (m)":   [out_design_flow["h_net"],  out_max_flow["h_net"]],
-
+    "Gross head H_g (m)":   [gross_head,                 min_head],
+    # Model (two-pass) results
+    "Net head h_net (model) (m)": [out_design_flow["h_net"], out_max_flow["h_net"]],
+    "h_f (model two-pass) (m)":   [hf_model_design,          hf_model_max],
+    # Recomputed single-shot DW using displayed f, v, D
+    "Δh_major DW (recomp) (m)":   [hf_dw_design,             hf_dw_max],
+    "Net head H_g−Δh (recomp) (m)":[hnet_dw_design,          hnet_dw_max],
+    # Diagnostics
+    "Δh diff (model − DW) (m)":   [hf_model_design - hf_dw_design,
+                                   hf_model_max    - hf_dw_max],
+    "f (Darcy)":                  [out_design_flow.get("f", float("nan")),
+                                   out_max_flow.get("f",    float("nan"))],
+    "Velocity v (m/s)":           [out_design_flow.get("v", float("nan")),
+                                   out_max_flow.get("v",    float("nan"))],
+    "L (m)":                      [L_pen, L_pen],
+    "d_h (m)":                    [D_pen, D_pen],
+    "Reynolds Re (–)":            [out_design_flow["Re"], out_max_flow["Re"]],
+    "Per-penstock Q (m³/s)":      [out_design_flow["Q_per"], out_max_flow["Q_per"]],
+    "Total Q (m³/s)":             [out_design_flow["Q_total"], out_max_flow["Q_total"]],
 })
 
 st.dataframe(
     df_hydraulics,
     use_container_width=True,
     column_config={
-        "Gross head H_g (m)":    st.column_config.NumberColumn(format="%.2f"),
-        "Net head h_net (m)":    st.column_config.NumberColumn(format="%.2f"),
-        "f (Darcy)":             st.column_config.NumberColumn(format="%.4f"),
-        "Reynolds Re (–)":       st.column_config.NumberColumn(format="%.0f"),
-        "Total Q (m³/s)":        st.column_config.NumberColumn(format="%.2f"),
-        "Per-penstock Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
-        "Velocity v (m/s)":      st.column_config.NumberColumn(format="%.2f"),
-        "L (m)":                 st.column_config.NumberColumn(format="%.1f"),
-        "d_h (m)":               st.column_config.NumberColumn(format="%.3f"),
-        "Δh_major (m)":          st.column_config.NumberColumn(format="%.2f"),
+        "Gross head H_g (m)":              st.column_config.NumberColumn(format="%.2f"),
+        "Net head h_net (model) (m)":      st.column_config.NumberColumn(format="%.2f"),
+        "h_f (model two-pass) (m)":        st.column_config.NumberColumn(format="%.2f"),
+        "Δh_major DW (recomp) (m)":        st.column_config.NumberColumn(format="%.2f"),
+        "Net head H_g−Δh (recomp) (m)":    st.column_config.NumberColumn(format="%.2f"),
+        "Δh diff (model − DW) (m)":        st.column_config.NumberColumn(format="%.2f"),
+        "f (Darcy)":                       st.column_config.NumberColumn(format="%.4f"),
+        "Velocity v (m/s)":                st.column_config.NumberColumn(format="%.2f"),
+        "L (m)":                           st.column_config.NumberColumn(format="%.1f"),
+        "d_h (m)":                         st.column_config.NumberColumn(format="%.3f"),
+        "Reynolds Re (–)":                 st.column_config.NumberColumn(format="%.0f"),
+        "Per-penstock Q (m³/s)":           st.column_config.NumberColumn(format="%.2f"),
+        "Total Q (m³/s)":                  st.column_config.NumberColumn(format="%.2f"),
     }
+)
+
+st.caption(
+    "‘Model’ uses the two-pass Moody/Swamee–Jain iteration inside the flow block. "
+    "‘Recomp’ evaluates Darcy–Weisbach once using the displayed f, v and D. "
+    "Small differences arise from iteration and rounding; the diagnostics column shows the gap."
 )
 
 # --- Step-by-step learning table (Design case) ---
