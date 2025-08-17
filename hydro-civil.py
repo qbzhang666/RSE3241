@@ -400,7 +400,7 @@ if set(df_profile.columns) >= valid_cols and len(df_profile) >= 2:
     colm1, colm2, colm3 = st.columns(3)
     colm1.metric("Horizontal run Δx (m)", f"{Lh:.1f}")
     colm2.metric("Elevation change Δz (m)", f"{dz_tot:.1f}")
-    colm3.metric("Penstock center-line L (m)", f"{L_pen_est:.1f}")
+    colm3.metric("Penstock Length L (m)", f"{L_pen_est:.1f}")
 
     # Auto-apply L to Step 2 (no button needed)
 if not np.isnan(L_pen_est):
