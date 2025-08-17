@@ -422,28 +422,23 @@ if st.button("Apply D to Step 2 (Penstock diameter)"):
 
 # Reference / equations (compact)
 with st.expander("Figures & equations used (diameter by velocity)"):
-    st.markdown(
-        r"""
-**Per-penstock flow from continuity**
-\[
-Q_p = \frac{Q_{\text{total}}}{N_{\text{pen}}},\qquad
-A = \frac{\pi D^2}{4},\qquad
-v = \frac{Q_p}{A}
-\]
 
-**Solve for diameter from target velocity**
-\[
-D = \sqrt{\frac{4\,Q_p}{\pi\,v}}
-\]
+    st.markdown("**Per-penstock flow from continuity**")
+    st.latex(r"Q_p = \frac{Q_{\text{total}}}{N_{\text{pen}}}")
+    st.latex(r"A = \frac{\pi D^2}{4}")
+    st.latex(r"v = \frac{Q_p}{A}")
 
-This \(D\) can be used as a starting point, then refined with head-loss checks:
-\[
-h_f=\left(f\frac{L}{D}+\sum K\right)\frac{v^2}{2g},\qquad
-f \approx \frac{0.25}{\left[\log_{10}\!\left(\frac{\varepsilon}{3.7D}+\frac{5.74}{\mathrm{Re}^{0.9}}\right)\right]^2}
-\]
-(Swamee–Jain for turbulent flow).
-        """
+    st.markdown("**Solve for diameter from target velocity**")
+    st.latex(r"D = \sqrt{\frac{4\,Q_p}{\pi\,v}}")
+
+    st.markdown("**This \(D\) can be used as a starting point, then refined with head-loss checks**")
+    st.latex(r"h_f = \left(f\frac{L}{D}+\sum K\right)\frac{v^2}{2g}")
+
+    st.latex(
+        r"f \approx \frac{0.25}{\left[\log_{10}\!\left(\frac{\varepsilon}{3.7D}+\frac{5.74}{\mathrm{Re}^{0.9}}\right)\right]^2}"
     )
+
+    st.caption("Swamee–Jain explicit form (valid for turbulent flow).")
 
 # ------------------------------- Section 3: Penstock & Moody -------------------------
 st.header("2) Penstock Geometry & Efficiencies (with Moody)")
