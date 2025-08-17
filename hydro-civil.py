@@ -505,37 +505,38 @@ st.subheader("Turbine Center Line (CL) and Draft Head")
 
 st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
 
-    # --- reference points digitized from your purple curve ---
-    xk = np.array([100, 200, 300, 400, 500, 600], dtype=float)
-    yk = np.array([-23, -33, -42, -50, -58, -66], dtype=float)
+# --- reference points digitized from your purple curve ---
+xk = np.array([100, 200, 300, 400, 500, 600], dtype=float)
+yk = np.array([-23, -33, -42, -50, -58, -66], dtype=float)
 
-    # smooth cubic fit
-    coef = np.polyfit(xk, yk, 3)
-    x = np.linspace(0, 600, 500)
-    y = np.polyval(coef, x)
+# smooth cubic fit
+coef = np.polyfit(xk, yk, 3)
+x = np.linspace(0, 600, 500)
+y = np.polyval(coef, x)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(x, y, color="#8A2BE2", lw=3, label="Fitted curve")
-    ax.plot(xk, yk, "o", color="#8A2BE2", mfc="white", ms=7, label="Reference points")
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.plot(x, y, color="#8A2BE2", lw=3, label="Fitted curve")
+ax.plot(xk, yk, "o", color="#8A2BE2", mfc="white", ms=7, label="Reference points")
 
-    for xi, yi in zip(xk, yk):
-        ax.text(xi + 6, yi - 1.0, f"({int(xi)}, {yi:.0f})", fontsize=9, va="center")
+for xi, yi in zip(xk, yk):
+    ax.text(xi + 6, yi - 1.0, f"({int(xi)}, {yi:.0f})", fontsize=9, va="center")
 
-    # Axis: 0 at bottom, negatives upward (as in the screenshot)
-    ax.set_xlim(-10, 610)
-    ax.set_ylim(0, -70)
-    ax.set_xlabel("Maximum pumping head (m)", fontsize=12)
-    ax.set_ylabel("Draft head (m)", fontsize=12)
-    ax.set_title("Relationship: Pumping head vs Draft head", fontsize=14)
+# Axis: 0 at bottom, negatives upward (as in the screenshot)
+ax.set_xlim(-10, 610)
+ax.set_ylim(0, -70)
+ax.set_xlabel("Maximum pumping head (m)", fontsize=12)
+ax.set_ylabel("Draft head (m)", fontsize=12)
+ax.set_title("Relationship: Pumping head vs Draft head", fontsize=14)
 
-    for yref in range(-70, 1, 10):
-        ax.axhline(yref, color="gray", linestyle=":", alpha=0.4)
-    for xref in [0, 100, 200, 300, 400, 500, 600]:
-        ax.axvline(xref, color="gray", linestyle=":", alpha=0.4)
+for yref in range(-70, 1, 10):
+    ax.axhline(yref, color="gray", linestyle=":", alpha=0.4)
+for xref in [0, 100, 200, 300, 400, 500, 600]:
+    ax.axvline(xref, color="gray", linestyle=":", alpha=0.4)
 
-    ax.grid(False)
-    ax.legend(loc="upper right", fontsize=9)
-    st.pyplot(fig)
+ax.grid(False)
+ax.legend(loc="upper right", fontsize=9)
+st.pyplot(fig)
+
 
 with st.expander("Turbine Center Setting (click to expand)"):
 
