@@ -407,7 +407,7 @@ else:
 st.subheader("Quick diameter from target velocity")
 
 # Get design per-penstock discharge from your flow block
-Qp_design = float(out_design_flow.get("Q_per", float("nan")))
+Qp_design = st.session_state.get("Q_per", float("nan"))
 
 colv1, colv2, colv3 = st.columns(3)
 with colv1:
