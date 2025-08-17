@@ -313,6 +313,66 @@ else:
                               float(st.session_state.get("eps_custom", rl[rough_choice] if rl[rough_choice] else 0.00030)),
                               0.00001, format="%.5f") if rough_choice == "Custom..." else rl[rough_choice]
 
+# --- Absolute roughness reference + live ε/D for current D_pen ---
+st.markdown("### Roughness reference & your current ε/D")
+
+# Build reference table (from the same values your app uses)
+rlib = roughness_library()
+rows = []
+for mat, eps_val in rlib.items():
+    if eps_val is None:  # skip "Custom..."
+        continue
+    rows.append({
+        "Material": mat,
+        "ε (mm)": eps_val * 1e3,
+        "ε (m)": eps_val,
+        "ε/D (for your D)": (eps_val / D_pen) if D_pen else float("nan"),
+    })
+df_eps = pd.DataFrame(rows)
+
+# Display the table
+st.dataframe(
+    df_eps,
+    use_container_width=True,
+    column_config={
+        "ε (mm)": st.column_config.NumberColumn(format="%.3f"),
+        "ε (m)": st.column_config.NumberColumn(format="%.6f"),
+        "ε/D (for your D)": st.column_config.NumberColumn(format="%.6f"),
+    }
+)
+
+# Show the currently selected roughness & ε/D (works for both preset & custom)
+eps_current = None
+if mode_f == "Manual (slider)":
+    st.caption("Friction factor set manually; roughness not used for f.")
+else:
+    eps_current = eps if eps is not None else rlib.get(rough_choice, None)
+
+col_r1, col_r2 = st.columns(2)
+with col_r1:
+    st.metric("Selected ε (mm)", f"{(eps_current*1e3):.3f}" if eps_current else "—")
+with col_r2:
+    rr = (eps_current / D_pen) if (eps_current and D_pen) else float("nan")
+    st.metric("Relative roughness ε/D (–)", f"{rr:.6f}" if not np.isnan(rr) else "—")
+
+with st.expander("What is ε/D?"):
+    st.markdown(
+        r"""
+**Relative roughness** \(\varepsilon/D\) compares the wall roughness height \(\varepsilon\) to the pipe diameter \(D\).  
+It is dimensionless and is used with the Reynolds number \(Re\) to pick the Darcy friction factor \(f\) on a Moody diagram.
+
+\[
+\varepsilon/D = \frac{\varepsilon}{D}, \qquad f \;\text{depends on}\; (Re,\, \varepsilon/D) \;\text{in turbulent flow.}
+\]
+Typical \(\varepsilon\) values (order of magnitude):  
+- PVC/HDPE: \(1.5\times 10^{-6}\,\text{m}\)  
+- New steel (welded): \(4.5\times 10^{-5}\,\text{m}\)  
+- Concrete (smooth): \(3.0\times 10^{-4}\,\text{m}\)  
+- Rock tunnel (good lining): \(1.0\times 10^{-3}\,\text{m}\)
+
+*Teaching sources: USBR (1987), AWWA, ASCE/USACE typical roughness tables.*
+"""
+    )
 # -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
 st.header("3) Discharges & Velocities")
 
