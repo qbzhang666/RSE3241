@@ -502,7 +502,7 @@ with c2:
     D_pen = st.number_input("Penstock diameter D (m)", 0.5, 12.0, float(st.session_state.get("D_pen", 3.5)), 0.1)
     
 # ------------------------------- Section 3: Penstock & Moody -------------------------
-st.header("3) Penstock Efficiencies (with Moody)")
+st.header("3) Major Water Loss (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
     P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", P_design)))
@@ -955,6 +955,48 @@ $$
 - Together with $ Re $, it determines $ \lambda $ via Colebrook–White / Haaland / Swamee–Jain or a Moody chart.  
 """
     )
+
+# ---- Darcy–Weisbach major head loss (no local losses) ----
+def major_head_loss(f_darcy: float, L: float, D_h: float, v: float, g: float = 9.81) -> float:
+    """Δh_major = f * (L/D) * v^2 / (2g)  (m of water)"""
+    if any(map(lambda x: x is None or x <= 0, [f_darcy, L, D_h, g])) or v is None:
+        return float("nan")
+    return f_darcy * (L / D_h) * (v**2) / (2.0 * g)
+
+# --- Example: compute for your Design and Maximum cases (using your existing outputs)
+h_major_design = major_head_loss(
+    f_darcy = out_design_flow.get("f", float("nan")),
+    L       = L_pen,
+    D_h     = D_pen,
+    v       = out_design_flow.get("v", float("nan"))
+)
+
+h_major_max = major_head_loss(
+    f_darcy = out_max_flow.get("f", float("nan")),
+    L       = L_pen,
+    D_h     = D_pen,
+    v       = out_max_flow.get("v", float("nan"))
+)
+
+# Optional: show a small results table in Streamlit
+df_hmajor = pd.DataFrame({
+    "Case": ["Design", "Maximum"],
+    "f (Darcy)": [out_design_flow.get("f", float("nan")),
+                  out_max_flow.get("f", float("nan"))],
+    "v (m/s)":   [out_design_flow.get("v", float("nan")),
+                  out_max_flow.get("v", float("nan"))],
+    "Δh_major (m)": [h_major_design, h_major_max],
+})
+st.dataframe(
+    df_hmajor,
+    use_container_width=True,
+    column_config={
+        "f (Darcy)": st.column_config.NumberColumn(format="%.4f"),
+        "v (m/s)": st.column_config.NumberColumn(format="%.2f"),
+        "Δh_major (m)": st.column_config.NumberColumn(format="%.2f"),
+    }
+)
+
 
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
