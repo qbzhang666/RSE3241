@@ -174,25 +174,60 @@ st.caption("Now with a Moody helper: compute friction factor from Re and relativ
            "Teaching tool — not a substitute for detailed design or transient analysis.")
 
 # ------------------------------- Presets -------------------------------
+# Presets
 with st.sidebar:
-    st.header("Presets")
-    preset = st.selectbox("Project", ["Custom", "Snowy 2.0 · Plateau", "Kidston"])
+    st.header("Presets & Settings")
+    preset = st.selectbox(
+        "Preset", 
+        ["None", "Snowy 2.0 · Plateau (NEW)", "Snowy 2.0 · Plateau (DET)", "Kidston (example)"]
+    )
     if st.button("Apply preset"):
-        if preset == "Snowy 2.0 · Plateau":
+        if preset == "Snowy 2.0 · Plateau (NEW)":
             st.session_state.update(dict(
                 HWL_u=1100.0, LWL_u=1080.0, HWL_l=450.0, TWL_l=420.0,
-                N_penstocks=6, D_pen=4.8, design_power=1000.0, max_power=2000.0,
-                L_penstock=15000.0, eta_t=0.90,
-                rough_choice="Concrete (smooth)", T_C=15.0, eps_custom=0.00030
+                eta_t=0.90, N=6, hf1=28.0, hf2=70.0, 
+                P1=1000.0, P2=2000.0,
+                P_design=2000.0, N_pen=6
             ))
-        elif preset == "Kidston":
+        elif preset == "Snowy 2.0 · Plateau (DET)":
+            st.session_state.update(dict(
+                HWL_u=1100.0, LWL_u=1080.0, HWL_l=450.0, TWL_l=420.0,
+                eta_t=0.90, N=6, hf1=30.0, hf2=106.0, 
+                P1=1000.0, P2=2000.0,
+                P_design=2000.0, N_pen=6
+            ))
+        elif preset == "Kidston (example)":
             st.session_state.update(dict(
                 HWL_u=500.0, LWL_u=490.0, HWL_l=230.0, TWL_l=220.0,
-                N_penstocks=2, D_pen=3.2, design_power=250.0, max_power=500.0,
-                L_penstock=800.0, eta_t=0.90,
-                rough_choice="New steel (welded)", T_C=25.0, eps_custom=0.000045
+                eta_t=0.90, N=2, hf1=6.0, hf2=18.0, 
+                P1=250.0, P2=500.0,
+                P_design=500.0, N_pen=2
             ))
 
+    # Efficiencies
+    eta_t = st.number_input(
+        "Turbine efficiency ηₜ", 0.70, 1.00, 
+        float(st.session_state.get("eta_t", 0.90)), 0.01
+    )
+    eta_p = st.number_input(
+        "Pump efficiency ηₚ (ref.)", 0.60, 1.00, 0.88, 0.01
+    )
+
+    # Machine numbers
+    N = st.number_input(
+        "Units (N)", 1, 20, int(st.session_state.get("N", 6)), 1
+    )
+    N_pen = st.number_input(
+        "Number of penstocks", 1, 20, int(st.session_state.get("N_pen", 6)), 1
+    )
+
+    # Power
+    P_design = st.number_input(
+        "Design power (MW)", 1.0, 5000.0, 
+        float(st.session_state.get("P_design", 2000.0)), 10.0
+    )
+
+    st.caption("All units SI; water ρ=1000 kg/m³, g=9.81 m/s².")
 # ------------------------------- Section 1: Reservoirs -------------------------------
 st.header("1) Reservoir Levels, NWL & Rating Head")
 
@@ -283,7 +318,7 @@ if limit is not None and not np.isnan(head_fluct_ratio):
                  "Consider **raising LWL** or **increasing HWL − TWL**.")
 
 # ---------------------------- Section 2: Waterway profile & L estimator ----------------------------
-st.subheader("Waterway profile & penstock length estimator")
+st.subheader("2) Waterway Profile & Penstock Geometry")
 
 # UI: CSV or quick editor
 left, right = st.columns([2, 1])
@@ -441,7 +476,7 @@ with st.expander("Figures & equations used (diameter by velocity)"):
     st.caption("Swamee–Jain explicit form (valid for turbulent flow).")
 
 # ------------------------------- Section 3: Penstock & Moody -------------------------
-st.header("2) Penstock Geometry & Efficiencies (with Moody)")
+st.header("4) Penstock Efficiencies (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
     N_pen = st.number_input("Number of penstocks", 1, 16, int(st.session_state.get("N_penstocks", 2)))
