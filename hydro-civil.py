@@ -577,22 +577,55 @@ with st.expander("Turbine Center Setting (click to expand)"):
 
 
 # ----------------- Inputs that use Step 1 values -----------------
+# y_at_Hg is from your fitted purple curve (likely negative). Use its magnitude for draft head.
+hdraft_from_fit = float(abs(y_at_Hg)) if not np.isnan(y_at_Hg) else float("nan")
+
 st.subheader("Set Turbine Center Elevation")
 
-# Pull lower TWL directly from Section 1 (already defined earlier)
-# If you keep TWL_l in session_state, you can do: TWL_l = st.session_state.get("TWL_l", TWL_l)
-lower_TWL = float(TWL_l)  # TWL_l was defined in Section 1
-
 col_a, col_b = st.columns(2)
+
 with col_a:
-    st.metric("Lower TWL (from Section 1)", f"{lower_TWL:.2f} m")
+    # Pull Lower TWL directly from Section 1
+    lwl = float(TWL_l) if not np.isnan(TWL_l) else st.number_input(
+        "Lower TWL (m) — fallback input",
+        min_value=0.0, value=420.0, step=0.5, help="Auto-filled from Section 1 when available."
+    )
 
 with col_b:
-    # User sets the **draft head below TWL** (positive number)
-    h_draft = st.number_input(
+    # Manual override control
+    allow_override = st.checkbox("Manually override draft head?", value=False, help="Uncheck to use fitted value.")
+    
+    # Resolve the value to show in the input (positive number)
+    default_hdraft = hdraft_from_fit if not np.isnan(hdraft_from_fit) else 5.0
+    
+    # Keep a single source of truth in session_state
+    if "h_draft" not in st.session_state:
+        st.session_state["h_draft"] = default_hdraft
+    
+    # If we have a new fit value and override is off, sync to fit
+    if (not allow_override) and (not np.isnan(hdraft_from_fit)):
+        st.session_state["h_draft"] = hdraft_from_fit
+    
+    # Show the number input; disable it unless override is on
+    st.number_input(
         "Draft head below lower TWL (m)",
-        min_value=0.0, max_value=100.0, value=5.0, step=0.5
+        min_value=0.0, max_value=100.0,
+        value=float(st.session_state["h_draft"]),
+        step=0.5,
+        key="h_draft",
+        disabled=not allow_override
     )
+
+# Compute absolute turbine center elevation using current draft head
+h_draft = float(st.session_state["h_draft"])
+turbine_abs = lwl - h_draft
+
+c1, c2 = st.columns(2)
+with c1:
+    st.metric("Draft head used (from fit unless overridden)", f"{h_draft:.2f} m")
+with c2:
+    st.metric("Turbine center elevation (abs.)", f"{turbine_abs:.2f} m")
+
 
 # Compute turbine CL elevation
 turbine_abs = lower_TWL - h_draft
