@@ -1019,8 +1019,117 @@ st.dataframe(
     }
 )
 
+
+# -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
+st.subheader("Velocity checks")
+
+# Table for Q & v only
+results_flow = pd.DataFrame({
+    "Case": ["Design", "Maximum"],
+    "Net head h_net (m)": [out_design_flow["h_net"], out_max_flow["h_net"]],
+    "Reynolds Re (-)": [out_design_flow["Re"], out_max_flow["Re"]],
+    "Total Q (m³/s)": [out_design_flow["Q_total"], out_max_flow["Q_total"]],
+    "Per-penstock Q (m³/s)": [out_design_flow["Q_per"], out_max_flow["Q_per"]],
+    "Velocity v (m/s)": [out_design_flow["v"], out_max_flow["v"]],
+})
+st.dataframe(
+    results_flow, use_container_width=True,
+    column_config={
+        "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
+        "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
+        "Total Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
+        "Per-penstock Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
+        "Velocity v (m/s)": st.column_config.NumberColumn(format="%.2f"),
+    }
+)
+
+# --- Step-by-step learning table (Design case) ---
+# Use current penstock diameter, flows, and viscosity already computed above
+A_design   = area_circle(D_pen)                              # A = πD²/4
+Q_total_d  = design_flow.get("Q_total", float("nan"))        # from two-pass block
+Qp_d       = design_flow.get("Qp",      float("nan"))        # per-penstock flow
+v_calc     = design_flow.get("v",       float("nan"))        # mean velocity (computed)
+Re_calc    = design_flow.get("Re",      float("nan"))        # two-pass Re
+Re_compact = Re_quick_design                                 # 4Q/(π N D ν)
+Re_diffpct = pct_diff(Re_compact, Re_calc)                   # consistency check
+
+# Small teaching table
+learn_tbl = pd.DataFrame({
+    "Quantity": [
+        "Cross-sectional area A (m²)",
+        "Per-penstock flow Qₚ (m³/s)",
+        "Mean velocity v (m/s)",
+        "Re (two-pass) = vD/ν (–)",
+        "Re (compact) = 4Q/(πNDν) (–)",
+        "Δ% (compact vs two-pass)"
+    ],
+    "Value": [
+        f"{A_design:.3f}" if not np.isnan(A_design) else "—",
+        f"{Qp_d:.3f}"     if not np.isnan(Qp_d)     else "—",
+        f"{v_calc:.3f}"   if not np.isnan(v_calc)   else "—",
+        f"{Re_calc:.0f}"  if not np.isnan(Re_calc)  else "—",
+        f"{Re_compact:.0f}" if not np.isnan(Re_compact) else "—",
+        (f"{Re_diffpct:.2f} %" if not np.isnan(Re_diffpct) else "—")
+    ]
+})
+
+with st.expander("Step-by-step calculation table (Design case)"):
+    st.dataframe(
+        learn_tbl,
+        use_container_width=True
+    )
+    # Show the actual equations neatly (for learning)
+    st.markdown("**Equations used**")
+    st.latex(r"A = \frac{\pi D^{2}}{4}")
+    st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}}")
+    st.latex(r"v = \frac{Q_p}{A}")
+    st.latex(r"\mathrm{Re}_{\text{two-pass}} = \frac{v D}{\nu}")
+    st.latex(r"\mathrm{Re}_{\text{compact}} = \frac{4\,Q_\text{total}}{\pi\,N_\text{pen}\,D\,\nu}")
+
+# (Optional) gentle hint comparing calculated velocity to any target-velocity choice elsewhere
+if "v_target" in st.session_state and not np.isnan(v_calc):
+    v_t = float(st.session_state["v_target"])
+    if v_t > 0:
+        st.caption(
+            f"🎯 Target velocity (if set elsewhere): **{v_t:.2f} m/s**  •  "
+            f"📐 Calculated mean velocity: **{v_calc:.2f} m/s**"
+        )
+
+# Velocity checks
+st.subheader("Velocity checks (USBR guidance)")
+v_design = out_design_flow["v"]; v_max = out_max_flow["v"]
+c1, c2 = st.columns(2)
+with c1:
+    st.metric("v_design (m/s)", f"{v_design:.2f}")
+    st.metric("v_max (m/s)", f"{v_max:.2f}")
+with c2:
+    st.markdown("- **Recommended range:** 4–6 m/s (concrete penstocks)")
+    st.markdown("- **Absolute max:** ~7 m/s (short duration)")
+
+if v_max > 7.0:
+    st.error("⚠️ Dangerous velocity (exceeds ~7 m/s). Revisit D or layout.")
+elif v_max > 6.0:
+    st.warning("⚠️ Above recommended 6 m/s. Acceptable only for short periods.")
+elif v_max >= 4.0:
+    st.success("✓ Within recommended 4–6 m/s range.")
+else:
+    st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
+
+# Collapsible equations (for Section 3)
+with st.expander("Velocity guidance (USBR)"):
+    st.markdown(
+        """
+        - Low-pressure steel penstocks: *3 - 5 m/s*  
+        - Medium-pressure steel penstocks: *5 - 7 m/s*  
+        - High-pressure steel penstocks: *7 - 10 m/s*  
+
+        *Reference: USBR, Design of Small Dams, 3rd Ed. (1987), Ch. 10 - Penstocks.*
+        """
+    )
+
+
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
-st.header("4) Head Losses & Diameter Sizing")
+st.header("4) Minor Head Loss & Diameter Sizing")
 
 # Local loss builder (ΣK)
 st.subheader("Local loss components (ΣK)")
@@ -1061,7 +1170,7 @@ st.dataframe(
 )
 
 # -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
-st.header("4) Discharges & Velocities")
+st.header("5) Discharges & Velocities")
 
 # Table for Q & v only
 results_flow = pd.DataFrame({
@@ -1229,113 +1338,6 @@ with st.expander("Show figures / equations used (Section 4)"):
         "- USACE EM 1110-2-1602 / Idelchik: typical **ΣK** ranges and local-loss data.\n"
         "- AWWA / ASCE tables: indicative absolute roughness **ε** for common materials.\n"
         "- Swamee, P.K. & Jain, A.K. (1976): explicit friction-factor formula used here."
-    )
-
-# -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
-st.header("4) Discharges & Velocities")
-
-# Table for Q & v only
-results_flow = pd.DataFrame({
-    "Case": ["Design", "Maximum"],
-    "Net head h_net (m)": [out_design_flow["h_net"], out_max_flow["h_net"]],
-    "Reynolds Re (-)": [out_design_flow["Re"], out_max_flow["Re"]],
-    "Total Q (m³/s)": [out_design_flow["Q_total"], out_max_flow["Q_total"]],
-    "Per-penstock Q (m³/s)": [out_design_flow["Q_per"], out_max_flow["Q_per"]],
-    "Velocity v (m/s)": [out_design_flow["v"], out_max_flow["v"]],
-})
-st.dataframe(
-    results_flow, use_container_width=True,
-    column_config={
-        "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
-        "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
-        "Total Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
-        "Per-penstock Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
-        "Velocity v (m/s)": st.column_config.NumberColumn(format="%.2f"),
-    }
-)
-
-# --- Step-by-step learning table (Design case) ---
-# Use current penstock diameter, flows, and viscosity already computed above
-A_design   = area_circle(D_pen)                              # A = πD²/4
-Q_total_d  = design_flow.get("Q_total", float("nan"))        # from two-pass block
-Qp_d       = design_flow.get("Qp",      float("nan"))        # per-penstock flow
-v_calc     = design_flow.get("v",       float("nan"))        # mean velocity (computed)
-Re_calc    = design_flow.get("Re",      float("nan"))        # two-pass Re
-Re_compact = Re_quick_design                                 # 4Q/(π N D ν)
-Re_diffpct = pct_diff(Re_compact, Re_calc)                   # consistency check
-
-# Small teaching table
-learn_tbl = pd.DataFrame({
-    "Quantity": [
-        "Cross-sectional area A (m²)",
-        "Per-penstock flow Qₚ (m³/s)",
-        "Mean velocity v (m/s)",
-        "Re (two-pass) = vD/ν (–)",
-        "Re (compact) = 4Q/(πNDν) (–)",
-        "Δ% (compact vs two-pass)"
-    ],
-    "Value": [
-        f"{A_design:.3f}" if not np.isnan(A_design) else "—",
-        f"{Qp_d:.3f}"     if not np.isnan(Qp_d)     else "—",
-        f"{v_calc:.3f}"   if not np.isnan(v_calc)   else "—",
-        f"{Re_calc:.0f}"  if not np.isnan(Re_calc)  else "—",
-        f"{Re_compact:.0f}" if not np.isnan(Re_compact) else "—",
-        (f"{Re_diffpct:.2f} %" if not np.isnan(Re_diffpct) else "—")
-    ]
-})
-
-with st.expander("Step-by-step calculation table (Design case)"):
-    st.dataframe(
-        learn_tbl,
-        use_container_width=True
-    )
-    # Show the actual equations neatly (for learning)
-    st.markdown("**Equations used**")
-    st.latex(r"A = \frac{\pi D^{2}}{4}")
-    st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}}")
-    st.latex(r"v = \frac{Q_p}{A}")
-    st.latex(r"\mathrm{Re}_{\text{two-pass}} = \frac{v D}{\nu}")
-    st.latex(r"\mathrm{Re}_{\text{compact}} = \frac{4\,Q_\text{total}}{\pi\,N_\text{pen}\,D\,\nu}")
-
-# (Optional) gentle hint comparing calculated velocity to any target-velocity choice elsewhere
-if "v_target" in st.session_state and not np.isnan(v_calc):
-    v_t = float(st.session_state["v_target"])
-    if v_t > 0:
-        st.caption(
-            f"🎯 Target velocity (if set elsewhere): **{v_t:.2f} m/s**  •  "
-            f"📐 Calculated mean velocity: **{v_calc:.2f} m/s**"
-        )
-
-# Velocity checks
-st.subheader("Velocity checks (USBR guidance)")
-v_design = out_design_flow["v"]; v_max = out_max_flow["v"]
-c1, c2 = st.columns(2)
-with c1:
-    st.metric("v_design (m/s)", f"{v_design:.2f}")
-    st.metric("v_max (m/s)", f"{v_max:.2f}")
-with c2:
-    st.markdown("- **Recommended range:** 4–6 m/s (concrete penstocks)")
-    st.markdown("- **Absolute max:** ~7 m/s (short duration)")
-
-if v_max > 7.0:
-    st.error("⚠️ Dangerous velocity (exceeds ~7 m/s). Revisit D or layout.")
-elif v_max > 6.0:
-    st.warning("⚠️ Above recommended 6 m/s. Acceptable only for short periods.")
-elif v_max >= 4.0:
-    st.success("✓ Within recommended 4–6 m/s range.")
-else:
-    st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
-
-# Collapsible equations (for Section 3)
-with st.expander("Velocity guidance (USBR)"):
-    st.markdown(
-        """
-        - Low-pressure steel penstocks: *3 - 5 m/s*  
-        - Medium-pressure steel penstocks: *5 - 7 m/s*  
-        - High-pressure steel penstocks: *7 - 10 m/s*  
-
-        *Reference: USBR, Design of Small Dams, 3rd Ed. (1987), Ch. 10 - Penstocks.*
-        """
     )
 
 # ------------------------------- Section 5: System Curve ------------------
