@@ -358,23 +358,24 @@ with col_r2:
 st.markdown(r"""
 ### What is ε/D?
 
-Relative roughness \((\varepsilon/D)\) compares the wall roughness height \(\varepsilon\) to the pipe diameter \(D\).  
-It is dimensionless and is used with the Reynolds number \((Re)\) to determine the Darcy friction factor \((f)\) on a Moody diagram.
+Relative roughness $ \varepsilon / D $ compares the wall roughness height $ \varepsilon $ to the pipe diameter $ D $.  
+It is dimensionless and is used with the Reynolds number $ Re $ to determine the Darcy friction factor $ f $ on a Moody diagram.
 
-\[
-\frac{\varepsilon}{D} = \frac{\varepsilon}{D}, 
-\qquad f \;\text{depends on}\; (Re,\, \varepsilon/D)\;\text{in turbulent flow.}
-\]
+$$
+\frac{\varepsilon}{D}, \qquad 
+f \;\text{depends on}\; (Re, \, \varepsilon / D) \;\text{in turbulent flow.}
+$$
 
-Typical \(\varepsilon\) values (order of magnitude):
+Typical $ \varepsilon $ values (order of magnitude):
 
-- PVC/HDPE: \(1.5 \times 10^{-6}\,\text{m}\)  
-- New steel (welded): \(4.5 \times 10^{-5}\,\text{m}\)  
-- Concrete (smooth): \(3.0 \times 10^{-4}\,\text{m}\)  
-- Rock tunnel (good lining): \(1.0 \times 10^{-3}\,\text{m}\)  
+- PVC/HDPE: $1.5 \times 10^{-6}\,\text{m}$  
+- New steel (welded): $4.5 \times 10^{-5}\,\text{m}$  
+- Concrete (smooth): $3.0 \times 10^{-4}\,\text{m}$  
+- Rock tunnel (good lining): $1.0 \times 10^{-3}\,\text{m}$  
 
 *Teaching sources: USBR (1987), AWWA, ASCE/USACE typical roughness tables.*
 """)
+
 
 
 # -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
