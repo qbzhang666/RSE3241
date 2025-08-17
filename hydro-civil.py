@@ -1001,8 +1001,6 @@ st.markdown(
 
 df_hydraulics = pd.DataFrame({
     "Case": ["Design", "Maximum"],
-    "Gross head H_g (m)":   [gross_head,                min_head],
-    "Net head h_net (m)":   [out_design_flow["h_net"],  out_max_flow["h_net"]],
     "f (Darcy)":            [out_design_flow.get("f", float("nan")),
                              out_max_flow.get("f",    float("nan"))],
     "Reynolds Re (–)":      [out_design_flow["Re"],     out_max_flow["Re"]],
@@ -1012,6 +1010,9 @@ df_hydraulics = pd.DataFrame({
     "L (m)":                [L_pen,                     L_pen],   # centerline pipe length
     "d_h (m)":              [D_pen,                     D_pen],   # hydraulic diameter
     "Δh_major (m)":         [h_major_design,            h_major_max],  # Darcy–Weisbach major loss
+    "Gross head H_g (m)":   [gross_head,                min_head],
+    "Net head h_net (m)":   [out_design_flow["h_net"],  out_max_flow["h_net"]],
+
 })
 
 st.dataframe(
