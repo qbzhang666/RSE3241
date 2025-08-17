@@ -505,37 +505,64 @@ st.subheader("Turbine Center Line (CL) and Draft Head")
 
 st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
 
-# --- reference points digitized from your purple curve ---
+# Digitized reference points from the purple curve (x = max pumping head [m], y = draft head [m, negative])
 xk = np.array([100, 200, 300, 400, 500, 600], dtype=float)
 yk = np.array([-23, -33, -42, -50, -58, -66], dtype=float)
 
-# smooth cubic fit
+# Smooth cubic fit to the reference points
 coef = np.polyfit(xk, yk, 3)
-x = np.linspace(0, 600, 500)
+x = np.linspace(0.0, 600.0, 500)
 y = np.polyval(coef, x)
 
+# Use gross head from Section 1 as the "maximum pumping head" (horizontal axis input)
+H_g_val = float(gross_head) if not np.isnan(gross_head) else float("nan")
+y_at_Hg = float(np.polyval(coef, H_g_val)) if not np.isnan(H_g_val) else float("nan")
+
+# Show numbers
+colA, colB = st.columns(2)
+with colA:
+    st.metric("Maximum pumping head (≈ Gross head H_g)", f"{H_g_val:.1f} m" if not np.isnan(H_g_val) else "—")
+with colB:
+    st.metric("Estimated draft head from fit", f"{y_at_Hg:.1f} m" if not np.isnan(y_at_Hg) else "—")
+
+# LaTeX reference (click to expand)
+with st.expander("Draft head estimate from fitted curve (click to expand)"):
+    st.latex(r"\text{Given gross head } H_g \text{ (used as maximum pumping head):}")
+    st.latex(r"h_{\text{draft}}(H_g) \;\approx\; a\,H_g^{3} \;+\; b\,H_g^{2} \;+\; c\,H_g \;+\; d")
+    st.caption("Coefficients (a, b, c, d) are obtained by least-squares fit to the digitized purple curve.")
+
+# Plot
 fig, ax = plt.subplots(figsize=(10, 6))
-ax.plot(x, y, color="#8A2BE2", lw=3, label="Fitted curve")
+
+# Fitted curve and reference points
+ax.plot(x, y, color="#8A2BE2", lw=3, label="Fitted curve (purple)")
 ax.plot(xk, yk, "o", color="#8A2BE2", mfc="white", ms=7, label="Reference points")
 
-for xi, yi in zip(xk, yk):
-    ax.text(xi + 6, yi - 1.0, f"({int(xi)}, {yi:.0f})", fontsize=9, va="center")
+# Mark current operating point at H_g
+if not np.isnan(H_g_val):
+    ax.axvline(H_g_val, color="#555555", ls="--", lw=1.5, label=f"H_g = {H_g_val:.1f} m")
+    ax.plot([H_g_val], [y_at_Hg], "o", color="red", ms=8, label=f"Draft ≈ {y_at_Hg:.1f} m")
+    ax.annotate(f"({H_g_val:.0f}, {y_at_Hg:.1f})",
+                xy=(H_g_val, y_at_Hg), xytext=(10, -12),
+                textcoords="offset points", fontsize=10, color="red")
 
-# Axis: 0 at bottom, negatives upward (as in the screenshot)
+# Axis: 0 at bottom, negatives upward (as per your screenshot)
 ax.set_xlim(-10, 610)
 ax.set_ylim(0, -70)
 ax.set_xlabel("Maximum pumping head (m)", fontsize=12)
 ax.set_ylabel("Draft head (m)", fontsize=12)
 ax.set_title("Relationship: Pumping head vs Draft head", fontsize=14)
 
+# Guide lines
 for yref in range(-70, 1, 10):
     ax.axhline(yref, color="gray", linestyle=":", alpha=0.4)
 for xref in [0, 100, 200, 300, 400, 500, 600]:
-    ax.axvline(xref, color="gray", linestyle=":", alpha=0.4)
+    ax.axvline(xref, color="gray", linestyle=":", alpha=0.25)
 
-ax.grid(False)
 ax.legend(loc="upper right", fontsize=9)
+ax.grid(False)
 st.pyplot(fig)
+
 
 
 with st.expander("Turbine Center Setting (click to expand)"):
