@@ -1214,7 +1214,7 @@ with tabA:
     ax.plot(Q_chart, D_chart, 'bo', markersize=8, label="Reference Data")
     
     # Generate and plot fitted curve
-    Q_range = np.linspace(0, max(Q_chart)*1.5, 100)
+    Q_range = np.linspace(0, max(Q_chart)*1.5, 500)
     D_fitted = a_fit * Q_range ** b_fit
     ax.plot(Q_range, D_fitted, 'r-', linewidth=2, label=f"Fitted Curve: D = {a_fit:.3f}·Q^{b_fit:.3f}")
     
