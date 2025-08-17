@@ -402,10 +402,9 @@ if set(df_profile.columns) >= valid_cols and len(df_profile) >= 2:
     colm2.metric("Elevation change Δz (m)", f"{dz_tot:.1f}")
     colm3.metric("Penstock center-line L (m)", f"{L_pen_est:.1f}")
 
-    # Apply to Step 2
-if st.button("Apply L to Step 2 (Penstock length)"):
-    st.session_state["L_penstock"] = L_pen_est
-    st.success(f"Applied L = {L_pen_est:.1f} m to the 'Penstock length L' field in Step 2.")
+    # Auto-apply L to Step 2 (no button needed)
+if not np.isnan(L_pen_est):
+    st.session_state["L_penstock"] = float(L_pen_est)
 
 # Reference & equations (collapsed)
 with st.expander("How is L computed? (figures / equations)"):
