@@ -1193,8 +1193,8 @@ st.dataframe(
 )
 
 
-# Diameter Estimator (three methods)
-st.subheader("Diameter estimator (pick a method)")
+# Diameter Estimator and Verification (three methods)
+st.subheader("Diameter Estimator and Verification")
 Q_for_sizing = out_design_flow.get("Q_total", float("nan")) or 0.0
 
 tabA, tabB, tabC = st.tabs(["Chart extrapolation", "Velocity target", "Head-loss target"])
@@ -1202,8 +1202,46 @@ tabA, tabB, tabC = st.tabs(["Chart extrapolation", "Velocity target", "Head-loss
 with tabA:
     a_fit, b_fit, D_of_Q = fit_extrapolate_Q_to_D(Q_chart, D_chart)
     D_ext = float(D_of_Q(Q_for_sizing)) if Q_for_sizing > 0 else float("nan")
+    
+    # Display metric and equation
     st.write(f"Fitted curve: **D ≈ {a_fit:.3f} · Q^{b_fit:.3f}**  (Q in m³/s, D in m)")
     st.metric("Suggested D (m)", f"{D_ext:.2f}" if not np.isnan(D_ext) else "—")
+    
+    # Create the visualization
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Plot original data points
+    ax.plot(Q_chart, D_chart, 'bo', markersize=8, label="Reference Data")
+    
+    # Generate and plot fitted curve
+    Q_range = np.linspace(0, max(Q_chart)*1.5, 100)
+    D_fitted = a_fit * Q_range ** b_fit
+    ax.plot(Q_range, D_fitted, 'r-', linewidth=2, label=f"Fitted Curve: D = {a_fit:.3f}·Q^{b_fit:.3f}")
+    
+    # Highlight the design point
+    if not np.isnan(D_ext):
+        ax.plot(Q_for_sizing, D_ext, 'go', markersize=10, label=f"Design Point (Q={Q_for_sizing:.1f} m³/s)")
+        ax.annotate(f'D = {D_ext:.2f} m', 
+                    (Q_for_sizing, D_ext),
+                    textcoords="offset points", 
+                    xytext=(10,-15),
+                    ha='left',
+                    fontsize=12,
+                    arrowprops=dict(arrowstyle="->", color="green"))
+    
+    # Configure plot appearance
+    ax.set_xlim(0, max(Q_range)*1.05)
+    ax.set_ylim(0, max(max(D_chart), D_ext if not np.isnan(D_ext) else 0)*1.2)
+    ax.set_xlabel("Design Discharge (m³/s)", fontsize=12)
+    ax.set_ylabel("Penstock Diameter (m)", fontsize=12)
+    ax.set_title("Diameter vs Discharge Relationship", fontsize=14)
+    ax.grid(True, linestyle='--', alpha=0.7)
+    ax.legend(loc='upper left')
+    
+    # Display the plot
+    st.pyplot(fig)
+    
+    # Apply button
     if st.button("Apply suggested D (chart fit)"):
         if not np.isnan(D_ext):
             st.session_state["D_pen"] = float(D_ext)
