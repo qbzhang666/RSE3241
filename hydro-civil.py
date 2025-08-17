@@ -983,7 +983,18 @@ st.markdown(
     r"""
     ### Darcy–Weisbach Equation for Major Head Loss
     \[
-    \Delta h_{\text{major}} = f \cdot \frac{L}{D_h} \cdot \frac{v^2}{2g}
+    \$$
+\Delta h_f \;=\; \lambda \;\frac{L}{d_h}\; \frac{v^{2}}{2g}
+$$
+
+where  
+- $ \lambda $ = Darcy friction factor  
+- $ L $ = pipe length (m)  
+- $ d_h $ = hydraulic diameter (m)  
+- $ v $ = mean velocity (m/s)  
+- $ g $ = gravitational acceleration (9.81 m/s²)  
+"""
+    )
     \]
     """
 )
