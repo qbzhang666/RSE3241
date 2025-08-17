@@ -758,8 +758,8 @@ st.header("4) Discharges & Velocities")
 results_flow = pd.DataFrame({
     "Case": ["Design", "Maximum"],
     "Net head h_net (m)": [out_design_flow["h_net"], out_max_flow["h_net"]],
-    "Total Q (m³/s)": [out_design_flow["Q_total"], out_max_flow["Q_total"]],
     "Reynolds Re (-)": [out_design_flow["Re"], out_max_flow["Re"]],
+    "Total Q (m³/s)": [out_design_flow["Q_total"], out_max_flow["Q_total"]],
     "Per-penstock Q (m³/s)": [out_design_flow["Q_per"], out_max_flow["Q_per"]],
     "Velocity v (m/s)": [out_design_flow["v"], out_max_flow["v"]],
 })
@@ -767,10 +767,10 @@ st.dataframe(
     results_flow, use_container_width=True,
     column_config={
         "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
+        "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
         "Total Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
         "Per-penstock Q (m³/s)": st.column_config.NumberColumn(format="%.2f"),
         "Velocity v (m/s)": st.column_config.NumberColumn(format="%.2f"),
-        "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
     }
 )
 
