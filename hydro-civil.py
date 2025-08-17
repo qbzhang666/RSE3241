@@ -487,15 +487,19 @@ with st.expander("Figures & equations used (diameter by velocity)"):
     st.latex(r"h_f = \left(f\frac{L}{D}+\sum K\right)\frac{v^2}{2g}")
     st.latex(r"f \approx \frac{0.25}{\left[\log_{10}\!\left(\frac{\varepsilon}{3.7D}+\frac{5.74}{\mathrm{Re}^{0.9}}\right)\right]^2}")
 
-
+st.subheader("Penstock Geometry")
+c1, c2 = st.columns(2)
+with c1:
+    D_pen = st.number_input("Penstock diameter D (m)", 0.5, 12.0, float(st.session_state.get("D_pen", 3.5)), 0.1)
+with c2:
+    L_pen = st.number_input("Penstock length L (m)", 10.0, 50000.0, float(st.session_state.get("L_penstock", 500.0)), 10.0)
+    
 # ------------------------------- Section 3: Penstock & Moody -------------------------
 st.header("3) Penstock Efficiencies (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
-    D_pen = st.number_input("Penstock diameter D (m)", 0.5, 12.0, float(st.session_state.get("D_pen", 3.5)), 0.1)
-    L_pen = st.number_input("Penstock length L (m)", 10.0, 50000.0, float(st.session_state.get("L_penstock", 500.0)), 10.0)
+    P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", float(P_design)), 10.0)
 with c2:
-    P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", 500.0)), 10.0)
     P_max = st.number_input("Maximum power (MW)", 10.0, 6000.0, float(st.session_state.get("max_power", 600.0)), 10.0)
 
 st.subheader("Friction factor mode")
