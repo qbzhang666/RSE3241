@@ -436,11 +436,28 @@ st.subheader("Quick diameter from target velocity")
 Qp_design = st.session_state.get("Q_per", float("nan"))
 
 colv1, colv2, colv3 = st.columns(3)
+# Calculate total design flow
+try:
+    # Power equation: P = ρ * g * H * Q * η
+    # => Q = P / (ρ * g * H * η)
+    Q_total_design = P_design / (rho * g * H_net * eta)
+    
+    # Calculate per-penstock flow
+    if N_pen > 0:
+        Qp_design = Q_total_design / N_pen
+    else:
+        Qp_design = float('nan')  # Handle invalid penstock count
+except (TypeError, ZeroDivisionError):
+    Qp_design = float('nan')  # Handle missing/zero values
+
+# Display metric (assuming colv1 is a Streamlit column)
 with colv1:
-    st.metric("Design per-penstock flow Qₚ (m³/s)",
-              f"{Qp_design:.3f}" if not np.isnan(Qp_design) else "—")
+    st.metric(
+        label="Design per-penstock flow Qₚ (m³/s)",
+        value=f"{Qp_design:.3f}" if not np.isnan(Qp_design) else "—"
+    )
 with colv2:
-    v_target = st.slider("Target velocity v (m/s)", 2.0, 8.0, 4.5, 0.1)
+    v_target = st.slider("Target velocity v (m/s)", 1.0, 8.0, 4.0, 0.1)
 with colv3:
     # D = sqrt(4 Q / (π v))
     D_suggest = math.sqrt(4.0 * Qp_design / (math.pi * v_target)) if Qp_design > 0 else float("nan")
