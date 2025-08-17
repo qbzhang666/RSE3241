@@ -538,24 +538,14 @@ st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
     st.pyplot(fig)
 
 with st.expander("Turbine Center Setting (click to expand)"):
-    st.markdown(
-        r"""
-\[
-\textbf{Turbine Center Setting}
-\]
 
-\[
-\text{Turbine CL elevation} \;=\; \mathrm{TWL}_{\ell} \;-\; h_{\text{draft}}
-\]
+    st.markdown("**Turbine Center Setting**")
 
-\[
-\begin{aligned}
-\mathrm{TWL}_{\ell} &: \;\text{Lower reservoir tailwater level (m), taken from Section 1} \\
-h_{\text{draft}} &: \;\text{Draft head (m): vertical distance from water surface to turbine centreline}
-\end{aligned}
-\]
-        """
-    )
+    st.latex(r"Turbine\ CL\ elevation \;=\; TWL_{\ell} \;-\; h_{\text{draft}}")
+
+    st.latex(r"TWL_{\ell} : \; \text{Lower reservoir tailwater level (m), taken from Section 1}")
+
+    st.latex(r"h_{\text{draft}} : \; \text{Draft head (m), vertical distance from water surface to turbine centreline}")
 
 
 # ----------------- Inputs that use Step 1 values -----------------
