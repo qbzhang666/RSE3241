@@ -114,7 +114,7 @@ def surge_tank_first_cut(Ah, Lh, ratio=4.0):
     Tn = 2 * math.pi / omega_n
     return dict(As=As, omega_n=omega_n, Tn=Tn)
 
-# ------------------------------- NEW: Diameter helpers -------------------
+# ------------------------------- Diameter helpers -----------------------
 # (A) Chart extrapolation D = a Q^b  — seeded with typical points up to 150 m³/s.
 Q_chart = np.array([5, 10, 20, 30, 50, 75, 100, 125, 150], dtype=float)       # m³/s
 D_chart = np.array([1.6, 2.1, 3.0, 3.8, 4.6, 5.3, 5.9, 6.5, 7.0], dtype=float)  # m
@@ -129,11 +129,12 @@ def fit_extrapolate_Q_to_D(Q_data, D_data):
     return a, b, D_of_Q
 
 def D_from_velocity(Q, V):
+    """Diameter from target velocity."""
     return math.sqrt(4.0 * Q / (math.pi * V))
 
 def D_from_headloss(Q, L, hf_allow, eps=3e-4, Ksum=2.0, T_C=15.0, rho=1000.0, g=9.81,
                     D_init=None, tol=1e-6, itmax=80):
-    """Solve for D such that hf ≈ hf_allow using Swamee–Jain and ΣK."""
+    """Solve D for a target head loss using Swamee–Jain + ΣK."""
     if hf_allow <= 0 or L <= 0 or Q <= 0:
         return float("nan"), float("nan"), float("nan"), float("nan"), float("nan")
     nu = water_nu_kinematic_m2s(T_C, rho)
@@ -156,7 +157,7 @@ def D_from_headloss(Q, L, hf_allow, eps=3e-4, Ksum=2.0, T_C=15.0, rho=1000.0, g=
             break
         D_new = D - (hf - hf_allow) / dhf_dD
         if D_new <= 0: D_new = 0.5 * D
-        if abs(D_new - D) < tol * D: 
+        if abs(D_new - D) < tol * D:
             D = D_new; break
         D = D_new
     A = math.pi * D**2 / 4.0
@@ -170,6 +171,7 @@ def D_from_headloss(Q, L, hf_allow, eps=3e-4, Ksum=2.0, T_C=15.0, rho=1000.0, g=
 def rock_cover_and_lining_ui():
     """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
     st.header("5) Pressure Tunnel: Rock Cover & Lining Stress")
+
     # Rock cover inputs
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -201,12 +203,13 @@ def rock_cover_and_lining_ui():
     with c3:
         ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1, key="ft_MPa")
 
-    sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # evaluated at outer face (display)
+    sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # at outer face
     pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
 
-    # Stress profile & plot (limit 0–200 MPa for readability)
+    # Stress profile & plot (limit 0–100 MPa for teaching clarity)
     r_plot = np.linspace(ri * 1.001, re, 200)
     sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
+
     fig_s, ax = plt.subplots(figsize=(8, 4.5))
     ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
     ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
@@ -214,18 +217,23 @@ def rock_cover_and_lining_ui():
     ax.axvline(re, color="k", ls="--", label=f"re={re:.2f} m")
     ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
                     color="red", alpha=0.2, label="Cracking risk")
-    ax.set_xlabel("Radius r (m)"); ax.set_ylabel("Hoop stress σθ (MPa)")
+    ax.set_xlabel("Radius r (m)")
+    ax.set_ylabel("Hoop stress σθ (MPa)")
     ax.set_title("Lining hoop stress distribution")
-    ax.set_ylim(0, 200)  # NEW: cap vertical axis
-    ax.grid(True, linestyle="--", alpha=0.35); ax.legend(loc="best")
+    ax.set_ylim(0, 100)  # per your request
+    ax.grid(True, linestyle="--", alpha=0.35)
+    ax.legend(loc="best")
     st.pyplot(fig_s)
 
     c1, c2, c3 = st.columns(3)
     c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
     c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
-    c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
-              help=("Stress exceeds tensile strength; increase thickness or confinement."
-                    if sigma_outer > ft_MPa else "Within tensile capacity at outer face."))
+    c3.metric(
+        "Status",
+        "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
+        help=("Stress exceeds tensile strength; increase thickness or confinement."
+              if sigma_outer > ft_MPa else "Within tensile capacity at outer face.")
+    )
 
     return {
         "hs": hs, "alpha_deg": alpha, "ri_m": ri, "t_m": t, "re_m": re,
@@ -282,18 +290,22 @@ Ha_u  = HWL_u - LWL_u                 # available drawdown
 NWL_u = HWL_u - Ha_u / 3.0            # NWL = HWL − Ha/3
 
 # Heads (NWL-based gross head)
-gross_head = NWL_u - TWL_l            # Hg = NWL − TWL
+gross_head = NWL_u - TWL_l            # H_g = NWL − TWL
 min_head   = LWL_u - HWL_l            # worst case
 head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))  # (LWL − TWL)/(HWL − TWL)
 
 # --- Visualisation ---
 fig_res, ax = plt.subplots(figsize=(8, 5))
+# storage bars
 ax.bar(["Upper"], [HWL_u - LWL_u], bottom=LWL_u, color="#3498DB", alpha=0.75, width=0.4)
 ax.bar(["Lower"], [HWL_l - TWL_l], bottom=TWL_l, color="#2ECC71", alpha=0.75, width=0.4)
+# NWL line (spans both bars)
 ax.hlines(NWL_u, -0.4, 1.4, colors="#34495E", linestyles="--", linewidth=2, label="NWL (upper)")
+# gross head arrow (NWL to TWL)
 ax.annotate("", xy=(1.0, NWL_u), xytext=(1.0, TWL_l),
             arrowprops=dict(arrowstyle="<->", color="#E74C3C", lw=2))
 ax.text(1.05, (NWL_u + TWL_l)/2, f"Hg ≈ {gross_head:.1f} m", color="#E74C3C", va="center")
+# min head arrow (LWL to HWL_l)
 ax.annotate("", xy=(0.2, LWL_u), xytext=(0.2, HWL_l),
             arrowprops=dict(arrowstyle="<->", color="#27AE60", lw=2))
 ax.text(0.08, (LWL_u + HWL_l)/2, f"Min ≈ {min_head:.1f} m", color="#27AE60", va="center")
@@ -312,12 +324,12 @@ with st.expander("Show equations used"):
 
 # Metrics
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("Available drawdown Ha (m)", f"{Ha_u:.1f}")
+m1.metric("Available drawdown H_a (m)", f"{Ha_u:.1f}")
 m2.metric("NWL (m)", f"{NWL_u:.1f}")
-m3.metric("Gross head Hg = NWL−TWL (m)", f"{gross_head:.1f}")
+m3.metric("Gross head H_g = NWL−TWL (m)", f"{gross_head:.1f}")
 m4.metric("Head fluctuation ratio (HFR)", f"{head_fluct_ratio:.3f}")
 
-# Head fluctuation criterion (lower limit)
+# --- Head fluctuation criterion (treated as LOWER LIMIT) ---
 st.markdown("**Head fluctuation rate**")
 st.latex(r"\text{HFR} = \frac{LWL - TWL}{HWL - TWL}")
 crit_col1, crit_col2 = st.columns([2, 1])
@@ -375,33 +387,6 @@ else:
         eps = st.number_input("Custom ε (m)", 0.0, 0.01,
                               float(st.session_state.get("eps_custom", rl[rough_choice] if rl[rough_choice] else 0.00030)),
                               0.00001, format="%.5f") if rough_choice == "Custom..." else rl[rough_choice]
-# ---------- Mini Moody chart (moved here to avoid NameError) ----------
-# Place this AFTER out_design_flow / out_max_flow are computed in Section 3
-if mode_f != "Manual (slider)":
-    st.subheader("Mini Moody diagram (your operating points)")
-    Re_vals = np.logspace(3, 8, 300)
-    epsD_list = [0.0, 1e-6, 1e-5, 1e-4, 5e-4, 1e-3]
-
-    fig_m, axm = plt.subplots(figsize=(7.5, 5))
-    for rr in epsD_list:
-        f_line = [f_moody_swamee_jain(Re, rr) for Re in Re_vals]
-        axm.plot(Re_vals, f_line, lw=1.5, label=f"ε/D={rr:g}")
-
-    # Plot your operating points from the flow-only calc (Ksum = 0)
-    if ("Re" in out_design_flow) and (not np.isnan(out_design_flow["Re"])) and (not np.isnan(out_design_flow["f"])):
-        axm.scatter([out_design_flow["Re"]], [out_design_flow["f"]],
-                    s=60, label="Design point", zorder=5)
-    if ("Re" in out_max_flow) and (not np.isnan(out_max_flow["Re"])) and (not np.isnan(out_max_flow["f"])):
-        axm.scatter([out_max_flow["Re"]], [out_max_flow["f"]],
-                    s=60, label="Max point", zorder=5)
-
-    axm.set_xscale("log"); axm.set_yscale("log")
-    axm.set_xlabel("Reynolds number Re")
-    axm.set_ylabel("Darcy friction factor f")
-    axm.set_title("Moody chart (Swamee–Jain approximation)")
-    axm.grid(True, which="both", ls="--", alpha=0.35)
-    axm.legend(loc="best", fontsize=9)
-    st.pyplot(fig_m)
 
 # -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
 st.header("3) Discharges & Velocities")
@@ -452,9 +437,8 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
 out_design_flow = compute_block(P_design, gross_head, 0.0, hf_guess=20.0)
 out_max_flow    = compute_block(P_max,    min_head,  0.0, hf_guess=30.0)
 
-# ---------- Mini Moody chart (safe placement & guards) ----------
-# Place this AFTER out_design_flow / out_max_flow are created in Section 3.
-if (mode_f != "Manual (slider)") and ('out_design_flow' in locals()) and ('out_max_flow' in locals()):
+# ---------- Mini Moody chart (AFTER flows exist) ----------
+if (mode_f != "Manual (slider)"):
     st.subheader("Mini Moody diagram (your operating points)")
     Re_vals = np.logspace(3, 8, 300)
     epsD_list = [0.0, 1e-6, 1e-5, 1e-4, 5e-4, 1e-3]
@@ -464,7 +448,6 @@ if (mode_f != "Manual (slider)") and ('out_design_flow' in locals()) and ('out_m
         f_line = [f_moody_swamee_jain(Re, rr) for Re in Re_vals]
         axm.plot(Re_vals, f_line, lw=1.5, label=f"ε/D={rr:g}")
 
-    # Plot operating points if present
     for label, out_pt in (("Design point", out_design_flow), ("Max point", out_max_flow)):
         Re_pt = out_pt.get("Re", np.nan)
         f_pt  = out_pt.get("f",  np.nan)
@@ -478,7 +461,6 @@ if (mode_f != "Manual (slider)") and ('out_design_flow' in locals()) and ('out_m
     axm.grid(True, which="both", ls="--", alpha=0.35)
     axm.legend(loc="best", fontsize=9)
     st.pyplot(fig_m)
-# ----------------------------------------------------------------
 
 # Table for Q & v only
 results_flow = pd.DataFrame({
@@ -520,22 +502,20 @@ elif v_max >= 4.0:
 else:
     st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
 
-# Collapsible equations
-with st.expander("Show equations used"):
+# Collapsible equations (for Section 3)
+with st.expander("Show equations used (Section 3)"):
     st.latex(r"A = \frac{\pi D^{2}}{4} \quad (\text{m}^2)")
     st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}} \quad (\text{m}^3/\text{s})")
     st.latex(r"v = \frac{Q_p}{A} \quad (\text{m/s})")
-
-st.markdown(
-    """
-    **Velocity checks (USBR guidance):**
-    - Low-pressure steel penstocks: *3 – 5 m/s*  
-    - Medium-pressure steel penstocks: *5 – 7 m/s*  
-    - High-pressure steel penstocks: *7 – 10 m/s*  
-
-    *Reference: United States Bureau of Reclamation (USBR), Design of Small Dams, 3rd Edition (1987), Chapter 10 – Penstocks.*
-    """
-)
+    st.markdown(
+        """
+        **Velocity guidance (USBR):**
+        - Low-pressure steel penstocks: *3 – 5 m/s*  
+        - Medium-pressure steel penstocks: *5 – 7 m/s*  
+        - High-pressure steel penstocks: *7 – 10 m/s*  
+        *Reference: USBR, Design of Small Dams, 3rd Ed. (1987), Ch. 10 – Penstocks.*
+        """
+    )
 
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
@@ -578,7 +558,7 @@ st.dataframe(
     }
 )
 
-# NEW: Diameter Estimator (three methods)
+# Diameter Estimator (three methods)
 st.subheader("Diameter estimator (pick a method)")
 Q_for_sizing = out_design_flow["Q_total"] or 0.0
 
