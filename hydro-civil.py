@@ -856,34 +856,35 @@ st.caption("Notes: Swamee–Jain is the explicit formula used by the app; "
            "All use the same Re and ε/D shown in the table.")
 
 # Reference expanders
+
 with st.expander("What is the Darcy–Weisbach equation? (click to expand)"):
     st.markdown(
         r"""
-        The Darcy–Weisbach equation expresses the head loss (or pressure loss) due to friction in a pipe:
-        
+        The Darcy–Weisbach equation expresses the head loss due to pipe friction:
+
         \[
         \Delta h_f = \lambda \frac{L}{d_h} \frac{v^2}{2g}
         \]
-        
-        where:
+
+        where:  
         - \( \lambda \) = Darcy friction factor  
         - \( L \) = pipe length (m)  
         - \( d_h \) = hydraulic diameter (m)  
-        - \( v \) = velocity (m/s)  
-        - \( g \) = acceleration due to gravity (9.81 m/s²)  
+        - \( v \) = mean velocity (m/s)  
+        - \( g \) = gravitational acceleration (9.81 m/s²)  
         """
     )
 
 with st.expander("What is the Colebrook–White equation? (click to expand)"):
     st.markdown(
         r"""
-        The Colebrook–White equation is an implicit formula for the Darcy friction factor:
-        
+        The Colebrook–White equation (implicit) defines the Darcy friction factor in turbulent flow:
+
         \[
         \frac{1}{\sqrt{\lambda}} = -2 \log_{10} \left( \frac{\varepsilon}{3.7 d_h} + \frac{2.51}{Re \sqrt{\lambda}} \right)
         \]
-        
-        where:
+
+        where:  
         - \( \varepsilon \) = absolute roughness (m)  
         - \( d_h \) = hydraulic diameter (m)  
         - \( Re = \frac{\rho v d_h}{\mu} \) = Reynolds number  
@@ -893,15 +894,27 @@ with st.expander("What is the Colebrook–White equation? (click to expand)"):
 with st.expander("What is the Moody Chart? (click to expand)"):
     st.markdown(
         r"""
-        The Moody Chart is a graphical representation of the Darcy friction factor \(\lambda\) 
-        as a function of Reynolds number \(Re\) and relative roughness \(\varepsilon/d_h\).  
+        The **Moody Chart** is a graphical representation of the Darcy friction factor \( \lambda \) 
+        as a function of Reynolds number \( Re \) and relative roughness \( \varepsilon/d_h \).
 
-        - Useful for quickly estimating \(\lambda\) without solving Colebrook–White explicitly.  
         - Covers laminar, transitional, and turbulent regimes.  
+        - Useful for quick estimation of \( \lambda \) without solving Colebrook–White numerically.  
         """
     )
 
+with st.expander("What is the Haaland approximation? (click to expand)"):
+    st.markdown(
+        r"""
+        The **Haaland equation** provides an explicit approximation for \( \lambda \), avoiding iterative solutions:
 
+        \[
+        \frac{1}{\sqrt{\lambda}} \approx -1.8 \log_{10} \left[ \left( \frac{\varepsilon}{3.7 d_h} \right)^{1.11} + \frac{6.9}{Re} \right]
+        \]
+
+        - Accuracy: within ~1–2% of Colebrook–White.  
+        - Widely used in engineering applications for computational efficiency.  
+        """
+    )
 
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
