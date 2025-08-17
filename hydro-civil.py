@@ -453,19 +453,28 @@ if (P_design_MW > 0) and (H_g > 0) and (eta_live > 0) and (Npen_live > 0):
 
 colv_left, colv_mid, colv_right = st.columns([1, 2, 1])
 
+# LEFT: Show Q_p
+with colv_left:
+    if not np.isnan(Qp_design):
+        st.metric("Design per-penstock flow Qₚ (m³/s)", f"{Qp_design:.3f}")
+    else:
+        st.metric("Design per-penstock flow Qₚ (m³/s)", "—")
+        st.caption(":red[Set Design power, ηₜ, # penstocks and complete Section 1 (H_g).]")
+
+# MIDDLE: velocity slider
 with colv_mid:
     v_target = st.slider("Target velocity v (m/s)", 1.0, 10.0, 4.0, 0.1, format="%.1f")
 
+# RIGHT: suggested diameter & auto-apply
 with colv_right:
     if not np.isnan(Qp_design) and v_target > 0:
         D_suggested = math.sqrt(4.0 * Qp_design / (math.pi * v_target))
         st.metric("Suggested diameter D (m)", f"{D_suggested:.3f}")
-        # auto-apply so later sections use it
         st.session_state["D_pen"] = float(D_suggested)
         st.caption("✔ Diameter has been applied automatically to the model.")
     else:
         st.metric("Suggested diameter D (m)", "—")
-        st.caption(":red[Provide Design power (MW), ηₜ, # penstocks, and complete Section 1 for H_g.]")
+        st.caption(":red[Provide inputs first.]")
 
 # Reference / equations
 with st.expander("Figures & equations used (diameter by velocity)"):
