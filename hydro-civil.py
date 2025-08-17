@@ -167,81 +167,6 @@ def D_from_headloss(Q, L, hf_allow, eps=3e-4, Ksum=2.0, T_C=15.0, rho=1000.0, g=
     hf = (f * L / D + Ksum) * v**2 / (2.0 * g)
     return D, f, Re, v, hf
 
-# --------------------- Rock Cover & Lining UI (modular) ------------------
-def rock_cover_and_lining_ui():
-    """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
-    st.header("5) Pressure Tunnel: Rock Cover & Lining Stress")
-
-    # Rock cover inputs
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        hs = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 300.0, 1.0)
-    with c2:
-        alpha = st.number_input("Tunnel inclination α (deg)", 0.0, 90.0, 20.0, 1.0)
-    with c3:
-        ri = st.number_input("Lining inner radius r_i (m)", 0.2, 10.0, 3.15, 0.05)
-    with c4:
-        t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
-
-    re = ri + t
-    gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
-    CRV = snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=gamma_R)
-    FRV = norwegian_FRV(CRV, hs, alpha, gamma_w=9.81, gamma_R=gamma_R)
-
-    cc1, cc2 = st.columns(2)
-    cc1.metric("Snowy vertical cover C_RV (m)", f"{CRV:.1f}")
-    cc2.metric("Norwegian factor F_RV (-)", f"{FRV:.2f}")
-    st.markdown("**Target**: Typically F_RV ≥ 1.2–1.5 (site-dependent).")
-
-    # Lining stress
-    st.subheader("Lining Hoop Stress (Lame solution)")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        pi_MPa = st.number_input("Internal water pressure p_i (MPa)", 0.1, 20.0, 2.0, 0.1, key="pi_MPa")
-    with c2:
-        pext = st.number_input("External confinement p_ext (MPa)", 0.0, 20.0, 0.0, 0.1, key="pext")
-    with c3:
-        ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1, key="ft_MPa")
-
-    sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # at outer face
-    pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
-
-    # Stress profile & plot (limit 0–100 MPa for teaching clarity)
-    r_plot = np.linspace(ri * 1.001, re, 200)
-    sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
-
-    fig_s, ax = plt.subplots(figsize=(8, 4.5))
-    ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
-    ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
-    ax.axvline(ri, color="k", ls=":", label=f"ri={ri:.2f} m")
-    ax.axvline(re, color="k", ls="--", label=f"re={re:.2f} m")
-    ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
-                    color="red", alpha=0.2, label="Cracking risk")
-    ax.set_xlabel("Radius r (m)")
-    ax.set_ylabel("Hoop stress σθ (MPa)")
-    ax.set_title("Lining hoop stress distribution")
-    ax.set_ylim(0, 100)  # per your request
-    ax.grid(True, linestyle="--", alpha=0.35)
-    ax.legend(loc="best")
-    st.pyplot(fig_s)
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
-    c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
-    c3.metric(
-        "Status",
-        "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
-        help=("Stress exceeds tensile strength; increase thickness or confinement."
-              if sigma_outer > ft_MPa else "Within tensile capacity at outer face.")
-    )
-
-    return {
-        "hs": hs, "alpha_deg": alpha, "ri_m": ri, "t_m": t, "re_m": re,
-        "gamma_R_kNpm3": gamma_R, "CRV_m": CRV, "FRV": FRV,
-        "pi_MPa": pi_MPa, "pext_MPa": pext, "ft_MPa": ft_MPa,
-        "sigma_outer_MPa": sigma_outer, "pext_required_MPa": pext_req
-    }
-
 # ------------------------------- App Shell -------------------------------
 st.set_page_config(page_title="PHES Design Teaching App (with Moody)", layout="wide")
 st.title("Pumped Hydro Energy Storage — Design Teaching App")
@@ -329,7 +254,7 @@ m2.metric("NWL (m)", f"{NWL_u:.1f}")
 m3.metric("Gross head H_g = NWL−TWL (m)", f"{gross_head:.1f}")
 m4.metric("Head fluctuation ratio (HFR)", f"{head_fluct_ratio:.3f}")
 
-# --- Head fluctuation criterion (treated as LOWER LIMIT) ---
+# Head fluctuation criterion (lower limit)
 st.markdown("**Head fluctuation rate**")
 st.latex(r"\text{HFR} = \frac{LWL - TWL}{HWL - TWL}")
 crit_col1, crit_col2 = st.columns([2, 1])
@@ -388,118 +313,6 @@ else:
                               float(st.session_state.get("eps_custom", rl[rough_choice] if rl[rough_choice] else 0.00030)),
                               0.00001, format="%.5f") if rough_choice == "Custom..." else rl[rough_choice]
 
-# === Quick Reynolds check (one-line formula) + Equations ===
-st.subheader("Reynolds number — quick check")
-
-# Pick a viscosity temperature (use Moody temp if available; else 20 °C)
-T_for_nu = T_C if (mode_f != "Manual (slider)" and T_C is not None) else 20.0
-nu_used = water_nu_kinematic_m2s(T_for_nu)
-
-def Re_quick(Q_total, N, D, nu):
-    """One-line Reynolds: Re = 4 Q_total / (pi * N * D * nu)"""
-    return safe_div(4.0 * Q_total, math.pi * N * D * nu)
-
-# ---- Quick Reynolds check (robust to tuple/dict) ----
-
-def _coerce_flow(res):
-    """Return a dict with keys Q_total, Qp, v, Re from either a dict or a tuple/list."""
-    if isinstance(res, dict):
-        return {
-            "Q_total": res.get("Q_total", float("nan")),
-            "Qp":      res.get("Q_per",  res.get("Qp", float("nan"))),
-            "v":       res.get("v", float("nan")),
-            "Re":      res.get("Re", float("nan")),
-        }
-    elif isinstance(res, (list, tuple)):
-        # Assume order: (Q_total, Qp, v, Re)
-        vals = list(res) + [float("nan")] * 4  # pad to length 4
-        return {"Q_total": vals[0], "Qp": vals[1], "v": vals[2], "Re": vals[3]}
-    else:
-        return {"Q_total": float("nan"), "Qp": float("nan"), "v": float("nan"), "Re": float("nan")}
-
-design_flow = _coerce_flow(out_design_flow)
-max_flow    = _coerce_flow(out_max_flow)
-
-# Viscosity to use for the check (same T as your Moody block if available)
-nu_used = water_nu_kinematic_m2s(
-    T_C if (mode_f != "Manual (slider)" and T_C is not None) else 20.0
-)
-
-def Re_quick(Q_total, N_pen, D, nu):
-    """Re = ( (Q_total/N_pen) / (πD²/4) ) * D / ν"""
-    A = math.pi * D**2 / 4.0
-    v = (Q_total / max(N_pen, 1)) / A
-    return v * D / nu
-
-Re_quick_design = Re_quick(design_flow["Q_total"], N_pen, D_pen, nu_used)
-Re_quick_max    = Re_quick(max_flow["Q_total"],    N_pen, D_pen, nu_used)
-
-# (Optional) Compare quick vs. computed values if present
-try:
-    if not np.isnan(design_flow["Re"]):
-        st.caption(f"Quick Re (design): {Re_quick_design:,.0f}  •  From flow block: {design_flow['Re']:,.0f}")
-    else:
-        st.caption(f"Quick Re (design): {Re_quick_design:,.0f}")
-    if not np.isnan(max_flow["Re"]):
-        st.caption(f"Quick Re (max): {Re_quick_max:,.0f}  •  From flow block: {max_flow['Re']:,.0f}")
-    else:
-        st.caption(f"Quick Re (max): {Re_quick_max:,.0f}")
-except Exception:
-    # Keep UI resilient even if any value is NaN
-    st.caption(f"Quick Re (design): {Re_quick_design:,.0f} • Quick Re (max): {Re_quick_max:,.0f}")
-
-with st.expander("Show equations used (Reynolds quick check)"):
-    st.latex(r"A = \frac{\pi D^{2}}{4}")
-    st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}}")
-    st.latex(r"v = \frac{Q_p}{A}")
-    st.latex(r"\mathrm{Re} = \frac{v D}{\nu}")
-
-
-def pct_diff(a, b):
-    return float("nan") if (np.isnan(a) or np.isnan(b) or b == 0) else 100.0 * (a - b) / b
-
-re_table = pd.DataFrame({
-    "Case": ["Design", "Maximum"],
-    "Re (two-pass)": [out_design_flow["Re"], out_max_flow["Re"]],
-    "Re (quick 4Q/(πNDν))": [Re_quick_design, Re_quick_max],
-    "% diff (quick vs two-pass)": [
-        pct_diff(Re_quick_design, out_design_flow["Re"]),
-        pct_diff(Re_quick_max,    out_max_flow["Re"])
-    ],
-})
-st.dataframe(
-    re_table, use_container_width=True,
-    column_config={
-        "Re (two-pass)": st.column_config.NumberColumn(format="%.0f"),
-        "Re (quick 4Q/(πNDν))": st.column_config.NumberColumn(format="%.0f"),
-        "% diff (quick vs two-pass)": st.column_config.NumberColumn(format="%.2f %%"),
-    }
-)
-st.caption(f"Quick-Re uses ν at T = {T_for_nu:.1f} °C.")
-
-with st.expander("Show equations used"):
-    # Water properties
-    st.markdown("**Water properties**")
-    st.latex(r"\mu(T_\mathrm{C}) = 2.414\times10^{-5}\;10^{\frac{247.8}{(T_\mathrm{C}+273.15)-140}}\;\;[\text{Pa·s}]")
-    st.latex(r"\nu = \frac{\mu}{\rho}\;\;[\text{m}^2/\text{s}]")
-    # Geometry & continuity
-    st.markdown("**Geometry & continuity**")
-    st.latex(r"A = \frac{\pi D^{2}}{4}\;\;[\text{m}^2]")
-    st.latex(r"Q_p = \frac{Q_\text{tot}}{N_\text{pen}}\;\;[\text{m}^3/\text{s}]")
-    st.latex(r"v = \frac{Q_p}{A}\;\;[\text{m/s}]")
-    # Power to flow
-    st.markdown("**Power → discharge**")
-    st.latex(r"Q_\text{tot}=\frac{P_\text{MW}\,10^6}{\rho g H_{\text{net}}\eta_t}")
-    # Reynolds (two-pass and quick)
-    st.markdown("**Reynolds number**")
-    st.latex(r"\mathrm{Re}=\frac{vD}{\nu}")
-    st.latex(r"\boxed{\;\mathrm{Re}=\dfrac{4\,Q_\text{tot}}{\pi\,N_\text{pen}\,D\,\nu}\;}")
-    # Friction & losses (reference)
-    st.markdown("**Friction & losses (reference)**")
-    st.latex(r"f \approx \frac{0.25}{\left[\log_{10}\!\left(\frac{\varepsilon}{3.7D}+\frac{5.74}{\mathrm{Re}^{0.9}}\right)\right]^2}\quad\text{(Swamee–Jain)}")
-    st.latex(r"h_f=\left(f\frac{L}{D}+\sum K\right)\frac{v^2}{2g}")
-
-
 # -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
 st.header("3) Discharges & Velocities")
 
@@ -548,6 +361,68 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
 # Compute ignoring local losses first (Ksum=0) — clean view of Q & v
 out_design_flow = compute_block(P_design, gross_head, 0.0, hf_guess=20.0)
 out_max_flow    = compute_block(P_max,    min_head,  0.0, hf_guess=30.0)
+
+# ---------- Reynolds number — quick check (AFTER flows exist) ----------
+st.subheader("Reynolds number — quick check")
+
+def _coerce_flow(res):
+    """Return a dict with keys Q_total, Qp, v, Re from either a dict or a tuple/list."""
+    if isinstance(res, dict):
+        return {
+            "Q_total": res.get("Q_total", float("nan")),
+            "Qp":      res.get("Q_per",  res.get("Qp", float("nan"))),
+            "v":       res.get("v", float("nan")),
+            "Re":      res.get("Re", float("nan")),
+        }
+    elif isinstance(res, (list, tuple)):
+        vals = list(res) + [float("nan")] * 4
+        return {"Q_total": vals[0], "Qp": vals[1], "v": vals[2], "Re": vals[3]}
+    else:
+        return {"Q_total": float("nan"), "Qp": float("nan"), "v": float("nan"), "Re": float("nan")}
+
+design_flow = _coerce_flow(out_design_flow)
+max_flow    = _coerce_flow(out_max_flow)
+
+T_for_nu = T_C if (mode_f != "Manual (slider)" and T_C is not None) else 20.0
+nu_used  = water_nu_kinematic_m2s(T_for_nu)
+
+def Re_quick(Q_total, N, D, nu):
+    """Re = ( (Q_total/N) / (πD²/4) ) * D / ν  =  4 Q_total / (π N D ν)"""
+    A = math.pi * D**2 / 4.0
+    v = (Q_total / max(N, 1)) / A
+    return v * D / nu
+
+Re_quick_design = Re_quick(design_flow["Q_total"], N_pen, D_pen, nu_used)
+Re_quick_max    = Re_quick(max_flow["Q_total"],    N_pen, D_pen, nu_used)
+
+def pct_diff(a, b):
+    return float("nan") if (np.isnan(a) or np.isnan(b) or b == 0) else 100.0 * (a - b) / b
+
+re_table = pd.DataFrame({
+    "Case": ["Design", "Maximum"],
+    "Re (two-pass)": [design_flow["Re"], max_flow["Re"]],
+    "Re (quick 4Q/(πNDν))": [Re_quick_design, Re_quick_max],
+    "% diff (quick vs two-pass)": [
+        pct_diff(Re_quick_design, design_flow["Re"]),
+        pct_diff(Re_quick_max,    max_flow["Re"])
+    ],
+})
+st.dataframe(
+    re_table, use_container_width=True,
+    column_config={
+        "Re (two-pass)": st.column_config.NumberColumn(format="%.0f"),
+        "Re (quick 4Q/(πNDν))": st.column_config.NumberColumn(format="%.0f"),
+        "% diff (quick vs two-pass)": st.column_config.NumberColumn(format="%.2f %%"),
+    }
+)
+st.caption(f"Quick-Re uses ν at T = {T_for_nu:.1f} °C.")
+
+with st.expander("Show equations used (Reynolds quick check)"):
+    st.latex(r"A = \frac{\pi D^{2}}{4}")
+    st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}}")
+    st.latex(r"v = \frac{Q_p}{A}")
+    st.latex(r"\mathrm{Re} = \frac{v D}{\nu}")
+    st.latex(r"\boxed{\;\mathrm{Re}=\dfrac{4\,Q_\text{total}}{\pi\,N_\text{pen}\,D\,\nu}\;}")
 
 # ---------- Mini Moody chart (AFTER flows exist) ----------
 if (mode_f != "Manual (slider)"):
@@ -737,6 +612,79 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # --------------------- Section 6 (modular): Rock Cover & Lining ----------
+def rock_cover_and_lining_ui():
+    """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
+    st.header("5) Pressure Tunnel: Rock Cover & Lining Stress")
+
+    # Rock cover inputs
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        hs = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 300.0, 1.0)
+    with c2:
+        alpha = st.number_input("Tunnel inclination α (deg)", 0.0, 90.0, 20.0, 1.0)
+    with c3:
+        ri = st.number_input("Lining inner radius r_i (m)", 0.2, 10.0, 3.15, 0.05)
+    with c4:
+        t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
+
+    re = ri + t
+    gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
+    CRV = snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=gamma_R)
+    FRV = norwegian_FRV(CRV, hs, alpha, gamma_w=9.81, gamma_R=gamma_R)
+
+    cc1, cc2 = st.columns(2)
+    cc1.metric("Snowy vertical cover C_RV (m)", f"{CRV:.1f}")
+    cc2.metric("Norwegian factor F_RV (-)", f"{FRV:.2f}")
+    st.markdown("**Target**: Typically F_RV ≥ 1.2–1.5 (site-dependent).")
+
+    # Lining stress
+    st.subheader("Lining Hoop Stress (Lame solution)")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        pi_MPa = st.number_input("Internal water pressure p_i (MPa)", 0.1, 20.0, 2.0, 0.1, key="pi_MPa")
+    with c2:
+        pext = st.number_input("External confinement p_ext (MPa)", 0.0, 20.0, 0.0, 0.1, key="pext")
+    with c3:
+        ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1, key="ft_MPa")
+
+    sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # at outer face
+    pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
+
+    r_plot = np.linspace(ri * 1.001, re, 200)
+    sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
+
+    fig_s, ax = plt.subplots(figsize=(8, 4.5))
+    ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
+    ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
+    ax.axvline(ri, color="k", ls=":", label=f"ri={ri:.2f} m")
+    ax.axvline(re, color="k", ls="--", label=f"re={re:.2f} m")
+    ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
+                    color="red", alpha=0.2, label="Cracking risk")
+    ax.set_xlabel("Radius r (m)")
+    ax.set_ylabel("Hoop stress σθ (MPa)")
+    ax.set_title("Lining hoop stress distribution")
+    ax.set_ylim(0, 100)  # for readability
+    ax.grid(True, linestyle="--", alpha=0.35)
+    ax.legend(loc="best")
+    st.pyplot(fig_s)
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
+    c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
+    c3.metric(
+        "Status",
+        "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
+        help=("Stress exceeds tensile strength; increase thickness or confinement."
+              if sigma_outer > ft_MPa else "Within tensile capacity at outer face.")
+    )
+
+    return {
+        "hs": hs, "alpha_deg": alpha, "ri_m": ri, "t_m": t, "re_m": re,
+        "gamma_R_kNpm3": gamma_R, "CRV_m": CRV, "FRV": FRV,
+        "pi_MPa": pi_MPa, "pext_MPa": pext, "ft_MPa": ft_MPa,
+        "sigma_outer_MPa": sigma_outer, "pext_required_MPa": pext_req
+    }
+
 rock_summary = rock_cover_and_lining_ui()  # returns dict (for export)
 
 # ------------------------------- Section 7: Surge Tank -------------------
