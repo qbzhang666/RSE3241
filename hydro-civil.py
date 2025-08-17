@@ -848,13 +848,7 @@ else:
     st.info("ℹ️ Low velocity (<4 m/s): safe but potentially uneconomic (oversized).")
 
 # Collapsible equations (for Section 3)
-with st.expander("Show equations used (Section 3)"):
-    st.latex(r"A = \frac{\pi D^{2}}{4} \quad (\text{m}^2)")
-    st.latex(r"Q_p = \frac{Q_\text{total}}{N_\text{pen}} \quad (\text{m}^3/\text{s})")
-    st.latex(r"v = \frac{Q_p}{A} \quad (\text{m/s})")
-    st.markdown(
-        """
-        **Velocity guidance (USBR):**
+with st.expander("Velocity guidance (USBR)"):
         - Low-pressure steel penstocks: *3 – 5 m/s*  
         - Medium-pressure steel penstocks: *5 – 7 m/s*  
         - High-pressure steel penstocks: *7 – 10 m/s*  
