@@ -674,7 +674,7 @@ st.pyplot(fig2)
     
 # ------------------------------- Section 3: Penstock & Moody -------------------------
 st.header("3) Head Loss of Hydraulic System")
-st.suheader("Major Water Loss (with Moody)")
+st.subheader("Major Water Loss (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
     P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", P_design)))
