@@ -503,25 +503,27 @@ with c2:
 
 st.subheader("Turbine Center Line (CL) and Draft Head")
 
-# --- two columns: theory | curve viz ---
-col1, col2 = st.columns([1, 1.5])
-
-with col1:
-    st.markdown(r"""
-### Turbine Center Setting
-
-The turbine centreline is set a **draft head** below the **lower reservoir TWL** determined in **1) Reservoir Levels, NWL & Rating Head**:
-
+with st.expander("Turbine Center Setting (click to expand)"):
+    st.markdown(
+        r"""
 \[
-\text{Turbine CL elevation} \;=\; \text{TWL}_{\ell} \;-\; h_{\text{draft}}
+\textbf{Turbine Center Setting}
 \]
 
-**Where**
-- \( \text{TWL}_{\ell} \) = Lower reservoir tailwater level (m) — taken from Section 1  
-- \( h_{\text{draft}} \) = Draft head (m), the vertical distance from the water surface to the turbine centreline
-""")
+\[
+\text{Turbine CL elevation} \;=\; \mathrm{TWL}_{\ell} \;-\; h_{\text{draft}}
+\]
 
-with col2:
+\[
+\begin{aligned}
+\mathrm{TWL}_{\ell} &: \;\text{Lower reservoir tailwater level (m), taken from Section 1} \\
+h_{\text{draft}} &: \;\text{Draft head (m): vertical distance from water surface to turbine centreline}
+\end{aligned}
+\]
+        """
+    )
+
+    
     st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
 
     # --- reference points digitized from your purple curve ---
