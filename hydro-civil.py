@@ -1216,49 +1216,41 @@ with tabA:
     # Generate and plot fitted curve
     Q_range = np.linspace(0, 500, 500)  # Extended to 500 m³/s
     D_fitted = a_fit * Q_range ** b_fit
-    ax.plot(Q_range, D_fitted, 'r-', linewidth=2, label=f"Fitted Curve: D = {a_fit:.3f}·Q^{b_fit:.3f}")
+    ax.plot(Q_range, D_fitted, 'r-', linewidth=2, 
+            label=f"Fitted Curve: D = {a_fit:.3f}·Q^{b_fit:.3f}")
     
-    # Create the visualization
-fig, ax = plt.subplots(figsize=(10, 6))
-
-# Plot original data points
-ax.plot(Q_chart, D_chart, 'bo', markersize=8, label="Reference Data")
-
-# Generate and plot fitted curve - extend to 500 m³/s
-Q_range = np.linspace(0, 500, 500)  # Extended to 500 m³/s
-D_fitted = a_fit * Q_range ** b_fit
-ax.plot(Q_range, D_fitted, 'r-', linewidth=2, label=f"Fitted Curve: D = {a_fit:.3f}·Q^{b_fit:.3f}")
-
-# Highlight the design point
-if not np.isnan(D_ext):
-    ax.plot(Q_for_sizing, D_ext, 'go', markersize=10, label=f"Design Point (Q={Q_for_sizing:.1f} m³/s)")
-    ax.annotate(f'D = {D_ext:.2f} m', 
-                (Q_for_sizing, D_ext),
-                textcoords="offset points", 
-                xytext=(10,-15),
-                ha='left',
-                fontsize=12,
-                arrowprops=dict(arrowstyle="->", color="green"))
-
-# Set axis limits to requested values
-ax.set_xlim(0, 500)    # Horizontal axis up to 500
-ax.set_ylim(0, 12)     # Vertical axis up to 12
-
-# Configure plot appearance
-ax.set_xlabel("Design Discharge (m³/s)", fontsize=12)
-ax.set_ylabel("Penstock Diameter (m)", fontsize=12)
-ax.set_title("Diameter vs Discharge Relationship", fontsize=14)
-ax.grid(True, linestyle='--', alpha=0.7)
-ax.legend(loc='upper left')
-
-# Display the plot
-st.pyplot(fig)
+    # Highlight the design point
+    if not np.isnan(D_ext):
+        ax.plot(Q_for_sizing, D_ext, 'go', markersize=10, 
+                label=f"Design Point (Q={Q_for_sizing:.1f} m³/s)")
+        ax.annotate(f'D = {D_ext:.2f} m', 
+                    (Q_for_sizing, D_ext),
+                    textcoords="offset points", 
+                    xytext=(10,-15),
+                    ha='left',
+                    fontsize=12,
+                    arrowprops=dict(arrowstyle="->", color="green"))
+    
+    # Set axis limits
+    ax.set_xlim(0, 500)
+    ax.set_ylim(0, 12)
+    
+    # Configure plot appearance
+    ax.set_xlabel("Design Discharge (m³/s)", fontsize=12)
+    ax.set_ylabel("Penstock Diameter (m)", fontsize=12)
+    ax.set_title("Diameter vs Discharge Relationship", fontsize=14)
+    ax.grid(True, linestyle='--', alpha=0.7)
+    ax.legend(loc='upper left')
+    
+    # Display the plot
+    st.pyplot(fig)
     
     # Apply button
     if st.button("Apply suggested D (chart fit)"):
         if not np.isnan(D_ext):
             st.session_state["D_pen"] = float(D_ext)
             st.success(f"Applied D = {D_ext:.2f} m to the Penstock Geometry panel (re-run to see effect).")
+
 
 with tabB:
     V_target = st.slider("Target velocity V (m/s)", 2.0, 8.0, 4.5, 0.1,
