@@ -388,6 +388,65 @@ else:
                               float(st.session_state.get("eps_custom", rl[rough_choice] if rl[rough_choice] else 0.00030)),
                               0.00001, format="%.5f") if rough_choice == "Custom..." else rl[rough_choice]
 
+# === Quick Reynolds check (one-line formula) + Equations ===
+st.subheader("Reynolds number — quick check")
+
+# Pick a viscosity temperature (use Moody temp if available; else 20 °C)
+T_for_nu = T_C if (mode_f != "Manual (slider)" and T_C is not None) else 20.0
+nu_used = water_nu_kinematic_m2s(T_for_nu)
+
+def Re_quick(Q_total, N, D, nu):
+    """One-line Reynolds: Re = 4 Q_total / (pi * N * D * nu)"""
+    return safe_div(4.0 * Q_total, math.pi * N * D * nu)
+
+Re_quick_design = Re_quick(out_design_flow["Q_total"], N_pen, D_pen, nu_used)
+Re_quick_max    = Re_quick(out_max_flow["Q_total"],    N_pen, D_pen, nu_used)
+
+def pct_diff(a, b):
+    return float("nan") if (np.isnan(a) or np.isnan(b) or b == 0) else 100.0 * (a - b) / b
+
+re_table = pd.DataFrame({
+    "Case": ["Design", "Maximum"],
+    "Re (two-pass)": [out_design_flow["Re"], out_max_flow["Re"]],
+    "Re (quick 4Q/(πNDν))": [Re_quick_design, Re_quick_max],
+    "% diff (quick vs two-pass)": [
+        pct_diff(Re_quick_design, out_design_flow["Re"]),
+        pct_diff(Re_quick_max,    out_max_flow["Re"])
+    ],
+})
+st.dataframe(
+    re_table, use_container_width=True,
+    column_config={
+        "Re (two-pass)": st.column_config.NumberColumn(format="%.0f"),
+        "Re (quick 4Q/(πNDν))": st.column_config.NumberColumn(format="%.0f"),
+        "% diff (quick vs two-pass)": st.column_config.NumberColumn(format="%.2f %%"),
+    }
+)
+st.caption(f"Quick-Re uses ν at T = {T_for_nu:.1f} °C.")
+
+with st.expander("Show equations used"):
+    # Water properties
+    st.markdown("**Water properties**")
+    st.latex(r"\mu(T_\mathrm{C}) = 2.414\times10^{-5}\;10^{\frac{247.8}{(T_\mathrm{C}+273.15)-140}}\;\;[\text{Pa·s}]")
+    st.latex(r"\nu = \frac{\mu}{\rho}\;\;[\text{m}^2/\text{s}]")
+    # Geometry & continuity
+    st.markdown("**Geometry & continuity**")
+    st.latex(r"A = \frac{\pi D^{2}}{4}\;\;[\text{m}^2]")
+    st.latex(r"Q_p = \frac{Q_\text{tot}}{N_\text{pen}}\;\;[\text{m}^3/\text{s}]")
+    st.latex(r"v = \frac{Q_p}{A}\;\;[\text{m/s}]")
+    # Power to flow
+    st.markdown("**Power → discharge**")
+    st.latex(r"Q_\text{tot}=\frac{P_\text{MW}\,10^6}{\rho g H_{\text{net}}\eta_t}")
+    # Reynolds (two-pass and quick)
+    st.markdown("**Reynolds number**")
+    st.latex(r"\mathrm{Re}=\frac{vD}{\nu}")
+    st.latex(r"\boxed{\;\mathrm{Re}=\dfrac{4\,Q_\text{tot}}{\pi\,N_\text{pen}\,D\,\nu}\;}")
+    # Friction & losses (reference)
+    st.markdown("**Friction & losses (reference)**")
+    st.latex(r"f \approx \frac{0.25}{\left[\log_{10}\!\left(\frac{\varepsilon}{3.7D}+\frac{5.74}{\mathrm{Re}^{0.9}}\right)\right]^2}\quad\text{(Swamee–Jain)}")
+    st.latex(r"h_f=\left(f\frac{L}{D}+\sum K\right)\frac{v^2}{2g}")
+
+
 # -------------------- Section 3: Discharges & Velocities (no ΣK yet) -----------------
 st.header("3) Discharges & Velocities")
 
