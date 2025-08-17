@@ -503,28 +503,7 @@ with c2:
 
 st.subheader("Turbine Center Line (CL) and Draft Head")
 
-with st.expander("Turbine Center Setting (click to expand)"):
-    st.markdown(
-        r"""
-\[
-\textbf{Turbine Center Setting}
-\]
-
-\[
-\text{Turbine CL elevation} \;=\; \mathrm{TWL}_{\ell} \;-\; h_{\text{draft}}
-\]
-
-\[
-\begin{aligned}
-\mathrm{TWL}_{\ell} &: \;\text{Lower reservoir tailwater level (m), taken from Section 1} \\
-h_{\text{draft}} &: \;\text{Draft head (m): vertical distance from water surface to turbine centreline}
-\end{aligned}
-\]
-        """
-    )
-
-    
-    st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
+st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
 
     # --- reference points digitized from your purple curve ---
     xk = np.array([100, 200, 300, 400, 500, 600], dtype=float)
@@ -557,6 +536,27 @@ h_{\text{draft}} &: \;\text{Draft head (m): vertical distance from water surface
     ax.grid(False)
     ax.legend(loc="upper right", fontsize=9)
     st.pyplot(fig)
+
+with st.expander("Turbine Center Setting (click to expand)"):
+    st.markdown(
+        r"""
+\[
+\textbf{Turbine Center Setting}
+\]
+
+\[
+\text{Turbine CL elevation} \;=\; \mathrm{TWL}_{\ell} \;-\; h_{\text{draft}}
+\]
+
+\[
+\begin{aligned}
+\mathrm{TWL}_{\ell} &: \;\text{Lower reservoir tailwater level (m), taken from Section 1} \\
+h_{\text{draft}} &: \;\text{Draft head (m): vertical distance from water surface to turbine centreline}
+\end{aligned}
+\]
+        """
+    )
+
 
 # ----------------- Inputs that use Step 1 values -----------------
 st.subheader("Set Turbine Center Elevation")
