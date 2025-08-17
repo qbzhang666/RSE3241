@@ -369,39 +369,34 @@ if set(df_profile.columns) >= valid_cols and len(df_profile) >= 2:
     colm3.metric("Penstock center-line L (m)", f"{L_pen_est:.1f}")
 
     # Apply to Step 2
-    if st.button("Apply L to Step 2 (Penstock length)"):
-        st.session_state["L_penstock"] = L_pen_est
-        st.success(f"Applied L = {L_pen_est:.1f} m to the 'Penstock length L' field in Step 2.")
+if st.button("Apply L to Step 2 (Penstock length)"):
+    st.session_state["L_penstock"] = L_pen_est
+    st.success(f"Applied L = {L_pen_est:.1f} m to the 'Penstock length L' field in Step 2.")
 
-    # Reference & equations (collapsed)
-    with st.expander("How is L computed? (figures / equations)"):
-        st.markdown(
-            r"""
-**Pressurized length definition:** distance along the pipe centerline from the head-tank outlet
-to the turbine inlet (include short powerhouse run). Do **not** include the open-channel headrace.
+# Reference & equations (collapsed)
+with st.expander("How is L computed? (figures / equations)"):
+    st.markdown(
+        "**Pressurized length definition:** "
+        "L is the distance along the pipe centreline from the head-tank outlet to the turbine inlet "
+        "(including the short powerhouse run). The open-channel headrace is **not** included."
+    )
 
-**Polyline summation**
+    st.markdown("**Polyline summation**")
+    st.latex(r"L = \sum_{i=0}^{n-1} \sqrt{(x_{i+1}-x_i)^2 + (z_{i+1}-z_i)^2}")
 
-For successive profile points \(i=0,\dots,n\) with chainage \(x_i\) and elevation \(z_i\),
-the total center-line length \(L\) is
-\[
-L=\sum_{i=0}^{n-1} \sqrt{(x_{i+1}-x_i)^2 + (z_{i+1}-z_i)^2 }.
-\]
+    st.markdown("**Single-slope approximation (optional)**")
+    st.latex(r"L \approx \sqrt{(\Delta x)^2 + (\Delta z)^2}")
 
-**Single-slope approximation (optional)**
-\[
-L \approx \sqrt{(\Delta x)^2 + (\Delta z)^2 }.
-\]
+    st.markdown("**Application in head-loss (Darcy–Weisbach)**")
+    st.latex(r"h_f = \left( f \frac{L}{D} + \sum K \right)\frac{v^2}{2g}")
 
-These lengths are then used in Darcy–Weisbach head loss
-\[
-h_f=\left(f\frac{L}{D}+\sum K\right)\frac{v^2}{2g},
-\]
-with \(f=f(Re,\varepsilon/D)\) from the Moody relationship (Swamee–Jain explicit form in the app).
-            """
-        )
+    st.caption(
+        r"with friction factor \( f = f(\mathrm{Re}, \varepsilon/D) \) obtained from the Moody relation "
+        r"(explicit Swamee–Jain form in this app)."
+    )
 else:
     st.info("Provide a profile (CSV or editor) with columns Chainage_m and Elevation_m to estimate L.")
+
 
 # ---------------------------- Quick diameter-by-velocity helper ----------------------------
 st.subheader("Quick diameter from target velocity")
