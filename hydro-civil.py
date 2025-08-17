@@ -498,7 +498,7 @@ with c2:
 st.header("3) Penstock Efficiencies (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
-    P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", float(P_design)), 10.0)
+    P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", P_design)
 with c2:
     P_max = st.number_input("Maximum power (MW)", 10.0, 6000.0, float(st.session_state.get("max_power", 600.0)), 10.0)
 
