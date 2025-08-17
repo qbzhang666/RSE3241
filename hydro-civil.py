@@ -523,44 +523,42 @@ with col1:
 with col2:
     st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
 
-    # --- points digitized from the purple curve (≈ from your figure) ---
-    # (maximum pumping head, draft head)
+    # --- reference points taken from your curve ---
     xk = np.array([100, 200, 300, 400, 500, 600], dtype=float)
     yk = np.array([-23, -33, -42, -50, -58, -66], dtype=float)
 
-    # fit a smooth cubic to capture the gentle curvature
-    coef = np.polyfit(xk, yk, 3)                    # cubic
+    # smooth cubic fit
+    coef = np.polyfit(xk, yk, 3)
     x = np.linspace(0, 600, 500)
     y = np.polyval(coef, x)
 
     # figure
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    # curve (purple, a bit thicker)
+    # curve
     ax.plot(x, y, color="#8A2BE2", lw=3, label="Fitted curve")
-
-    # show the original key points
     ax.plot(xk, yk, "o", color="#8A2BE2", mfc="white", ms=7, label="Reference points")
-    for xi, yi in zip(xk, yk):
-        ax.text(xi + 6, yi + 1.0, f"({int(xi)}, {yi:.0f})", fontsize=9, va="center")
 
-    # axes & grid to mimic the style in the figure
+    # annotate key points
+    for xi, yi in zip(xk, yk):
+        ax.text(xi + 6, yi - 1.0, f"({int(xi)}, {yi:.0f})", fontsize=9, va="center")
+
+    # axis setup
     ax.set_xlim(-10, 610)
-    ax.set_ylim(-70, -18)
+    ax.set_ylim(0, -70)   # inverted: 0 at bottom, negatives go upward
     ax.set_xlabel("Maximum pumping head (m)", fontsize=12)
     ax.set_ylabel("Draft head (m)", fontsize=12)
     ax.set_title("Relationship: Pumping head vs Draft head", fontsize=14)
 
-    # reference grid
-    for yref in range(-70, -10, 10):
+    # grid lines
+    for yref in range(-70, 1, 10):
         ax.axhline(yref, color="gray", linestyle=":", alpha=0.4)
     for xref in [0, 100, 200, 300, 400, 500, 600]:
         ax.axvline(xref, color="gray", linestyle=":", alpha=0.4)
 
     ax.grid(False)
-    ax.legend(loc="lower left", fontsize=9)
+    ax.legend(loc="upper right", fontsize=9)
     st.pyplot(fig)
-
 
 # Draft head input section
 st.subheader("Set Turbine Center Elevation")
