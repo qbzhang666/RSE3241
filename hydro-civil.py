@@ -432,24 +432,26 @@ with st.expander("How is L computed? (figures / equations)"):
 # ---------------------------- Quick diameter-by-velocity helper ----------------------------
 st.subheader("Quick diameter from target velocity")
 
-# Constants (teaching defaults)
 rho = 1000.0  # kg/m³
 g   = 9.81    # m/s²
 
-# Pull inputs (Design power in MW; gross head from Section 1; efficiency; # penstocks)
-P_design_MW = float(st.session_state.get("P_design", float("nan")))   # MW
-H_g         = float(st.session_state.get("gross_head", float("nan"))) # m (NWL − TWL)
-eta_t       = float(st.session_state.get("eta_t", float("nan")))      # -
-N_pen       = int(st.session_state.get("N_pen", 0))                   # count
+# Use the live variables you already defined earlier in the app:
+#   P_design (MW) from the sidebar
+#   eta_t (-) from the sidebar
+#   N_pen (count) from the sidebar
+#   gross_head (m) from Section 1
+P_design_MW = float(P_design)
+H_g         = float(gross_head)
+eta_live    = float(eta_t)
+Npen_live   = int(N_pen)
 
-# Compute design per-penstock flow (keep internal; we don't show it)
+# Compute design per-penstock flow (kept internal)
 Qp_design = float("nan")
-if (not np.isnan(P_design_MW)) and (not np.isnan(H_g)) and (not np.isnan(eta_t)) and H_g > 0 and eta_t > 0 and N_pen > 0:
-    Q_total_design = (P_design_MW * 1e6) / (rho * g * H_g * eta_t)  # m³/s
-    Qp_design = Q_total_design / N_pen
+if (P_design_MW > 0) and (H_g > 0) and (eta_live > 0) and (Npen_live > 0):
+    Q_total_design = (P_design_MW * 1e6) / (rho * g * H_g * eta_live)  # m³/s
+    Qp_design = Q_total_design / Npen_live
 
-# UI: velocity target and suggested diameter (no per-penstock metric, no Apply button)
-colv_left, colv_mid, colv_right = st.columns([1,2,1])
+colv_left, colv_mid, colv_right = st.columns([1, 2, 1])
 
 with colv_mid:
     v_target = st.slider("Target velocity v (m/s)", 1.0, 10.0, 4.0, 0.1, format="%.1f")
@@ -458,28 +460,25 @@ with colv_right:
     if not np.isnan(Qp_design) and v_target > 0:
         D_suggested = math.sqrt(4.0 * Qp_design / (math.pi * v_target))
         st.metric("Suggested diameter D (m)", f"{D_suggested:.3f}")
-        # Auto-apply to session for downstream sections
+        # auto-apply so later sections use it
         st.session_state["D_pen"] = float(D_suggested)
         st.caption("✔ Diameter has been applied automatically to the model.")
     else:
         st.metric("Suggested diameter D (m)", "—")
-        st.caption(":red[Set design power, gross head, ηₜ, and number of penstocks first.]")
+        st.caption(":red[Provide Design power (MW), ηₜ, # penstocks, and complete Section 1 for H_g.]")
 
-# Reference / equations (compact)
+# Reference / equations
 with st.expander("Figures & equations used (diameter by velocity)"):
     st.markdown("**Per-penstock flow from continuity**")
     st.latex(r"Q_p = \frac{Q_{\text{total}}}{N_{\text{pen}}}")
     st.latex(r"A = \frac{\pi D^2}{4}")
     st.latex(r"v = \frac{Q_p}{A}")
-
     st.markdown("**Solve for diameter from target velocity**")
     st.latex(r"D = \sqrt{\frac{4\,Q_p}{\pi\,v}}")
-
     st.markdown("**Head-loss check (Darcy–Weisbach)**")
     st.latex(r"h_f = \left(f\frac{L}{D}+\sum K\right)\frac{v^2}{2g}")
-
     st.latex(r"f \approx \frac{0.25}{\left[\log_{10}\!\left(\frac{\varepsilon}{3.7D}+\frac{5.74}{\mathrm{Re}^{0.9}}\right)\right]^2}")
-    st.caption("Swamee–Jain explicit form (valid for turbulent flow).")
+
 
 # ------------------------------- Section 3: Penstock & Moody -------------------------
 st.header("3) Penstock Efficiencies (with Moody)")
