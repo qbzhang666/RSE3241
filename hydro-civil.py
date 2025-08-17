@@ -501,6 +501,7 @@ with c1:
     P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", P_design)))
 with c2:
     P_max = st.number_input("Maximum power (MW)", 10.0, 6000.0, float(st.session_state.get("max_power", 600.0)), 10.0)
+    st.caption("💡 Hint: Maximum power should generally equal the Design power. Please check consistency.")
 
 st.subheader("Friction factor mode")
 mode_f = st.radio("Choose how to set Darcy friction factor f:",
