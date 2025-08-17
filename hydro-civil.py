@@ -476,14 +476,12 @@ with st.expander("Figures & equations used (diameter by velocity)"):
     st.caption("Swamee–Jain explicit form (valid for turbulent flow).")
 
 # ------------------------------- Section 3: Penstock & Moody -------------------------
-st.header("4) Penstock Efficiencies (with Moody)")
+st.header("3) Penstock Efficiencies (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
-    N_pen = st.number_input("Number of penstocks", 1, 16, int(st.session_state.get("N_penstocks", 2)))
     D_pen = st.number_input("Penstock diameter D (m)", 0.5, 12.0, float(st.session_state.get("D_pen", 3.5)), 0.1)
     L_pen = st.number_input("Penstock length L (m)", 10.0, 50000.0, float(st.session_state.get("L_penstock", 500.0)), 10.0)
 with c2:
-    eta_t = st.number_input("Turbine efficiency ηₜ (-)", 0.7, 1.0, float(st.session_state.get("eta_t", 0.90)), 0.01)
     P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", 500.0)), 10.0)
     P_max = st.number_input("Maximum power (MW)", 10.0, 6000.0, float(st.session_state.get("max_power", 600.0)), 10.0)
 
