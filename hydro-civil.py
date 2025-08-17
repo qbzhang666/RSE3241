@@ -855,65 +855,106 @@ st.caption("Notes: Swamee–Jain is the explicit formula used by the app; "
            "Colebrook–White is the iterative reference; Haaland is another explicit correlation. "
            "All use the same Re and ε/D shown in the table.")
 
+# ---------- References: friction factor & related methods ----------
 with st.expander("What is the Darcy–Weisbach equation? (click to expand)"):
     st.markdown(
         r"""
-        The Darcy–Weisbach equation expresses the head loss due to pipe friction:
+The Darcy–Weisbach equation gives head loss due to wall friction:
 
-        $$
-        \Delta h_f = \lambda \frac{L}{d_h} \frac{v^2}{2g}
-        $$
+$$
+\Delta h_f \;=\; \lambda \;\frac{L}{d_h}\; \frac{v^{2}}{2g}
+$$
 
-        where:  
-        - \( \lambda \) = Darcy friction factor  
-        - \( L \) = pipe length (m)  
-        - \( d_h \) = hydraulic diameter (m)  
-        - \( v \) = mean velocity (m/s)  
-        - \( g \) = gravitational acceleration (9.81 m/s²)  
-        """
+where  
+- $ \lambda $ = Darcy friction factor  
+- $ L $ = pipe length (m)  
+- $ d_h $ = hydraulic diameter (m)  
+- $ v $ = mean velocity (m/s)  
+- $ g $ = gravitational acceleration (9.81 m/s²)  
+"""
     )
 
 with st.expander("What is the Colebrook–White equation? (click to expand)"):
     st.markdown(
         r"""
-        The Colebrook–White equation (implicit) defines the Darcy friction factor in turbulent flow:
+The Colebrook–White (implicit) equation for turbulent flow relates $ \lambda $, $ Re $, and relative roughness $ \varepsilon/d_h $:
 
-        $$
-        \frac{1}{\sqrt{\lambda}} = -2 \log_{10} \left( \frac{\varepsilon}{3.7 d_h} + \frac{2.51}{Re \sqrt{\lambda}} \right)
-        $$
+$$
+\frac{1}{\sqrt{\lambda}}
+= -2 \log_{10}\!\left(
+\frac{\varepsilon}{3.7\,d_h}
++ \frac{2.51}{Re\,\sqrt{\lambda}}
+\right)
+$$
 
-        where:  
-        - \( \varepsilon \) = absolute roughness (m)  
-        - \( d_h \) = hydraulic diameter (m)  
-        - \( Re = \frac{\rho v d_h}{\mu} \) = Reynolds number  
-        """
+where  
+- $ \varepsilon $ = absolute roughness (m)  
+- $ d_h $ = hydraulic diameter (m)  
+- $ Re = \dfrac{\rho v d_h}{\mu} $ = Reynolds number  
+"""
     )
 
-with st.expander("What is the Moody Chart? (click to expand)"):
+with st.expander("What is the Moody chart? (click to expand)"):
     st.markdown(
         r"""
-        The **Moody Chart** is a graphical representation of the Darcy friction factor \( \lambda \) 
-        as a function of Reynolds number \( Re \) and relative roughness \( \varepsilon/d_h \).
+The **Moody chart** is a graphical relation of the Darcy friction factor $ \lambda $ vs. Reynolds number $ Re $ and relative roughness $ \varepsilon/d_h $.
 
-        - Covers laminar, transitional, and turbulent regimes.  
-        - Useful for quick estimation of \( \lambda \) without solving Colebrook–White numerically.  
-        """
+- Covers **laminar**, **transitional**, and **turbulent** regimes.  
+- Lets you estimate $ \lambda $ without solving Colebrook–White numerically.  
+"""
     )
 
 with st.expander("What is the Haaland approximation? (click to expand)"):
     st.markdown(
         r"""
-        The **Haaland equation** provides an explicit approximation for \( \lambda \), avoiding iterative solutions:
+The **Haaland** explicit approximation (no iteration) for turbulent flow:
 
-        $$
-        \frac{1}{\sqrt{\lambda}} \approx -1.8 \log_{10} \left[ \left( \frac{\varepsilon}{3.7 d_h} \right)^{1.11} + \frac{6.9}{Re} \right]
-        $$
+$$
+\frac{1}{\sqrt{\lambda}}
+\;\approx\;
+-1.8 \,\log_{10}\!\left[
+\left(\frac{\varepsilon}{3.7\,d_h}\right)^{1.11}
++ \frac{6.9}{Re}
+\right]
+$$
 
-        - Accuracy: within ~1–2% of Colebrook–White.  
-        - Widely used in engineering applications for computational efficiency.  
-        """
+- Typical accuracy: **within ~1–2%** of Colebrook–White.  
+- Widely used for quick engineering calculations.  
+"""
     )
 
+with st.expander("What is the Swamee–Jain explicit formula? (click to expand)"):
+    st.markdown(
+        r"""
+The **Swamee–Jain** explicit correlation (turbulent) used in this app’s Moody helper:
+
+$$
+\lambda
+\;=\;
+\frac{0.25}{
+\left[
+\log_{10}\!\left(\dfrac{\varepsilon}{3.7\,d_h}
++\dfrac{5.74}{Re^{0.9}}\right)
+\right]^2}
+$$
+
+- Convenient, accurate for fully turbulent ranges.  
+"""
+    )
+
+with st.expander("How does relative roughness enter? (click to expand)"):
+    st.markdown(
+        r"""
+**Relative roughness**:
+
+$$
+\frac{\varepsilon}{d_h}
+$$
+
+- $ \varepsilon $ = absolute roughness (m), $ d_h $ = hydraulic diameter (m).  
+- Together with $ Re $, it determines $ \lambda $ via Colebrook–White / Haaland / Swamee–Jain or a Moody chart.  
+"""
+    )
 
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
