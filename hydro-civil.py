@@ -205,7 +205,7 @@ with st.sidebar:
             ))
     # Power
     P_design = st.number_input(
-        "Design power: P_{\text{design}} (MW)", 1.0, 5000.0, 
+        "Design power: P_design (MW)", 1.0, 5000.0, 
         float(st.session_state.get("P_design", 2000.0)), 10.0
     )
     # Machine numbers
@@ -213,7 +213,7 @@ with st.sidebar:
         "Units (N)", 1, 20, int(st.session_state.get("N", 6)), 1
     )
     N_pen = st.number_input(
-        "Number of penstocks: N_{\text{pen}}", 1, 20, int(st.session_state.get("N_pen", 6)), 1
+        "Number of penstocks: N_pen", 1, 20, int(st.session_state.get("N_pen", 6)), 1
     )   
     # Efficiencies
     eta_t = st.number_input(
@@ -477,6 +477,8 @@ with colv_right:
 
 # Reference / equations
 with st.expander("Figures & equations used (diameter by velocity)"):
+    st.markdown("**Total design flow rate**")
+    st.latex(r"Q_{\text{total\_design}} = \frac{P_{\text{design\_MW}} \times 10^{6}}{\rho \cdot g \cdot H_g \cdot \eta_{\text{live}}}} \quad (\text{m}^3/\text{s})")
     st.markdown("**Per-penstock flow from continuity**")
     st.latex(r"Q_p = \frac{Q_{\text{total}}}{N_{\text{pen}}}")
     st.latex(r"A = \frac{\pi D^2}{4}")
