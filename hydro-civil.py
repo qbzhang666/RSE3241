@@ -754,6 +754,108 @@ if (mode_f != "Manual (slider)"):
     axm.legend(loc="best", fontsize=7)
     st.pyplot(fig_m, clear_figure=True)
 
+# ---------- Friction factor comparison (Swamee–Jain vs Colebrook) ----------
+st.subheader("Friction factor comparison")
+
+def colebrook_white_iter(Re, eps_over_D, itmax=50, tol=1e-10):
+    """
+    Solve 1/sqrt(f) = -2 log10( (ε/D)/3.7 + 2.51/(Re*sqrt(f)) )
+    Fixed-point iteration on 1/sqrt(f). Returns NaN if inputs invalid.
+    """
+    Re = float(Re)
+    rr = float(eps_over_D)
+    if not np.isfinite(Re) or Re <= 0:
+        return float("nan")
+    # laminar shortcut
+    if Re < 2000:
+        return 64.0/Re
+    # initial guess from Swamee–Jain for stability
+    try:
+        f0 = 0.25/(math.log10(rr/3.7 + 5.74/(Re**0.9)))**2
+    except ValueError:
+        f0 = 0.02
+    x = 1.0/math.sqrt(max(f0, 1e-6))
+    for _ in range(itmax):
+        rhs = -2.0*math.log10(rr/3.7 + 2.51/(Re*x))
+        x_new = rhs
+        if abs(x_new - x) < tol:
+            x = x_new
+            break
+        x = x_new
+    f = 1.0/(x*x)
+    return float(f)
+
+def f_haaland(Re, eps_over_D):
+    """
+    Haaland explicit correlation (turbulent, decent accuracy).
+    """
+    Re = float(Re)
+    rr = float(eps_over_D)
+    if not np.isfinite(Re) or Re <= 0:
+        return float("nan")
+    if Re < 2000:
+        return 64.0/Re
+    return ( -1.8*math.log10( (rr/3.7)**1.11 + 6.9/Re ) )**-2
+
+# get relative roughness (if available)
+if mode_f == "Manual (slider)":
+    st.info("Friction factor is currently set **manually**. For the comparison below, "
+            "the app uses your current D and the selected material ε (if any).")
+    rr_used = float("nan") if eps is None or D_pen <= 0 else (eps / D_pen)
+else:
+    rr_used = float("nan") if D_pen <= 0 or eps is None else (eps / D_pen)
+
+def pick_Re(two_pass_val, quick_val):
+    """Prefer two-pass Re; fall back to quick formula if needed."""
+    return two_pass_val if np.isfinite(two_pass_val) and two_pass_val > 0 else quick_val
+
+Re_design_used = pick_Re(design_flow["Re"], Re_quick_design)
+Re_max_used    = pick_Re(max_flow["Re"],    Re_quick_max)
+
+rows = []
+for case, Re_used in [("Design", Re_design_used), ("Maximum", Re_max_used)]:
+    # f via Swamee–Jain (your app function already blends laminar/transitional)
+    f_sj = f_moody_swamee_jain(Re_used, rr_used)
+    # f via Colebrook–White (iterative)
+    f_cb = colebrook_white_iter(Re_used, rr_used)
+    # f via Haaland (optional extra)
+    f_hl = f_haaland(Re_used, rr_used)
+
+    def pdiff(a, b):
+        return float("nan") if (not np.isfinite(a) or not np.isfinite(b) or b == 0) else 100.0*(a-b)/b
+
+    rows.append({
+        "Case": case,
+        "Re (used)": Re_used,
+        "ε/D (used)": rr_used,
+        "f — Swamee–Jain": f_sj,
+        "f — Colebrook (iter.)": f_cb,
+        "f — Haaland": f_hl,
+        "Δ% (Colebrook vs SJ)": pdiff(f_cb, f_sj),
+        "Δ% (Haaland vs SJ)": pdiff(f_hl, f_sj),
+    })
+
+df_f = pd.DataFrame(rows)
+
+st.dataframe(
+    df_f,
+    use_container_width=True,
+    column_config={
+        "Re (used)": st.column_config.NumberColumn(format="%.0f"),
+        "ε/D (used)": st.column_config.NumberColumn(format="%.6f"),
+        "f — Swamee–Jain": st.column_config.NumberColumn(format="%.5f"),
+        "f — Colebrook (iter.)": st.column_config.NumberColumn(format="%.5f"),
+        "f — Haaland": st.column_config.NumberColumn(format="%.5f"),
+        "Δ% (Colebrook vs SJ)": st.column_config.NumberColumn(format="%.2f %%"),
+        "Δ% (Haaland vs SJ)": st.column_config.NumberColumn(format="%.2f %%"),
+    }
+)
+
+st.caption("Notes: Swamee–Jain is the explicit formula used by the app; "
+           "Colebrook–White is the iterative reference; Haaland is another explicit correlation. "
+           "All use the same Re and ε/D shown in the table.")
+
+
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
 st.header("4) Head Losses & Diameter Sizing")
 
