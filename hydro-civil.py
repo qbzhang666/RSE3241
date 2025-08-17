@@ -1364,44 +1364,32 @@ st.dataframe(
 
 # --- Equations in LaTeX ---
 with st.expander("Head Loss & Net Head Equations (click to expand)"):
-    st.markdown(
-        r"""
-        \[
-        \textbf{Minor + Major Head Losses}
-        \]
 
-        \[
-        h_f = h_{f,\text{major}} + h_{f,\text{minor}}
-        \]
+    st.latex(r"h_f = h_{f,\text{major}} + h_{f,\text{minor}}")
 
-        **Major (frictional) loss:**
-        \[
-        h_{f,\text{major}} = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g}
-        \]
+    st.markdown("**Major (frictional) loss:**")
+    st.latex(r"h_{f,\text{major}} = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g}")
 
-        **Minor (local) losses:**
-        \[
-        h_{f,\text{minor}} = \sum K \cdot \frac{v^2}{2g}
-        \]
+    st.markdown("**Minor (local) losses:**")
+    st.latex(r"h_{f,\text{minor}} = \Sigma K \cdot \frac{v^2}{2g}")
 
-        **Reynolds number:**
-        \[
-        Re = \frac{\rho v D}{\mu}
-        \]
+    st.markdown("**Reynolds number:**")
+    st.latex(r"Re = \frac{\rho v D}{\mu}")
 
-        **Darcy friction factor (iterative / Colebrook):**
-        \[
-        \frac{1}{\sqrt{f}} = -2 \log_{10}\!\left( \frac{\varepsilon}{3.7D} + \frac{2.51}{Re \sqrt{f}} \right)
-        \]
-
-        **Net head:**
-        \[
-        H_\text{net} = H_\text{gross} - h_f
-        \]
-        """
+    st.markdown("**Darcy friction factor (Colebrook eqn):**")
+    st.latex(
+        r"\frac{1}{\sqrt{f}} = -2 \log_{10}\!\left( \frac{\varepsilon}{3.7D} + \frac{2.51}{Re \sqrt{f}} \right)"
     )
 
+    st.markdown("**Net head:**")
+    st.latex(r"H_\text{net} = H_\text{gross} - h_f")
 
+    st.markdown("**Velocity relation:**")
+    st.latex(r"v = \frac{Q}{A} = \frac{4Q}{\pi D^2}")
+
+    st.markdown("**With selected ΣK:**")
+    st.latex(r"h_{f,\text{minor}} = \Sigma K_\text{selected} \cdot \frac{v^2}{2g}")
+    st.latex(r"h_f = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g} + \Sigma K_\text{selected} \cdot \frac{v^2}{2g}")
 
 # ---------------- Effective Head and Diameter Estimator and Verification ----------------
 st.header("5) Effective Head and Penstock Diameter Verification")
