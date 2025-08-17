@@ -631,7 +631,7 @@ turbine_abs = lower_TWL - h_draft
 
 c1, c2 = st.columns(2)
 with c1:
-    st.metric("Lower Reservoi TWL", f"{lower_TWL:.2f} m")
+    st.metric("Lower Reservoir TWL", f"{lower_TWL:.2f} m")
 with c2:
     st.metric("Draft head used (from fit unless overridden)", f"{h_draft:.2f} m")
 
@@ -1321,9 +1321,8 @@ with st.expander("Velocity guidance (USBR)"):
         """
     )
 
-
 # --------------- Section 4: Head Losses & Diameter Sizing ----------------
-st.header("4) Minor Head Loss & Diameter Sizing")
+st.header("4) Minor Head Loss")
 
 # Local loss builder (ΣK)
 st.subheader("Local loss components (ΣK)")
@@ -1363,9 +1362,49 @@ st.dataframe(
     }
 )
 
+# --- Equations in LaTeX ---
+with st.expander("Head Loss & Net Head Equations (click to expand)"):
+    st.markdown(
+        r"""
+        \[
+        \textbf{Minor + Major Head Losses}
+        \]
 
-# ---------------- Diameter Estimator and Verification ----------------
-st.subheader("Diameter Estimator and Verification")
+        \[
+        h_f = h_{f,\text{major}} + h_{f,\text{minor}}
+        \]
+
+        **Major (frictional) loss:**
+        \[
+        h_{f,\text{major}} = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g}
+        \]
+
+        **Minor (local) losses:**
+        \[
+        h_{f,\text{minor}} = \sum K \cdot \frac{v^2}{2g}
+        \]
+
+        **Reynolds number:**
+        \[
+        Re = \frac{\rho v D}{\mu}
+        \]
+
+        **Darcy friction factor (iterative / Colebrook):**
+        \[
+        \frac{1}{\sqrt{f}} = -2 \log_{10}\!\left( \frac{\varepsilon}{3.7D} + \frac{2.51}{Re \sqrt{f}} \right)
+        \]
+
+        **Net head:**
+        \[
+        H_\text{net} = H_\text{gross} - h_f
+        \]
+        """
+    )
+
+
+
+# ---------------- Effective Head and Diameter Estimator and Verification ----------------
+st.header("5) Effective Head and Penstock Diameter Verification")
 
 # --- Get per-penstock design flow robustly ---
 Qp_for_sizing = out_design_flow.get("Q_per", float("nan"))
