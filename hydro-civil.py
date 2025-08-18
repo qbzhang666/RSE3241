@@ -1293,13 +1293,21 @@ if "v_target" in st.session_state and not np.isnan(v_calc):
 
 
 # --------------- Section 3: Head Losses & Diameter Sizing ----------------
-st.subheader("Minor Head Loss by Local loss components (ΣK)")
+st.subheader("Minor Head Loss by Local Loss Components (ΣK)")
+
+# Define local loss components
 components = {
-    "Entrance (bellmouth)": 0.15, "Entrance (square)": 0.50,
-    "90° bend": 0.25, "45° bend": 0.15,
-    "Gate valve (open)": 0.20, "Butterfly valve (open)": 0.30,
-    "T-junction": 0.40, "Exit": 1.00
+    "Entrance (bellmouth)": 0.15,
+    "Entrance (square)": 0.50,
+    "90° bend": 0.25,
+    "45° bend": 0.15,
+    "Gate valve (open)": 0.20,
+    "Butterfly valve (open)": 0.30,
+    "T-junction": 0.40,
+    "Exit": 1.00,
 }
+
+# Select which ones are active
 K_sum_global = 0.0
 cols = st.columns(4)
 for i, (comp, kval) in enumerate(components.items()):
@@ -1307,61 +1315,62 @@ for i, (comp, kval) in enumerate(components.items()):
     with cols[i % 4]:
         if st.checkbox(comp, value=default_on):
             K_sum_global += kval
+
 st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
 
-# Compute with ΣK to show h_f and f (two-pass block)
+# --- Compute with ΣK using the unified compute_block ---
 out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
-out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
+out_max    = compute_block(P_max,    min_head,   K_sum_global, hf_guess=40.0)
 
+# Build results table
 results_losses = pd.DataFrame({
     "Case": ["Design", "Maximum"],
     "Darcy f (-)": [out_design["f"], out_max["f"]],
     "Reynolds Re (-)": [out_design["Re"], out_max["Re"]],
+    "Head loss hf_major (m)": [out_design["hf_major"], out_max["hf_major"]],
     "Head loss hf_minor (m)": [out_design["hf_minor"], out_max["hf_minor"]],
+    "Head loss hf_total (m)": [out_design["hf"], out_max["hf"]],
     "Net head h_net (m)": [out_design["h_net"], out_max["h_net"]],
 })
+
 st.dataframe(
-    results_losses, use_container_width=True,
+    results_losses,
+    use_container_width=True,
     column_config={
         "Darcy f (-)": st.column_config.NumberColumn(format="%.004f"),
         "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
+        "Head loss hf_major (m)": st.column_config.NumberColumn(format="%.2f"),
         "Head loss hf_minor (m)": st.column_config.NumberColumn(format="%.2f"),
+        "Head loss hf_total (m)": st.column_config.NumberColumn(format="%.2f"),
         "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
     }
 )
+
+# ---------------- Show equations ----------------
 st.subheader("4) Effective Head")
 
-# --- Equations in LaTeX ---
 with st.expander("Head Loss & Net Head Equations (click to expand)"):
-
     st.latex(r"h_f = h_{f,\text{major}} + h_{f,\text{minor}}")
-
     st.markdown("**Major head loss (Darcy–Weisbach):**")
     st.latex(r"h_{f,\text{major}} = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g}")
-
     st.markdown("**Minor head loss (Local loss components ΣK):**")
     st.latex(r"h_{f,\text{minor}} = \Sigma K \cdot \frac{v^2}{2g}")
-
     st.markdown("**Net head:**")
     st.latex(r"H_\text{net} = H_\text{gross} - h_f")
-
 
 # ---------------- Show numerical results ----------------
 st.subheader("Calculated Results")
 
-# Use your pipeline outputs (already computed upstream)
-hf_major = hf_dw_design                      # Darcy–Weisbach recomputed major loss
-hf_minor = out_design.get("hf_minor", float("nan"))   # ΣK minor losses
-hf_total = out_design.get("hf", float("nan"))         # total = major + minor
-H_gross  = gross_head
-H_net    = out_design.get("h_net", float("nan"))
+hf_major = out_design["hf_major"]
+hf_minor = out_design["hf_minor"]
+hf_total = out_design["hf"]
+H_net    = out_design["h_net"]
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("h_f major (m)", f"{hf_major:.2f}")
 c2.metric("h_f minor (m)", f"{hf_minor:.2f}")
 c3.metric("h_f total (m)", f"{hf_total:.2f}")
 c4.metric("Net head (m)", f"{H_net:.2f}")
-
 
 # ---------------- Diameter Estimator and Verification ----------------
 st.header("5) Penstock Diameter Verification")
