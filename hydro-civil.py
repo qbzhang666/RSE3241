@@ -1730,6 +1730,65 @@ with st.expander("Lining Stress Equations (click to expand)"):
     st.latex(r"\sigma_{\theta,i} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_i^2}")
     st.latex(r"\sigma_{\theta,o} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_o^2}")
 
+# ------------------------------- Section 6: Confinement Check ------------------
+st.subheader("6) Lining Stress Check")
+
+# User inputs
+pi_MPa = st.number_input("Internal water pressure p_i (MPa)", 0.1, 10.0, 3.0, step=0.1)
+ri = st.number_input("Inner radius r_i (m)", 0.1, 5.0, 1.5, step=0.1)
+D_pen = st.number_input("Penstock diameter (m)", 1.0, 10.0, 3.0, step=0.1)
+re = D_pen / 2.0   # outer radius taken from input diameter
+ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 0.1, 10.0, 2.0, step=0.1)
+pext = st.slider("External confining pressure p_ext (MPa)", 0.0, 5.0, 0.5, 0.1)
+
+# Functions
+def hoop_stress(pi, pext, ri, r):
+    """Hoop stress distribution in thick-walled cylinder (Lame’s eq.)"""
+    A = (pi * ri**2 - pext * re**2) / (re**2 - ri**2)
+    B = (ri**2 * re**2 * (pext - pi)) / (re**2 - ri**2)
+    return A + B / (r**2)
+
+def required_pext_for_ft(pi, ri, re, ft):
+    """Required confinement to keep σθ(re) <= f_t"""
+    # Outer face hoop stress = ft → solve for p_ext
+    return (pi * ri**2 - ft * (re**2 - ri**2)) / re**2
+
+# Computations
+sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # hoop stress at outer face
+pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
+
+# Stress distribution profile
+r_plot = np.linspace(ri * 1.001, re, 200)
+sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
+
+# Figure
+fig_s, ax = plt.subplots(figsize=(8, 4.5))
+ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
+ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
+ax.axvline(ri, color="k", ls=":", label=f"r_i={ri:.2f} m")
+ax.axvline(re, color="k", ls="--", label=f"r_e={re:.2f} m")
+ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
+                color="red", alpha=0.2, label="Cracking risk")
+ax.set_xlabel("Radius r (m)")
+ax.set_ylabel("Hoop stress σθ (MPa)")
+ax.set_title("Lining hoop stress distribution")
+ax.set_ylim(0, max(ft_MPa * 1.5, np.max(sigma_profile)*1.1))
+ax.grid(True, linestyle="--", alpha=0.35)
+ax.legend(loc="best")
+st.pyplot(fig_s)
+
+# Metrics
+c1, c2, c3 = st.columns(3)
+c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
+c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
+c3.metric(
+    "Status",
+    "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
+    help=("Stress exceeds tensile strength; increase thickness or confinement."
+          if sigma_outer > ft_MPa else "Within tensile capacity at outer face.")
+)
+
+
 # --- Section 10: Pressure Tunnel Lining Stress ---
 st.header("10) Pressure Tunnel: Lining Stress")
 
