@@ -1806,21 +1806,21 @@ with st.expander("Input Parameters for Surge Tank", expanded=True):
                        "Check Rule-of-Thumb Stability"])
 
     if option == "Enter manually":
-        A_s = st.number_input("Surge Tank Cross-sectional Area Aₛ (m²)", value=200.0, step=5.0)
+    A_s = st.number_input("Surge Tank Cross-sectional Area Aₛ (m²)", value=200.0, step=5.0)
 
-    elif option == "Estimate using Area Ratio (Aₛ/Aₚ)":
-        R = st.number_input("Choose Area Ratio R = Aₛ/Aₚ (default safe ~8)", value=8.0, step=1.0)
-        A_s = R * A_p_total
-        st.write(f"Estimated Surge Tank Area: Aₛ = {A_s:.2f} m² (using R = {R})")
+elif option == "Estimate using Area Ratio (Aₛ/Aₚ)":
+    R = st.number_input("Choose Area Ratio R = Aₛ/Aₚ (default safe ~8)", value=8.0, step=1.0)
+    A_s = R * A_p_total
+    st.write(f"Estimated Surge Tank Area: Aₛ = {A_s:.2f} m² (using R = {R})")
 
-    elif option == "Estimate using Stability Formula":
-        # Assume water wave speed ~ 1000 m/s
-        a = 1000.0  
-        omega = np.pi * a / L  # angular frequency
-        A_s = Q0 / (omega * H)
-        st.write(f"Estimated Surge Tank Area (stability): Aₛ = {A_s:.2f} m²")
+elif option == "Estimate using Stability Formula":
+    # Assume water wave speed ~ 1000 m/s
+    a = 1000.0  
+    omega = np.pi * a / L  # angular frequency
+    A_s = Q0 / (omega * H)
+    st.write(f"Estimated Surge Tank Area (stability): Aₛ = {A_s:.2f} m²")
 
-    elif option == "Check Rule-of-Thumb Stability":
+elif option == "Check Rule-of-Thumb Stability":
     # Minimum R requirement
     R_min = L / H
     R_safe = 1.5 * R_min  # lower bound safety margin
@@ -1835,15 +1835,15 @@ with st.expander("Input Parameters for Surge Tank", expanded=True):
     # Warning if R is too small
     if R < R_min:
         st.warning("Warning: R is smaller than minimum requirement!")
-    
+
     # Compute surge tank area
     A_s = R * A_p_total
     st.write(f"Estimated Surge Tank Area: Aₛ = {A_s:.2f} m² (using R = {R:.2f})")
 
-
     # Equivalent diameter (cylindrical tank assumption)
     D_s = np.sqrt(4 * A_s / np.pi)
     st.write(f"Equivalent Surge Tank Diameter ≈ {D_s:.2f} m")
+
 
 # ---- Equations ----
 with st.expander("Equations Used (Section 7)", expanded=False):
