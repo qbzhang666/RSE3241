@@ -1212,6 +1212,7 @@ df_hydraulics = pd.DataFrame({
     "Total Q (m³/s)":             [out_design_flow["Q_total"], out_max_flow["Q_total"]],
 })
 
+
 st.dataframe(
     df_hydraulics,
     use_container_width=True,
@@ -1309,14 +1310,14 @@ for i, (comp, kval) in enumerate(components.items()):
 st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
 
 # Compute with ΣK to show h_f and f (two-pass block)
-out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
-out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
+out_design = compute_block(P_design, gross_head, K_sum_global, hf_minor_guess=25.0)
+out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_minor_guess=40.0)
 
 results_losses = pd.DataFrame({
     "Case": ["Design", "Maximum"],
     "Darcy f (-)": [out_design["f"], out_max["f"]],
     "Reynolds Re (-)": [out_design["Re"], out_max["Re"]],
-    "Head loss h_f (m)": [out_design["hf"], out_max["hf"]],
+    "Head loss hf_minor (m)": [out_design["hf_minor"], out_max["hf_minor"]],
     "Net head h_net (m)": [out_design["h_net"], out_max["h_net"]],
 })
 st.dataframe(
@@ -1324,7 +1325,7 @@ st.dataframe(
     column_config={
         "Darcy f (-)": st.column_config.NumberColumn(format="%.004f"),
         "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
-        "Head loss h_f (m)": st.column_config.NumberColumn(format="%.2f"),
+        "Head loss hf_minor (m)": st.column_config.NumberColumn(format="%.2f"),
         "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
     }
 )
@@ -1349,8 +1350,8 @@ with st.expander("Head Loss & Net Head Equations (click to expand)"):
 st.subheader("Calculated Results")
 
 # Use your pipeline outputs (already computed upstream)
-hf_major = out_design.get("hf_major", float("nan"))   # Darcy–Weisbach
-hf_minor = out_design.get("hf_minor", float("nan"))   # ΣK losses
+hf_major = out_design.get("Δh_major DW (recomp) (m)", float(hf_dw_design)"))   # Darcy–Weisbach
+hf_minor = out_design.get("hf_minor (m)", float("hf_minor"))   # ΣK losses
 hf_total = out_design.get("hf", float("nan"))         # total = major + minor
 H_gross  = out_design.get("gross_head", float("nan"))
 H_net    = out_design.get("h_net", float("nan"))
