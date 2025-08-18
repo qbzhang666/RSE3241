@@ -1346,8 +1346,10 @@ st.dataframe(
 
 st.subheader("4) Effective Head")
 
-# --- Equations in LaTeX ---
 with st.expander("Head Loss & Net Head Equations (click to expand)"):
+
+    st.markdown("**Gross head (difference in reservoir levels):**")
+    st.latex(r"H_\text{gross} = \text{NWL} - \text{TWL}")
 
     st.latex(r"h_f = h_{f,\text{major}} + h_{f,\text{minor}}")
 
@@ -1365,15 +1367,12 @@ with st.expander("Head Loss & Net Head Equations (click to expand)"):
 # ---------------- Show numerical results ----------------
 st.subheader("Calculated Results")
 
-# Use your pipeline outputs (already computed upstream)
 hf_major = out_design.get("hf_major", float("nan"))   # Darcy–Weisbach
 hf_minor = out_design.get("hf_minor", float("nan"))   # ΣK losses
 hf_total = out_design.get("hf", float("nan"))         # total = major + minor
-H_gross  = out_design.get("gross_head", float("nan"))
+H_gross  = float(st.session_state.get("gross_head", float("nan")))  # <-- from Section 1
 H_net    = out_design.get("h_net", float("nan"))
-
-# Draft head from earlier session_state
-h_draft = float(st.session_state.get("h_draft", float("nan")))
+h_draft  = float(st.session_state.get("h_draft", float("nan")))
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 c1.metric("h_f major (m)", f"{hf_major:.2f}")
