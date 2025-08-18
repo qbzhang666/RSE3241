@@ -1785,32 +1785,48 @@ except Exception as e:
 # ------------------ Section 7: Surge Tank ------------------
 st.header("Section 7: Surge Tank Design")
 
-# Inputs
-st.subheader("Input Parameters")
-Q0 = st.number_input("Rated Discharge Q₀ (m³/s)", value=50.0, step=1.0)
-L = st.number_input("Headrace Length L (m)", value=2000.0, step=100.0)
-Ap = st.number_input("Penstock Area Aₚ (m²)", value=5.0, step=0.5)
-h_allow = st.number_input("Allowable Surge Height hₐₗₗₒw (m)", value=5.0, step=0.5)
+with st.expander("Input Parameters for Surge Tank", expanded=True):
+    # Penstock setup
+    n_pipes = st.number_input("Number of Penstocks connected to Surge Tank", value=1, step=1, min_value=1)
+    D_p = st.number_input("Penstock Diameter Dₚ (m)", value=4.0, step=0.1, format="%.2f")
+    
+    # Compute total penstock cross-sectional area
+    A_p_single = 3.1416 * (D_p**2) / 4
+    A_p_total = n_pipes * A_p_single
+    st.write(f"Penstock Area per pipe = {A_p_single:.2f} m²")
+    st.write(f"Total Penstock Area Aₚ = {A_p_total:.2f} m²")
 
-# Tank sizing calculation
-g = 9.81
-As_req = (Q0 * L) / (g * h_allow)   # Simplified Jaeger estimate
-Ds_req = (4 * As_req / 3.1416) ** 0.5  # Circular diameter
+    # Discharge inputs
+    Q0 = st.number_input("Rated Discharge Q₀ (m³/s)", value=50.0, step=1.0)
+    H = st.number_input("Net Head H (m)", value=100.0, step=1.0)
 
-# Natural oscillation period (using trial As_req)
-Tn = 2 * 3.1416 * ((L * As_req) / (g * Ap))**0.5
+    # Surge tank area input
+    A_s = st.number_input("Surge Tank Cross-sectional Area Aₛ (m²)", value=200.0, step=5.0)
 
-# Results
-st.subheader("Estimated Tank Dimensions")
-st.write(f"Required Surge Tank Area Aₛ ≈ {As_req:,.2f} m²")
-st.write(f"Equivalent Diameter Dₛ ≈ {Ds_req:,.2f} m")
-st.write(f"Natural Oscillation Period Tₙ ≈ {Tn:.2f} s")
-
-# ------------------ Equations Reference ------------------
+# ---- Equations ----
 with st.expander("Equations Used (Section 7)", expanded=False):
-    st.latex(r"A_s \geq \frac{Q_0 L}{g \, h_{allow}}")
-    st.latex(r"D_s = \sqrt{\frac{4 A_s}{\pi}}")
-    st.latex(r"T_n = 2\pi \sqrt{\frac{L \, A_s}{g A_p}}")
+    st.markdown("**(1) Penstock Area per Pipe**")
+    st.latex(r"A_{p,\;single} = \frac{\pi D_p^2}{4}")
+
+    st.markdown("**(2) Total Penstock Area**")
+    st.latex(r"A_p = n \cdot A_{p,\;single} = n \cdot \frac{\pi D_p^2}{4}")
+
+    st.markdown("**(3) Surge Tank Stability Ratio**")
+    st.latex(r"R = \frac{A_s}{A_p}")
+
+    st.markdown("**(4) Rated Discharge** (Design discharge through the turbines)")
+    st.latex(r"Q_0 = \text{Rated Discharge (m³/s)}")
+
+# ---- Results ----
+st.subheader("Surge Tank Results")
+
+st.write(f"Number of Penstocks: {n_pipes}")
+st.write(f"Diameter per Penstock: {D_p:.2f} m")
+st.write(f"Total Penstock Area Aₚ: {A_p_total:.2f} m²")
+st.write(f"Surge Tank Area Aₛ: {A_s:.2f} m²")
+
+# Stability ratio
+st.write(f"Area Ratio (Aₛ / Aₚ): {A_s / A_p_total:.2f}")
 
 
 
