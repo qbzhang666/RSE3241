@@ -1501,31 +1501,78 @@ with st.expander("Show figures / equations used"):
     )
 
 # ------------------------------- Section 5: System Curve ------------------
-st.header("5) System Power Curve (didactic)")
-Q_max_total = out_max["Q_total"]
+st.header("5) System Head & Power Curves (didactic)")
+
+# Gross head from Section 1
+H_gross = gross_head
+
+# Discharge range (0 to 120% of max design Q)
+Q_max_total = out_max.get("Q_total", np.nan)
 if np.isnan(Q_max_total) or Q_max_total <= 0:
-    Q_max_total = max(1.0, (P_max * 1e6) / (RHO * G * max(min_head, 1.0) * max(eta_t, 0.6)))
-
+    Q_max_total = max(1.0, (P_max * 1e6) / (RHO * G * max(H_gross, 1.0) * max(eta_t, 0.6)))
 Q_grid = np.linspace(0, 1.2 * Q_max_total, 140)
-h_net_design = out_design["h_net"]; h_net_min = out_max["h_net"]
-if any(np.isnan([h_net_design, h_net_min])):
-    h_net_design, h_net_min = max(gross_head - 10, 1.0), max(min_head - 10, 0.5)
 
-h_net_curve = h_net_design - (h_net_design - h_net_min) * (Q_grid / max(Q_max_total, 1e-6))**2
-P_curve = RHO * G * Q_grid * h_net_curve * eta_t / 1e6
+# Compute net head curve (gross - head losses)
+hf_list = []
+H_net_list = []
+for Q in Q_grid:
+    # discharge per penstock
+    Q_per = safe_div(Q, N_pen)
+    v = safe_div(Q_per, area_circle(D_pen))
 
-fig = make_subplots(specs=[[{"secondary_y": False}]])
-fig.add_trace(go.Scatter(x=Q_grid, y=P_curve, name="Power (MW)", line=dict(width=3)))
-fig.add_vline(x=out_design["Q_total"], line=dict(color="green", dash="dash"), annotation_text="Design Q")
-fig.add_vline(x=out_max["Q_total"], line=dict(color="red", dash="dash"), annotation_text="Max Q")
-fig.update_layout(
-    title="Operating Characteristics (didactic)",
-    xaxis_title="Total discharge Q (m³/s)",
+    # friction factor
+    if mode_f == "Manual (slider)":
+        f_used = f
+    else:
+        nu = water_nu_kinematic_m2s(T_C)
+        Re = safe_div(v * D_pen, nu)
+        rel_rough = safe_div(eps, D_pen)
+        f_used = f_moody_swamee_jain(Re, rel_rough)
+
+    # head loss
+    hf = headloss_darcy(f_used, L_pen, D_pen, v, Ksum=Ksum)
+    hf_list.append(hf)
+    H_net_list.append(H_gross - hf)
+
+hf_array = np.array(hf_list)
+H_net_array = np.array(H_net_list)
+
+# Power curves
+P_gross = RHO * G * Q_grid * H_gross * eta_t / 1e6  # MW
+P_net   = RHO * G * Q_grid * H_net_array * eta_t / 1e6
+
+# --- Plot Heads ---
+fig_head = make_subplots(specs=[[{"secondary_y": False}]])
+fig_head.add_trace(go.Scatter(x=Q_grid, y=[H_gross]*len(Q_grid),
+                              name="Gross Head", line=dict(color="blue", dash="dot")))
+fig_head.add_trace(go.Scatter(x=Q_grid, y=H_net_array,
+                              name="Net Head", line=dict(color="red", width=3)))
+fig_head.update_layout(
+    title="Head vs Discharge",
+    xaxis_title="Total Discharge Q (m³/s)",
+    yaxis_title="Head (m)",
+    hovermode="x unified",
+    height=420
+)
+st.plotly_chart(fig_head, use_container_width=True)
+
+# --- Plot Power ---
+fig_power = make_subplots(specs=[[{"secondary_y": False}]])
+fig_power.add_trace(go.Scatter(x=Q_grid, y=P_gross,
+                               name="Gross Power", line=dict(color="blue", dash="dot")))
+fig_power.add_trace(go.Scatter(x=Q_grid, y=P_net,
+                               name="Net Power", line=dict(color="red", width=3)))
+fig_power.add_vline(x=out_design["Q_total"], line=dict(color="green", dash="dash"), annotation_text="Design Q")
+fig_power.add_vline(x=out_max["Q_total"], line=dict(color="black", dash="dash"), annotation_text="Max Q")
+fig_power.update_layout(
+    title="Power vs Discharge",
+    xaxis_title="Total Discharge Q (m³/s)",
     yaxis_title="Power (MW)",
     hovermode="x unified",
-    height=480
+    height=420
 )
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig_power, use_container_width=True)
+
 
 # --------------------- Section 6 (modular): Rock Cover & Lining ----------
 def rock_cover_and_lining_ui():
