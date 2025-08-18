@@ -1656,30 +1656,38 @@ st.header("6) Pressure Tunnel: Lining Stress")
 # -------------------
 # Input parameters
 # -------------------
-gamma_w = 9.81  # kN/m³
+gamma_w = 9800.0  # N/m³ (unit weight of water)
 st.subheader("Input Parameters")
 
-lining_thickness = st.number_input(
-    "Lining thickness (m)", min_value=0.1, value=0.5, step=0.1
-)
-external_pressure = st.number_input(
-    "External pressure pₑ (kN/m²)", min_value=0.0, value=0.0, step=10.0
-)
-allowable_stress = st.number_input(
-    "Allowable tensile stress of lining (MPa)", min_value=0.1, value=2.0, step=0.1
-)
+# Hydrostatic heads
+c1, c2 = st.columns(2)
+with c1:
+    h_s = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 204.0, 1.0)
+with c2:
+    h_w = st.number_input("Groundwater level head h_w (m)", 0.0, 2000.0, 150.0, 1.0)
 
-# -------------------
 # Radii
-# -------------------
-r_i = D_pen / 2.0            # Internal radius (m)
-r_o = r_i + lining_thickness # External radius (m)
+lining_thickness = st.number_input("Lining thickness (m)", min_value=0.1, value=0.5, step=0.1)
+r_i = D_pen / 2.0            # Internal radius (from penstock diameter)
+r_o = r_i + lining_thickness # External radius
+
+# Material props
+E_c = st.number_input("Concrete modulus E_c (Pa)", value=3.5e10, step=1e9, format="%.2e")
+nu_c = st.number_input("Concrete Poisson’s ratio ν_c", value=0.167, step=0.01)
+E_r = st.number_input("Rock modulus E_r (Pa)", value=2.7e10, step=1e9, format="%.2e")
+nu_r = st.number_input("Rock Poisson’s ratio ν_r", value=0.20, step=0.01)
+
+allowable_stress = st.number_input("Allowable tensile stress of lining (MPa)", min_value=0.1, value=2.0, step=0.1)
 
 # -------------------
-# Pressures
+# Pressures (Pa)
 # -------------------
-p_i = gamma_w * H_gross   # Internal water pressure (kN/m²)
-p_e = external_pressure   # External load input (kN/m²)
+p_i = gamma_w * h_s   # Internal water pressure (Pa)
+p_e = gamma_w * h_w   # External water pressure (Pa)
+
+# Effective pore pressure factor
+eta = st.number_input("Effective pore pressure factor η", min_value=0.0, value=1.0, step=0.1)
+p_f = eta * (p_i - p_e)
 
 # -------------------
 # Lame’s equations (hoop stress at inner & outer surface)
@@ -1694,15 +1702,16 @@ sigma_theta_o = (
 )
 
 # Convert to MPa
-sigma_theta_i_MPa = sigma_theta_i / 1000.0
-sigma_theta_o_MPa = sigma_theta_o / 1000.0
+sigma_theta_i_MPa = sigma_theta_i / 1e6
+sigma_theta_o_MPa = sigma_theta_o / 1e6
 
 # -------------------
 # Results
 # -------------------
 st.subheader("Calculated Lining Stress Results")
-st.write(f"Internal pressure pᵢ = {p_i:.2f} kN/m²")
-st.write(f"External pressure pₑ = {p_e:.2f} kN/m²")
+st.write(f"Internal pressure pᵢ = {p_i:.2e} Pa")
+st.write(f"External pressure pₑ = {p_e:.2e} Pa")
+st.write(f"Effective pore pressure p_f = {p_f:.2f} Pa")
 st.write(f"Hoop stress at inner surface σθ,i = {sigma_theta_i_MPa:.2f} MPa")
 st.write(f"Hoop stress at outer surface σθ,o = {sigma_theta_o_MPa:.2f} MPa")
 
@@ -1715,89 +1724,11 @@ else:
 # Equations (expandable)
 # -------------------
 with st.expander("Lining Stress Equations (click to expand)"):
-    st.latex(r"p_i = \gamma_w \cdot H_{gross}")
-    st.latex(r"p_{net} = p_i - p_e")
+    st.latex(r"p_i = \gamma_w \cdot h_s")
+    st.latex(r"p_e = \gamma_w \cdot h_w")
+    st.latex(r"p_f = \eta \cdot (p_i - p_e)")
     st.latex(r"\sigma_{\theta,i} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_i^2}")
     st.latex(r"\sigma_{\theta,o} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_o^2}")
-
-
-# ==============================================================
-# Extra UI: Rock Cover and Lining (with stress distribution plot)
-# ==============================================================
-
-def rock_cover_and_lining_ui():
-    """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
-
-    # --- Inputs
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        hs = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 300.0, 1.0)
-    with c2:
-        alpha = st.number_input("Tunnel inclination α (deg)", 0.0, 90.0, 20.0, 1.0)
-    with c3:
-        ri = st.number_input("Lining inner radius r_i (m)", 0.2, 10.0, 3.15, 0.05)
-    with c4:
-        t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
-
-    re = ri + t
-    gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
-
-    # --- Lining stress inputs
-    st.subheader("Lining Hoop Stress (Lame solution)")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        pi_MPa = st.number_input("Internal water pressure pᵢ (MPa)", 0.1, 20.0, 2.0, 0.1, key="pi_MPa")
-    with c2:
-        pext = st.number_input("External confinement pₑ (MPa)", 0.0, 20.0, 0.0, 0.1, key="pext")
-    with c3:
-        ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1, key="ft_MPa")
-
-    # --- Stress calculations
-    sigma_outer = hoop_stress(pi_MPa, pext, ri, re)        # Hoop stress at outer face
-    pext_req   = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
-
-    # --- Stress profile plot
-    r_plot = np.linspace(ri * 1.001, re, 200)
-    sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
-
-    fig_s, ax = plt.subplots(figsize=(8, 4.5))
-    ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
-    ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
-    ax.axvline(ri, color="k", ls=":", label=f"rᵢ = {ri:.2f} m")
-    ax.axvline(re, color="k", ls="--", label=f"rₒ = {re:.2f} m")
-    ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
-                    color="red", alpha=0.2, label="Cracking risk")
-    ax.set_xlabel("Radius r (m)")
-    ax.set_ylabel("Hoop stress σθ (MPa)")
-    ax.set_title("Lining hoop stress distribution")
-    ax.set_ylim(0, 100)  # adjust for readability
-    ax.grid(True, linestyle="--", alpha=0.35)
-    ax.legend(loc="best")
-    st.pyplot(fig_s)
-
-    # --- Results
-    c1, c2, c3 = st.columns(3)
-    c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
-    c2.metric("Required pₑ (MPa)", f"{pext_req:.2f}")
-    c3.metric(
-        "Status",
-        "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
-        help=("Stress exceeds tensile strength; increase thickness or confinement."
-              if sigma_outer > ft_MPa else "Within tensile capacity at outer face.")
-    )
-
-    # ✅ Now return is inside the function
-    return {
-        "hs": hs, "alpha_deg": alpha,
-        "ri_m": ri, "t_m": t, "re_m": re,
-        "pi_MPa": pi_MPa, "pext_MPa": pext, "ft_MPa": ft_MPa,
-        "sigma_outer_MPa": sigma_outer, "pext_required_MPa": pext_req,
-    }
-
-# --- Call the Rock Cover & Lining UI
-rock_summary = rock_cover_and_lining_ui()
-
-
 
 # --- Section 10: Pressure Tunnel Lining Stress ---
 st.header("10) Pressure Tunnel: Lining Stress")
