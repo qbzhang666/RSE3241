@@ -1310,8 +1310,8 @@ for i, (comp, kval) in enumerate(components.items()):
 st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
 
 # Compute with ΣK to show h_f and f (two-pass block)
-out_design = compute_block(P_design, gross_head, K_sum_global, hf_minor_guess=25.0)
-out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_minor_guess=40.0)
+out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
+out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
 
 results_losses = pd.DataFrame({
     "Case": ["Design", "Maximum"],
