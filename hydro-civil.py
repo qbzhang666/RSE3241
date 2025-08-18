@@ -1652,122 +1652,70 @@ else:
 
 
 
-# ===============================
-# --- Section 6: Pressure Tunnel Lining Stress ---
-st.header("6) Pressure Tunnel: Lining Stress")
+# =========================================================
+# 6) Confinement / Hoop Stress Check
+# =========================================================
 
-gamma_w = 9800.0  # N/m³ (unit weight of water)
+with st.expander("6) Confinement / Hoop Stress Check", expanded=False):
 
-# Input pressures
-p_i = gamma_w * h_s   # internal water pressure
-p_e = eta * gamma_w * h_w  # external groundwater pressure
+    with st.form("section6_form"):
 
-# Geometry
-r_i = penstock_diameter / 2
-r_o = r_i + lining_thickness
+        st.markdown("### Input Parameters")
 
-# Radial stress at inner lining (Lamé’s equation)
-sigma_r_inner = (p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)
+        col1, col2 = st.columns(2)
+        with col1:
+            penstock_diameter = st.number_input("Penstock Diameter (m)", 2.0, 10.0, 3.0, 0.1)
+            lining_thickness = st.number_input("Lining Thickness (m)", 0.1, 2.0, 0.5, 0.05)
+            eta = st.number_input("External Seepage Factor η", 0.0, 1.0, 0.7, 0.05)
 
+        with col2:
+            head_internal = st.number_input("Internal Water Head h_s (m)", 10.0, 500.0, 100.0, 5.0)
+            head_external = st.number_input("External Water Head h_w (m)", 0.0, 200.0, 30.0, 5.0)
+            ft_MPa = st.number_input("Concrete Tensile Strength f_t (MPa)", 0.5, 10.0, 3.0, 0.1)
 
-st.header("Input Parameters")
+        run_calc = st.form_submit_button("Run Calculation")
 
-# ------------------ Grouped inputs ------------------
-with st.expander("Hydraulic Heads", expanded=True):
-    c1, c2, c3 = st.columns(3)
-    h_s = c1.number_input("Hydrostatic head to crown h_s (m)", value=204.0)
-    h_w = c2.number_input("Groundwater level head h_w (m)", value=150.0)
-    eta = c3.number_input("Effective pore pressure factor η", value=1.0)
+    if run_calc:
+        gamma_w = 9.81  # kN/m³
 
-with st.expander("Geometry", expanded=True):
-    c1, c2 = st.columns(2)
-    d_p = c1.number_input("Penstock diameter (m)", value=3.0)
-    t_l = c2.number_input("Lining thickness (m)", value=0.5)
+        # Radii
+        r_i = penstock_diameter / 2
+        r_o = r_i + lining_thickness
 
-with st.expander("Concrete Properties", expanded=False):
-    c1, c2, c3 = st.columns(3)
-    E_c  = c1.number_input("Concrete modulus E_c (Pa)", value=3.5e10, format="%.2e")
-    v_c  = c2.number_input("Concrete Poisson’s ratio ν_c", value=0.17)
-    ft_MPa = c3.number_input("Concrete tensile strength f_t (MPa)", value=2.0)
+        # Pressures (convert kN/m² to MPa)
+        p_i = gamma_w * head_internal / 1000.0
+        p_e = gamma_w * head_external * eta / 1000.0
 
-with st.expander("Rock Properties", expanded=False):
-    c1, c2 = st.columns(2)
-    E_r = c1.number_input("Rock modulus E_r (Pa)", value=2.7e10, format="%.2e")
-    v_r = c2.number_input("Rock Poisson’s ratio ν_r", value=0.20)
+        # Hoop stress function
+        def hoop_stress(r):
+            return (p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2) + \
+                   (r_i**2 * r_o**2 * (p_e - p_i)) / ((r_o**2 - r_i**2) * r**2)
 
-# ------------------ Calculations ------------------
-try:
-    r_i = d_p / 2.0                  # inner radius (m)
-    r_o = r_i + t_l                  # outer radius (m)
+        # Stress distribution
+        r_vals = np.linspace(r_i * 1.001, r_o, 200)
+        sigma_vals = hoop_stress(r_vals)
+        sigma_outer = hoop_stress(r_o)
 
-    if r_o <= r_i:
-        st.error("Invalid geometry: outer radius must be larger than inner radius.")
-    else:
-        # Pressures
-        p_i = gamma_w * h_s              # internal water pressure (Pa)
-        p_e = gamma_w * h_w              # external water pressure (Pa)
-        p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)
-
-        # --- Hoop stress profile function (Pa) ---
-        def hoop_stress(pi, pe, ri, ro, r):  # Explicitly pass ro
-            return (
-                (pi * ri**2 - pe * ro**2) / (ro**2 - ri**2)  # Use "-" (hyphen)
-                + ((pi - pe) * ri**2 * ro**2) / ((ro**2 - ri**2) * r**2)  # Use "-"
-            )
-
-        # Inner & outer faces (pass r_o explicitly)
-        sigma_theta_i = hoop_stress(p_i, p_e, r_i, r_o, r_i)
-        sigma_theta_o = hoop_stress(p_i, p_e, r_i, r_o, r_o)
-
-        sigma_theta_i_MPa = sigma_theta_i / 1e6
-        sigma_theta_o_MPa = sigma_theta_o / 1e6
-
-        # ------------------ Results ------------------
-        st.subheader("Calculated Lining Stress Results")
-        st.write(f"Internal pressure pᵢ = {p_i:.2e} Pa")
-        st.write(f"External pressure pₑ = {p_e:.2e} Pa")
-        st.write(f"Effective pore pressure p_f = {p_f:.2f} Pa")
-        st.write(f"Hoop stress at inner surface σθ,i = {sigma_theta_i_MPa:.2f} MPa")
-        st.write(f"Hoop stress at outer surface σθ,o = {sigma_theta_o_MPa:.2f} MPa")
-
-        if sigma_theta_i_MPa <= ft_MPa and sigma_theta_o_MPa <= ft_MPa:
-            st.success("Lining stresses are within allowable limits ✅")
-        else:
-            st.error("Lining stresses exceed allowable tensile stress ❌")
-
-        # ------------------ Stress distribution plot ------------------
-        r_plot = np.linspace(r_i * 1.001, r_o, 200)
-        sigma_profile = hoop_stress(p_i, p_e, r_i, r_o, r_plot) / 1e6  # MPa
-
-        fig_s, ax = plt.subplots(figsize=(8, 4.5))
-        ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
+        # Plot
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(r_vals, sigma_vals, label="σθ(r)", lw=2)
         ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
-        ax.axvline(r_i, color="k", ls=":", label=f"ri={r_i:.2f} m")
-        ax.axvline(r_o, color="k", ls="--", label=f"ro={r_o:.2f} m")
-        ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
+        ax.axvline(r_i, color="k", ls=":", label=f"ri = {r_i:.2f} m")
+        ax.axvline(r_o, color="k", ls="--", label=f"ro = {r_o:.2f} m")
+        ax.fill_between(r_vals, sigma_vals, ft_MPa, where=(sigma_vals > ft_MPa),
                         color="red", alpha=0.2, label="Cracking risk")
         ax.set_xlabel("Radius r (m)")
-        ax.set_ylabel("Hoop stress σθ (MPa)")
-        ax.set_title("Lining hoop stress distribution")
-        ax.set_ylim(0, max(ft_MPa*1.5, sigma_profile.max()*1.2))
-        ax.grid(True, linestyle="--", alpha=0.35)
-        ax.legend(loc="best")
-        st.pyplot(fig_s)
+        ax.set_ylabel("Hoop Stress σθ (MPa)")
+        ax.set_title("Lining Hoop Stress Distribution")
+        ax.legend()
+        ax.grid(True, linestyle="--", alpha=0.4)
+        st.pyplot(fig)
 
-        # ------------------ Metrics summary ------------------
+        # Results
         c1, c2, c3 = st.columns(3)
-        c1.metric("σθ @ inner face (MPa)", f"{sigma_theta_i_MPa:.1f}")
-        c2.metric("σθ @ outer face (MPa)", f"{sigma_theta_o_MPa:.1f}")
-        c3.metric(
-            "Status",
-            "⚠️ Cracking likely" if sigma_theta_o_MPa > ft_MPa else "✅ OK",
-            help=("Stress exceeds tensile strength; increase thickness or confinement."
-                  if sigma_theta_o_MPa > ft_MPa else "Within tensile capacity at outer face.")
-        )
-
-except Exception as e:
-    st.error(f"Error in stress calculation: {e}")
-
+        c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.2f}")
+        c2.metric("p_i (MPa)", f"{p_i:.2f}")
+        c3.metric("p_e (MPa)", f"{p_e:.2f}")
 
 
 # ------------------------------- Section 7: Surge Tank -------------------
@@ -1782,6 +1730,8 @@ c1.metric("A_h (m²)", f"{Ah:.2f}")
 c2.metric("A_s (m²)", f"{surge['As']:.2f}")
 c3.metric("Natural period T_n (s)", f"{surge['Tn']:.1f}")
 st.caption("Rule-of-thumb only. Real designs require full water-hammer/transient analysis.")
+
+
 
 # ------------------------------- Section 8: Equations --------------------
 st.header("8) Core Equations (for teaching)")
