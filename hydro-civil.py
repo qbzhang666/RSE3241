@@ -1760,7 +1760,6 @@ def rock_cover_and_lining_ui():
 
     return {
         "hs": hs, "alpha_deg": alpha, "ri_m": ri, "t_m": t, "re_m": re,
-        "gamma_R_kNpm3": gamma_R, "CRV_m": CRV, "FRV": FRV,
         "pi_MPa": pi_MPa, "pext_MPa": pext, "ft_MPa": ft_MPa,
         "sigma_outer_MPa": sigma_outer, "pext_required_MPa": pext_req
     }
