@@ -1698,15 +1698,19 @@ try:
         p_e = gamma_w * h_w              # external water pressure (Pa)
         p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)
 
-        # --- Corrected hoop stress profile function (Pa) ---
-        def hoop_stress(pi, pe, ri, ro, r):
-            term1 = (pi * ri**2 - pe * ro**2) / (ro**2 - ri**2)
-            term2 = ((pi - pe) * ri**2 * ro**2) / ((ro**2 - ri**2) * r**2)
-            return term1 + term2
-
-        # Inner & outer faces
-        sigma_theta_i = hoop_stress(p_i, p_e, r_i, r_o, r_i)
-        sigma_theta_o = hoop_stress(p_i, p_e, r_i, r_o, r_o)
+        # Common denominator
+        denom = r_o**2 - r_i**2
+        
+        # --- CORRECTED Hoop stress using working formula ---
+        # Hoop stress at inner surface
+        sigma_theta_i = (
+            (p_i * r_i**2 - p_e * r_o**2) / denom + 
+            ((p_i - p_e) * r_i**2 * r_o**2) / (denom * r_i**2)
+        
+        # Hoop stress at outer surface
+        sigma_theta_o = (
+            (p_i * r_i**2 - p_e * r_o**2) / denom + 
+            ((p_i - p_e) * r_i**2 * r_o**2) / (denom * r_o**2))
 
         sigma_theta_i_MPa = sigma_theta_i / 1e6
         sigma_theta_o_MPa = sigma_theta_o / 1e6
@@ -1725,20 +1729,30 @@ try:
             st.error("Lining stresses exceed allowable tensile stress ❌")
 
         # ------------------ Stress distribution plot ------------------
-        r_plot = np.linspace(r_i * 1.001, r_o, 200)
-        sigma_profile = hoop_stress(p_i, p_e, r_i, r_o, r_plot) / 1e6  # MPa
+        # Create radial points from inner to outer radius
+        r_plot = np.linspace(r_i, r_o, 200)
+        
+        # Calculate stress at each point
+        sigma_profile = np.zeros_like(r_plot)
+        for i, r in enumerate(r_plot):
+            sigma_profile[i] = (
+                (p_i * r_i**2 - p_e * r_o**2) / denom + 
+                ((p_i - p_e) * r_i**2 * r_o**2) / (denom * r**2))
+        
+        sigma_profile_MPa = sigma_profile / 1e6  # Convert to MPa
 
         fig_s, ax = plt.subplots(figsize=(8, 4.5))
-        ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
+        ax.plot(r_plot, sigma_profile_MPa, lw=2.2, label="σθ(r)")
         ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
         ax.axvline(r_i, color="k", ls=":", label=f"ri={r_i:.2f} m")
         ax.axvline(r_o, color="k", ls="--", label=f"ro={r_o:.2f} m")
-        ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
+        ax.fill_between(r_plot, sigma_profile_MPa, ft_MPa, 
+                        where=(sigma_profile_MPa > ft_MPa),
                         color="red", alpha=0.2, label="Cracking risk")
         ax.set_xlabel("Radius r (m)")
         ax.set_ylabel("Hoop stress σθ (MPa)")
         ax.set_title("Lining hoop stress distribution")
-        ax.set_ylim(0, max(ft_MPa*1.5, sigma_profile.max()*1.2))
+        ax.set_ylim(0, max(ft_MPa*1.5, sigma_profile_MPa.max()*1.2))
         ax.grid(True, linestyle="--", alpha=0.35)
         ax.legend(loc="best")
         st.pyplot(fig_s)
