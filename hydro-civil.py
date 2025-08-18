@@ -1573,83 +1573,78 @@ fig_power.update_layout(
 )
 st.plotly_chart(fig_power, use_container_width=True)
 
-# ===============================================
-# 5) Confinement Check (Norwegian Confinement Criteria)
-# ===============================================
-st.header("5) Confinement Check (Norwegian Confinement Criteria)")
 
-st.markdown(
-    "This section checks tunnel confinement stability using the Norwegian criteria. "
-    "It evaluates both the **factor of safety** for given rock covers and the **required rock cover** "
-    "for a target safety factor."
-)
+import numpy as np
 
-# --- User Inputs ---
-st.subheader("Input Parameters")
+# -----------------------------
+# Norwegian Confinement Criteria
+# -----------------------------
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    hs = st.number_input("Hydrostatic head h_s (m)", value=300.0, min_value=0.0)
-    alpha = st.number_input("Tunnel inclination α (degrees)", value=20.0, min_value=0.0, max_value=90.0)
-    beta = st.number_input("Slope angle β (degrees)", value=40.0, min_value=0.0, max_value=90.0)
-
-with col2:
-    gamma_w = st.number_input("Unit weight of water γ_w (kN/m³)", value=9.81, min_value=0.0)
-    gamma_r = st.number_input("Unit weight of rock γ_r (kN/m³)", value=26.0, min_value=0.0)
-
-with col3:
-    C_RV = st.number_input("Given vertical cover C_RV (m)", value=214.0, min_value=0.0)
-    C_RM = st.number_input("Given minimum cover C_RM (m)", value=182.0, min_value=0.0)
-    F_req = st.number_input("Required Factor of Safety F_req", value=1.2, min_value=0.1)
-
-# --- Calculations ---
 def confinement_factor(C_RV, C_RM, hs, gamma_r, gamma_w, alpha, beta):
+    """
+    Compute safety factors F_RV and F_RM based on given rock covers.
+    Parameters:
+        C_RV : float - vertical rock cover (m)
+        C_RM : float - minimum rock cover (m)
+        hs : float - static head, hydrostatic head (m)
+        gamma_r : float - unit weight of rock (kN/m³)
+        gamma_w : float - unit weight of water (kN/m³)
+        alpha : float - tunnel inclination (deg)
+        beta : float - slope angle (deg)
+    Returns:
+        F_RV, F_RM : floats - safety factors
+    """
     alpha_rad = np.radians(alpha)
     beta_rad = np.radians(beta)
+    
     F_RV = (C_RV * gamma_r * np.cos(alpha_rad)) / (hs * gamma_w)
     F_RM = (C_RM * gamma_r * np.cos(beta_rad)) / (hs * gamma_w)
+    
     return F_RV, F_RM
 
+
 def confinement_cover(F_req, hs, gamma_r, gamma_w, alpha, beta):
+    """
+    Compute required rock covers C_RV and C_RM for given safety factor.
+    Parameters:
+        F_req : float - required factor of safety
+        hs : float - static head, hydrostatic head (m)
+        gamma_r : float - unit weight of rock (kN/m³)
+        gamma_w : float - unit weight of water (kN/m³)
+        alpha : float - tunnel inclination (deg)
+        beta : float - slope angle (deg)
+    Returns:
+        C_RV_req, C_RM_req : floats - required vertical and minimum rock covers
+    """
     alpha_rad = np.radians(alpha)
     beta_rad = np.radians(beta)
+    
     C_RV_req = F_req * hs * gamma_w / (gamma_r * np.cos(alpha_rad))
     C_RM_req = F_req * hs * gamma_w / (gamma_r * np.cos(beta_rad))
+    
     return C_RV_req, C_RM_req
 
-F_RV, F_RM = confinement_factor(C_RV, C_RM, hs, gamma_r, gamma_w, alpha, beta)
-C_RV_req, C_RM_req = confinement_cover(F_req, hs, gamma_r, gamma_w, alpha, beta)
 
-# --- Equations ---
-with st.expander("Confinement Criteria Equations (click to expand)"):
-
-    st.markdown("**Safety factors:**")
-    st.latex(r"F_{RV} = \frac{C_{RV} \cdot \gamma_r \cdot \cos(\alpha)}{h_s \cdot \gamma_w}")
-    st.latex(r"F_{RM} = \frac{C_{RM} \cdot \gamma_r \cdot \cos(\beta)}{h_s \cdot \gamma_w}")
-
-    st.markdown("**Required covers for a target factor of safety:**")
-    st.latex(r"C_{RV,req} = \frac{F_{req} \cdot h_s \cdot \gamma_w}{\gamma_r \cdot \cos(\alpha)}")
-    st.latex(r"C_{RM,req} = \frac{F_{req} \cdot h_s \cdot \gamma_w}{\gamma_r \cdot \cos(\beta)}")
-
-# --- Results ---
-st.subheader("Calculated Results")
-
-results = {
-    "Given Cover (m)": [C_RV, C_RM],
-    "Factor of Safety": [F_RV, F_RM],
-    "Required Cover (m)": [C_RV_req, C_RM_req],
-}
-
-df_conf = pd.DataFrame(results, index=["Vertical (RV)", "Minimum (RM)"])
-st.dataframe(df_conf.style.format("{:.2f}"))
-
-# --- Check Compliance ---
-if F_RV >= F_req and F_RM >= F_req:
-    st.success("✅ Both confinement criteria are satisfied.")
-else:
-    st.error("⚠️ One or both confinement criteria are **not satisfied**.")
-
+# -----------------------------
+# Example (slide values)
+# -----------------------------
+if __name__ == "__main__":
+    # Given
+    hs = 300.0               # hydrostatic head (m)
+    gamma_w = 1000 * 9.81    # N/m³ (water density * g)
+    gamma_r = 2650 * 9.81    # N/m³ (rock density * g)
+    alpha = 20.0             # tunnel inclination (deg)
+    beta = 40.0              # slope angle (deg)
+    F_req = 1.2              # required safety factor
+    
+    # Option 1: Factor of Safety for given cover
+    C_RV_given, C_RM_given = 214.0, 182.0
+    F_RV, F_RM = confinement_factor(C_RV_given, C_RM_given, hs, gamma_r, gamma_w, alpha, beta)
+    print(f"Option 1 - Safety Factors:\nF_RV = {F_RV:.2f}, F_RM = {F_RM:.2f}")
+    
+    # Option 2: Required cover for given safety factor
+    C_RV_req, C_RM_req = confinement_cover(F_req, hs, gamma_r, gamma_w, alpha, beta)
+    print(f"Option 2 - Required Covers:\nC_RV = {C_RV_req:.1f} m, C_RM = {C_RM_req:.1f} m")
 
 # --------------------- Section 6 (modular): Rock Cover & Lining ----------
 def rock_cover_and_lining_ui():
