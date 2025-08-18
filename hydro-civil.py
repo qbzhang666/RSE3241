@@ -1650,6 +1650,53 @@ if F_RV >= F_req and F_RM >= F_req:
 else:
     st.error("⚠️ One or both confinement criteria are **not satisfied**.")
 
+# --- Section 6: Pressure Tunnel Lining Stress ---
+st.header("6) Pressure Tunnel: Lining Stress")
+
+# Input parameters
+gamma_w = 9.81  # kN/m3
+st.subheader("Input Parameters")
+
+lining_thickness = st.number_input("Lining thickness (m)", min_value=0.1, value=0.5, step=0.1)
+external_pressure = st.number_input("External pressure p_e (kN/m²)", min_value=0.0, value=0.0, step=10.0)
+allowable_stress = st.number_input("Allowable tensile stress of lining (MPa)", min_value=0.1, value=2.0, step=0.1)
+
+# Radii
+r_i = D_pen / 2.0   # internal radius (m)
+r_o = r_i + lining_thickness
+
+# Pressures
+p_i = gamma_w * H_gross  # kN/m² (internal water pressure from gross head)
+p_e = external_pressure  # kN/m² (external load input)
+
+# Lame’s equations
+sigma_theta_i = ((p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)) + ((p_i - p_e) * r_i**2 * r_o**2) / ((r_o**2 - r_i**2) * r_i**2)
+sigma_theta_o = ((p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)) + ((p_i - p_e) * r_i**2 * r_o**2) / ((r_o**2 - r_i**2) * r_o**2)
+
+# Convert to MPa
+sigma_theta_i_MPa = sigma_theta_i / 1000.0
+sigma_theta_o_MPa = sigma_theta_o / 1000.0
+
+# Results
+st.subheader("Calculated Lining Stress Results")
+st.write(f"Internal pressure pᵢ = {p_i:.2f} kN/m²")
+st.write(f"External pressure pₑ = {p_e:.2f} kN/m²")
+st.write(f"Hoop stress at inner surface σθ,i = {sigma_theta_i_MPa:.2f} MPa")
+st.write(f"Hoop stress at outer surface σθ,o = {sigma_theta_o_MPa:.2f} MPa")
+
+# Check against allowable stress
+if sigma_theta_i_MPa <= allowable_stress and sigma_theta_o_MPa <= allowable_stress:
+    st.success("Lining stresses are within allowable limits ✅")
+else:
+    st.error("Lining stresses exceed allowable tensile stress ❌")
+
+# --- Equations ---
+with st.expander("Lining Stress Equations (click to expand)"):
+    st.latex(r"p_i = \gamma_w \cdot H_{gross}")
+    st.latex(r"p_{net} = p_i - p_e")
+    st.latex(r"\sigma_{\theta,i} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_i^2}")
+    st.latex(r"\sigma_{\theta,o} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_o^2}")
+
 
 # --------------------- Section 6 (modular): Rock Cover & Lining ----------
 def rock_cover_and_lining_ui():
