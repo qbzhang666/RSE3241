@@ -1781,6 +1781,7 @@ except Exception as e:
 
 
 # ------------------ Section 7: Surge Tank ------------------
+st.header("7) Surge Tank")
 with st.expander("Section 7: Surge Tank", expanded=False):
     st.markdown("### Surge Tank Design")
 
