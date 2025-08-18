@@ -1658,18 +1658,6 @@ st.header("6) Pressure Tunnel: Lining Stress")
 
 gamma_w = 9800.0  # N/m³ (unit weight of water)
 
-# Input pressures
-p_i = gamma_w * h_s   # internal water pressure
-p_e = eta * gamma_w * h_w  # external groundwater pressure
-
-# Geometry
-r_i = penstock_diameter / 2
-r_o = r_i + lining_thickness
-
-# Radial stress at inner lining (Lamé’s equation)
-sigma_r_inner = (p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)
-
-
 st.header("Input Parameters")
 
 # ------------------ Grouped inputs ------------------
@@ -1699,14 +1687,10 @@ with st.expander("Rock Properties", expanded=False):
 try:
     r_i = d_p / 2.0                  # inner radius (m)
     r_o = r_i + t_l                  # outer radius (m)
-
-    if r_o <= r_i:
-        st.error("Invalid geometry: outer radius must be larger than inner radius.")
-    else:
-        # Pressures
-        p_i = gamma_w * h_s              # internal water pressure (Pa)
-        p_e = gamma_w * h_w              # external water pressure (Pa)
-        p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)
+   # Pressures
+    p_i = gamma_w * h_s              # internal water pressure (Pa)
+    p_e = gamma_w * h_w              # external water pressure (Pa)
+    p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)    
 
         # --- Hoop stress profile function (Pa) ---
         def hoop_stress(pi, pe, ri, ro, r):  # Explicitly pass ro
