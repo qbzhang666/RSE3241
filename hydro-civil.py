@@ -1661,10 +1661,9 @@ gamma_w = 9800.0  # N/m³ (unit weight of water)
 st.subheader("Input Parameters")
 
 with st.expander("Hydraulic Heads", expanded=True):
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     h_s = c1.number_input("Hydrostatic head to crown h_s (m)", value=204.0)
     h_w = c2.number_input("Groundwater level head h_w (m)", value=150.0)
-    eta = c3.number_input("Effective pore pressure factor η", value=1.0)
 
 with st.expander("Geometry", expanded=True):
     c1, c2 = st.columns(2)
@@ -1693,26 +1692,29 @@ try:
         # Pressures
         p_i = gamma_w * h_s              # internal water pressure (Pa)
         p_e = gamma_w * h_w              # external water pressure (Pa)
-        p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)
 
-        # --- Stress functions (Lamé solution) ---
-        def radial_stress(pi, pe, ri, ro, r):
+        # --- Compatibility-based effective pore pressure ---
+        denom = 1 + (E_r * (1 - v_c) / (E_c * (1 - v_r))) * (r_i**2 * (r_o**2 + r_i**2)) / (r_o**2 * (r_o**2 - r_i**2))
+        p_f = (p_i - p_e) / denom
+
+        # --- Stress functions (Lamé solution with p_f) ---
+        def radial_stress(pf, pe, ri, ro, r):
             return (
-                (pi * ri**2 - pe * ro**2) / (ro**2 - ri**2)
-                - ((pi - pe) * ri**2 * ro**2) / ((ro**2 - ri**2) * r**2)
+                (pf * ri**2 - pe * ro**2) / (ro**2 - ri**2)
+                - ((pf - pe) * ri**2 * ro**2) / ((ro**2 - ri**2) * r**2)
             )
 
-        def hoop_stress(pi, pe, ri, ro, r):
+        def hoop_stress(pf, pe, ri, ro, r):
             return (
-                (pi * ri**2 - pe * ro**2) / (ro**2 - ri**2)
-                + ((pi - pe) * ri**2 * ro**2) / ((ro**2 - ri**2) * r**2)
+                (pf * ri**2 - pe * ro**2) / (ro**2 - ri**2)
+                + ((pf - pe) * ri**2 * ro**2) / ((ro**2 - ri**2) * r**2)
             )
 
         # Inner & outer faces
-        sigma_theta_i = hoop_stress(p_i, p_e, r_i, r_o, r_i)
-        sigma_theta_o = hoop_stress(p_i, p_e, r_i, r_o, r_o)
-        sigma_r_i = radial_stress(p_i, p_e, r_i, r_o, r_i)
-        sigma_r_o = radial_stress(p_i, p_e, r_i, r_o, r_o)
+        sigma_theta_i = hoop_stress(p_f, p_e, r_i, r_o, r_i)
+        sigma_theta_o = hoop_stress(p_f, p_e, r_i, r_o, r_o)
+        sigma_r_i = radial_stress(p_f, p_e, r_i, r_o, r_i)
+        sigma_r_o = radial_stress(p_f, p_e, r_i, r_o, r_o)
 
         # Convert to MPa
         sigma_theta_i_MPa = sigma_theta_i / 1e6
@@ -1725,7 +1727,6 @@ try:
         st.write(f"Internal pressure pᵢ = {p_i/1e6:.2f} MPa")
         st.write(f"External pressure pₑ = {p_e/1e6:.2f} MPa")
         st.write(f"Effective pore pressure p_f = {p_f/1e6:.2f} MPa")
-
 
         st.markdown("**Hoop (circumferential) stress:**")
         st.write(f"σθ,i (inner surface) = {sigma_theta_i_MPa:.2f} MPa")
@@ -1742,8 +1743,8 @@ try:
 
         # ------------------ Stress distribution plot ------------------
         r_plot = np.linspace(r_i * 1.001, r_o, 200)
-        sigma_theta_profile = hoop_stress(p_i, p_e, r_i, r_o, r_plot) / 1e6  # MPa
-        sigma_r_profile = radial_stress(p_i, p_e, r_i, r_o, r_plot) / 1e6    # MPa
+        sigma_theta_profile = hoop_stress(p_f, p_e, r_i, r_o, r_plot) / 1e6  # MPa
+        sigma_r_profile = radial_stress(p_f, p_e, r_i, r_o, r_plot) / 1e6    # MPa
 
         fig_s, ax = plt.subplots(figsize=(8, 4.5))
         ax.plot(r_plot, sigma_theta_profile, lw=2.2, label="Hoop stress σθ(r)")
@@ -1768,6 +1769,12 @@ try:
         c3.metric("σr @ inner (MPa)", f"{sigma_r_i_MPa:.1f}")
         c4.metric("σr @ outer (MPa)", f"{sigma_r_o_MPa:.1f}")
 
+        # ------------------ Equations Reference ------------------
+        with st.expander("Equations Used (Section 6)", expanded=False):
+            st.latex(r"p_f = \frac{p_i - p_e}{1 + \dfrac{E_r (1 - \nu_c)}{E_c (1 - \nu_r)} \cdot \dfrac{r_i^2 (r_o^2 + r_i^2)}{r_o^2 (r_o^2 - r_i^2)}}")
+            st.latex(r"\sigma_r(r) = \frac{p_f r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} - \frac{(p_f - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r^2}")
+            st.latex(r"\sigma_\theta(r) = \frac{p_f r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_f - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r^2}")
+
 except Exception as e:
     st.error(f"Error in stress calculation: {e}")
 
@@ -1789,7 +1796,7 @@ st.caption("Rule-of-thumb only. Real designs require full water-hammer/transient
 
 
 # ------------------------------- Section 8: Equations --------------------
-st.header("8) Core Equations (for teaching)")
+st.header("8) Core Equations")
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining)", "Surge/Waterhammer"])
 with tabH:
     st.markdown("#### Continuity"); st.latex(r"Q = A \, v")
