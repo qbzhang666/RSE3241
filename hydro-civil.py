@@ -168,10 +168,9 @@ def D_from_headloss(Q, L, hf_allow, eps=3e-4, Ksum=2.0, T_C=15.0, rho=1000.0, g=
     return D, f, Re, v, hf
 
 # ------------------------------- App Shell -------------------------------
-st.set_page_config(page_title="PHES Design Teaching App (with Moody)", layout="wide")
-st.title("Pumped Hydro Energy Storage — Design Teaching App")
-st.caption("Now with a Moody helper: compute friction factor from Re and relative roughness. "
-           "Teaching tool — not a substitute for detailed design or transient analysis.")
+st.set_page_config(page_title="PHES Civil Design", layout="wide")
+st.title("Pumped Hydro Energy Storage — Civil Design")
+
 
 # ------------------------------- Presets -------------------------------
 # Presets
@@ -1888,98 +1887,93 @@ with st.expander("Equations Used (Section 7)", expanded=False):
     st.latex(r"A_s = \frac{Q_0}{\omega H}, \quad \omega \approx \frac{\pi a}{L}")
 
 
-# ------------------------------- Section 8: Equations --------------------
 st.header("8) Core Equations (for teaching)")
-tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining)", "Surge/Waterhammer"])
-with tabH:
-    st.markdown("#### Continuity"); st.latex(r"Q = A \, v")
-    st.markdown("#### Bernoulli (with losses)")
-    st.latex(r"\frac{P_1}{\rho g} + \frac{v_1^2}{2g} + z_1 = \frac{P_2}{\rho g} + \frac{v_2^2}{2g} + z_2 + h_f")
-    st.markdown("#### Turbine Power"); st.latex(r"P = \rho g Q H_{\text{net}} \eta_t")
-    st.markdown("#### Darcy–Weisbach Head Loss (with local losses)")
-    st.latex(r"h_f = \left(f \frac{L}{D} + \sum K \right) \frac{v^2}{2g}")
-with tabM:
-    st.markdown("#### Lame (thick-walled cylinder) — hoop stress")
-    st.latex(r"\sigma_\theta(r) = \frac{p_i (r^2 + r_i^2) - 2 p_e r^2}{r^2 - r_i^2}")
-    st.markdown("#### Required external confinement (didactic inner-fibre check)")
-    st.latex(r"p_{e,\text{req}} \approx \frac{(p_i - f_t) (r_o^2 - r_i^2)}{2 r_o^2}")
-    st.markdown("#### Snowy vertical cover"); st.latex(r"C_{RV} = \frac{h_s \, \gamma_w}{\gamma_R}")
-    st.markdown("#### Norwegian valley-side stability factor")
-    st.latex(r"F_{RV} = \frac{C_{RV} \, \gamma_R \cos\alpha}{h_s \, \gamma_w}")
-with tabS:
-    st.markdown("#### First-cut surge tank sizing (simple oscillator)")
-    st.latex(r"A_s = k \, A_h, \quad \omega_n = \sqrt{\frac{g A_h}{L_h A_s}}, \quad T_n = \frac{2\pi}{\omega_n}")
-    st.caption("Use only as a teaching baseline; proper design requires transient simulation (e.g., method of characteristics).")
 
-# ------------------------------- Section 9: Reference Tables -------------
+tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining & Rock)", "Surge/Waterhammer"])
+
+with tabH:
+    st.markdown("### Hydraulics")
+    st.markdown("**Continuity (flow balance):**")
+    st.latex(r"Q = A \, v")
+    st.markdown("**Bernoulli (with head losses):**")
+    st.latex(r"\frac{P_1}{\rho g} + \frac{v_1^2}{2g} + z_1 \;=\; \frac{P_2}{\rho g} + \frac{v_2^2}{2g} + z_2 + h_f")
+    st.markdown("**Turbine Power:**")
+    st.latex(r"P = \rho g Q H_{\text{net}} \eta_t")
+    st.markdown("**Darcy–Weisbach (with local losses):**")
+    st.latex(r"h_f = \left(f \frac{L}{D} + \Sigma K \right) \frac{v^2}{2g}")
+    st.markdown("**Reynolds Number:**")
+    st.latex(r"\mathrm{Re} = \frac{vD}{\nu}, \quad f=f(\mathrm{Re}, \varepsilon/D)")
+    st.caption("Links hydraulic losses to velocity, pipe geometry, roughness, and flow regime.")
+
+with tabM:
+    st.markdown("### Mechanics (Lining & Rock)")
+    st.markdown("**Lamé hoop stress (thick-walled cylinder):**")
+    st.latex(r"\sigma_\theta(r) = \frac{p_i(r^2 + r_i^2) - 2p_e r^2}{r^2 - r_i^2}")
+    st.markdown("**External confinement requirement (inner-fibre check):**")
+    st.latex(r"p_{e,\text{req}} \approx \frac{(p_i - f_t)(r_o^2 - r_i^2)}{2r_o^2}")
+    st.markdown("**Snowy vertical rock cover criterion:**")
+    st.latex(r"C_{RV} = \frac{h_s \gamma_w}{\gamma_R}")
+    st.markdown("**Norwegian stability factor (valley-side):**")
+    st.latex(r"F_{RV} = \frac{C_{RV}\,\gamma_R \cos \alpha}{h_s \gamma_w}")
+    st.caption("Used for evaluating tunnel stability under headrace pressure.")
+
+with tabS:
+    st.markdown("### Surge / Waterhammer")
+    st.markdown("**First-cut surge tank sizing (oscillator analogy):**")
+    st.latex(r"A_s \approx k \, A_h")
+    st.latex(r"\omega_n = \sqrt{\frac{g A_h}{L_h A_s}}, \quad T_n = \frac{2\pi}{\omega_n}")
+    st.markdown("**Rule-of-thumb stability:**")
+    st.latex(r"\frac{A_s}{A_p} \;\geq\; \frac{L}{H}")
+    st.caption("⚠️ Teaching approximations only — detailed design needs transient surge analysis (e.g., Method of Characteristics).")
+
+
 st.header("9) Reference Tables (typical classroom values)")
-with st.expander("📚 Friction Factors (Darcy) — typical ranges & sources", expanded=False):
+
+with st.expander("📘 Typical Darcy Friction Factors (f)", expanded=False):
     df_f = pd.DataFrame({
-        "Material": ["New steel (welded)", "New steel (riveted)", "Concrete (smooth)", "Concrete (rough)", "PVC/Plastic"],
-        "Typical f": [0.012, 0.017, 0.015, 0.022, 0.009],
-        "Range": ["0.010–0.015", "0.015–0.020", "0.012–0.018", "0.018–0.025", "0.007–0.012"],
-        "Source (teaching)": ["ASCE (2017)","USBR (1987)","ACI 351.3R (2018)","USACE EM (2008)","AWWA (2012)"]
+        "Material": ["PVC/HDPE", "New steel (welded)", "Concrete (smooth)", "Concrete (rough)", "Rock tunnel (lined)"],
+        "f (typical)": [0.009, 0.012, 0.015, 0.022, 0.025],
+        "Range": ["0.007–0.012", "0.010–0.015", "0.012–0.018", "0.018–0.025", "0.020–0.030"],
+        "Source": ["AWWA (2012)", "ASCE (2017)", "ACI 351.3R", "USBR (1987)", "USACE EM (2008)"]
     })
     st.table(df_f)
-with st.expander("📚 Local Loss Coefficients ΣK — indicative ranges & notes", expanded=False):
+
+with st.expander("📘 Local Loss Coefficients ΣK", expanded=False):
     df_k = pd.DataFrame({
-        "Component": ["Entrance (bellmouth)", "Entrance (square)", "90° bend", "45° bend", "Gate valve (open)",
-                      "Butterfly valve (open)", "T-junction", "Exit"],
-        "K (typical)": [0.15, 0.50, 0.25, 0.15, 0.20, 0.30, 0.40, 1.00],
-        "Range": ["0.1–0.2","0.4–0.5","0.2–0.3","0.1–0.2","0.1–0.3","0.2–0.4","0.3–0.5","0.8–1.0"],
-        "Notes": ["Best-case entrance","Worst-case entrance","Radius/diameter dependent",
-                  "Gentler than 90°","Design dependent","Position dependent","Flow split losses","Kinetic recovery lost"]
+        "Component": ["Entrance (bellmouth)", "90° bend (r/D ≈ 1)", "Gate valve (open)", "T-junction", "Exit"],
+        "K (typical)": [0.15, 0.25, 0.20, 0.40, 1.00],
+        "Range": ["0.1–0.2", "0.2–0.3", "0.1–0.3", "0.3–0.5", "0.8–1.0"],
+        "Notes": ["Smooth inlet", "Moderate bend radius", "Depends on valve type", "Flow division losses", "Kinetic recovery lost"]
     })
     st.table(df_k)
-    st.caption("Typical ΣK for well-designed penstock trunks: ~2–5 (teaching values).")
+    st.caption("Rule of thumb: ΣK ≈ 2–5 for a well-designed hydropower penstock system.")
 
-# ------------------------------- Section 10: Downloads -------------------
+with st.expander("📘 Rock & Concrete Properties (for lining checks)", expanded=False):
+    df_mat = pd.DataFrame({
+        "Property": ["Concrete tensile strength f_t", "Concrete modulus E_c", "Rock modulus E_r", "Unit weight of rock γ_r"],
+        "Typical Value": ["2–4 MPa", "30–40 GPa", "20–60 GPa", "25–27 kN/m³"],
+        "Reference": ["ACI 318", "ACI 363R", "ISRM (2007)", "Hoek & Brown"]
+    })
+    st.table(df_mat)
+
+
 st.header("10) Downloads & Bibliography")
-bundle = {
-    "reservoirs": {"upper": {"HWL": HWL_u, "LWL": LWL_u}, "lower": {"HWL": HWL_l, "TWL": TWL_l}},
-    "penstock": {"N": N_pen, "D": D_pen, "L": L_pen,
-                 "mode_f": mode_f,
-                 "f_manual": (f if mode_f == "Manual (slider)" else None),
-                 "T_C": (T_C if mode_f != "Manual (slider)" else None),
-                 "eps_m": (eps if mode_f != "Manual (slider)" else None),
-                 "rel_rough": (out_design["rel_rough"] if mode_f != "Manual (slider)" else None),
-                 "SigmaK": K_sum_global},
-    "efficiency": {"eta_t": eta_t},
-    "operating": {"design": out_design, "max": out_max},
-    "surge": {"Ah": area_circle(D_pen), **surge},
-    "rock_cover_lining": rock_summary
-}
-st.download_button("Download JSON", data=json.dumps(bundle, indent=2), file_name="phes_results.json")
 
-flat = {
-    "HWL_u": HWL_u, "LWL_u": LWL_u, "HWL_l": HWL_l, "TWL_l": TWL_l,
-    "N_pen": N_pen, "D_pen": D_pen, "L_pen": L_pen,
-    "mode_f": mode_f,
-    "f": out_design["f"], "Re_design": out_design["Re"],
-    "f_max": out_max["f"], "Re_max": out_max["Re"],
-    "SigmaK": K_sum_global, "eta_t": eta_t,
-    "P_design_MW": P_design, "P_max_MW": P_max,
-    "hnet_design_m": out_design["h_net"], "Q_total_design_m3s": out_design["Q_total"],
-    "v_design_ms": out_design_flow["v"], "hf_design_m": out_design["hf"],
-    "hnet_max_m": out_max["h_net"], "Q_total_max_m3s": out_max["Q_total"],
-    "v_max_ms": out_max_flow["v"], "hf_max_m": out_max["hf"],
-    "T_C": (T_C if mode_f != "Manual (slider)" else None),
-    "eps_m": (eps if mode_f != "Manual (slider)" else None),
-    "rel_rough": (out_design["rel_rough"] if mode_f != "Manual (slider)" else None),
-}
-st.download_button(
-    "Download CSV (parameters)",
+# Download buttons (JSON & CSV already in your code)
+st.download_button("⬇ Download JSON Results", data=json.dumps(bundle, indent=2), file_name="phes_results.json")
+st.download_button("⬇ Download CSV (parameters)",
     data=pd.DataFrame([flat]).to_csv(index=False).encode("utf-8"),
-    file_name="phes_parameters.csv"
-)
+    file_name="phes_parameters.csv")
 
+st.markdown("### 📚 Bibliography (Teaching References)")
 st.markdown("""
-**Bibliography (teaching references)**  
-- USBR Design Standards (Penstocks; Hydraulics)  
-- ICOLD Bulletins on Pressure Tunnels and Surge Tanks  
-- ASCE Manuals & ACI 351.3R (Concrete & friction ranges)  
-- USACE Engineering Manuals (Hydraulic Loss Coefficients)  
-- Chaudhry, M.H. (2014). *Applied Hydraulic Transients*.  
-- Gordon, J.L. (2001). *Hydraulics of Hydroelectric Power*.  
+- USBR (1987). *Design of Small Dams*. 3rd ed. — Penstocks & hydraulics guidance  
+- USACE EM 1110-2-1602. *Hydraulic Design of Reservoir Outlet Works*  
+- ICOLD Bulletins: *Pressure tunnels, surge tanks*  
+- ASCE Manuals of Practice; ACI 351.3R — Concrete & friction references  
+- AWWA (2012). *Hydraulic Roughness Tables*  
+- Chaudhry, M.H. (2014). *Applied Hydraulic Transients*, Springer  
+- Gordon, J.L. (2001). *Hydraulics of Hydroelectric Power*  
+- Hoek, E. & Brown, E. (1997). *Practical estimates of rock mass properties*  
 """)
-st.caption("Educational tool • Use for teaching & scoping only • © Your Course / Lab")
+st.caption("This app is for classroom learning & scoping studies only — not detailed engineering design.")
