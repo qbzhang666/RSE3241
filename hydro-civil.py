@@ -1867,27 +1867,8 @@ st.write(f"Area Ratio (Aₛ / Aₚ): {A_s / A_p_total:.2f}")
 st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 
-# ---- Equations ----
-with st.expander("Equations Used (Section 7)", expanded=False):
-    st.markdown("**(1) Penstock Area per Pipe**")
-    st.latex(r"A_{p,\;single} = \frac{\pi D_p^2}{4}")
 
-    st.markdown("**(2) Total Penstock Area**")
-    st.latex(r"A_p = n \cdot A_{p,\;single} = n \cdot \frac{\pi D_p^2}{4}")
-
-    st.markdown("**(3) Surge Tank Area Options**")
-
-    st.markdown("*(a) Direct Input Option*")
-    st.latex(r"A_s = \text{User-defined input (trial value)}")
-
-    st.markdown("*(b) Ratio Method*")
-    st.latex(r"R = \frac{A_s}{A_p}, \quad A_s = R \cdot A_p")
-
-    st.markdown("*(c) Stability-based Method*")
-    st.latex(r"A_s = \frac{Q_0}{\omega H}, \quad \omega \approx \frac{\pi a}{L}")
-
-
-st.header("8) Core Equations (for teaching)")
+st.header("8) Core Equations")
 
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining & Rock)", "Surge/Waterhammer"])
 
@@ -1960,7 +1941,6 @@ with st.expander("📘 Rock & Concrete Properties (for lining checks)", expanded
 st.header("10) Downloads & Bibliography")
 
 # Download buttons (JSON & CSV already in your code)
-st.download_button("⬇ Download JSON Results", data=json.dumps(bundle, indent=2), file_name="phes_results.json")
 st.download_button("⬇ Download CSV (parameters)",
     data=pd.DataFrame([flat]).to_csv(index=False).encode("utf-8"),
     file_name="phes_parameters.csv")
