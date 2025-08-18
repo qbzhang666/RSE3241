@@ -1650,7 +1650,6 @@ if F_RV >= F_req and F_RM >= F_req:
 else:
     st.error("⚠️ One or both confinement criteria are **not satisfied**.")
 
-
 # --- Section 6: Pressure Tunnel Lining Stress ---
 st.header("6) Pressure Tunnel: Lining Stress")
 
