@@ -789,7 +789,8 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
     hf_total = hf_major + hf_minor
 
     # ---- Pass 2 (refined with hf_total) ----
-    h_net2 = h_span - hf_total
+    h_draft = float(st.session_state.get("h_draft", 0.0))
+    h_net2 = h_span - hf_total - h_draft
     Q_total2 = Q_from_power(P_MW, h_net2, eta_t)
     Q_per2 = safe_div(Q_total2, N_pen)
     v2 = safe_div(Q_per2, A)
@@ -1370,12 +1371,15 @@ hf_total = out_design.get("hf", float("nan"))         # total = major + minor
 H_gross  = out_design.get("gross_head", float("nan"))
 H_net    = out_design.get("h_net", float("nan"))
 
-c1, c2, c3, c4 = st.columns(4)
+# Draft head from earlier session_state
+h_draft = float(st.session_state.get("h_draft", float("nan")))
+
+c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("h_f major (m)", f"{hf_major:.2f}")
 c2.metric("h_f minor (m)", f"{hf_minor:.2f}")
 c3.metric("h_f total (m)", f"{hf_total:.2f}")
-c4.metric("Net head (m)", f"{H_net:.2f}")
-
+c4.metric("Draft head (m)", f"{h_draft:.2f}")
+c5.metric("Net head (m)", f"{H_net:.2f}")
 
 # ---------------- Diameter Estimator and Verification ----------------
 st.header("5) Penstock Diameter Verification")
