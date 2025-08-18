@@ -1666,31 +1666,29 @@ with c1:
 with c2:
     h_w = st.number_input("Groundwater level head h_w (m)", 0.0, 2000.0, 150.0, 1.0)
 
-# Radii
+# Geometry
+D_pen = st.number_input("Penstock diameter (m)", 1.0, 10.0, 3.0, step=0.1)
 lining_thickness = st.number_input("Lining thickness (m)", min_value=0.1, value=0.5, step=0.1)
-r_i = D_pen / 2.0            # Internal radius (from penstock diameter)
+r_i = D_pen / 2.0            # Internal radius
 r_o = r_i + lining_thickness # External radius
 
-# Material props
+# Material properties
 E_c = st.number_input("Concrete modulus E_c (Pa)", value=3.5e10, step=1e9, format="%.2e")
 nu_c = st.number_input("Concrete Poisson’s ratio ν_c", value=0.167, step=0.01)
 E_r = st.number_input("Rock modulus E_r (Pa)", value=2.7e10, step=1e9, format="%.2e")
 nu_r = st.number_input("Rock Poisson’s ratio ν_r", value=0.20, step=0.01)
-
-allowable_stress = st.number_input("Allowable tensile stress of lining (MPa)", min_value=0.1, value=2.0, step=0.1)
+ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 0.1, 10.0, 2.0, step=0.1)
 
 # -------------------
 # Pressures (Pa)
 # -------------------
-p_i = gamma_w * h_s   # Internal water pressure (Pa)
-p_e = gamma_w * h_w   # External water pressure (Pa)
-
-# Effective pore pressure factor
+p_i = gamma_w * h_s   # Internal pressure from water head
+p_e = gamma_w * h_w   # External groundwater pressure
 eta = st.number_input("Effective pore pressure factor η", min_value=0.0, value=1.0, step=0.1)
 p_f = eta * (p_i - p_e)
 
 # -------------------
-# Lame’s equations (hoop stress at inner & outer surface)
+# Lame’s equations (hoop stresses at inner & outer surface)
 # -------------------
 sigma_theta_i = (
     (p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)
@@ -1715,78 +1713,54 @@ st.write(f"Effective pore pressure p_f = {p_f:.2f} Pa")
 st.write(f"Hoop stress at inner surface σθ,i = {sigma_theta_i_MPa:.2f} MPa")
 st.write(f"Hoop stress at outer surface σθ,o = {sigma_theta_o_MPa:.2f} MPa")
 
-if sigma_theta_i_MPa <= allowable_stress and sigma_theta_o_MPa <= allowable_stress:
+if sigma_theta_i_MPa <= ft_MPa and sigma_theta_o_MPa <= ft_MPa:
     st.success("Lining stresses are within allowable limits ✅")
 else:
     st.error("Lining stresses exceed allowable tensile stress ❌")
 
 # -------------------
-# Equations (expandable)
+# Stress Distribution & Confinement Check
 # -------------------
-with st.expander("Lining Stress Equations (click to expand)"):
-    st.latex(r"p_i = \gamma_w \cdot h_s")
-    st.latex(r"p_e = \gamma_w \cdot h_w")
-    st.latex(r"p_f = \eta \cdot (p_i - p_e)")
-    st.latex(r"\sigma_{\theta,i} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_i^2}")
-    st.latex(r"\sigma_{\theta,o} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_o^2}")
+st.subheader("Stress Distribution and Confinement Check")
 
-# ------------------------------- Section 6: Confinement Check ------------------
-st.subheader("6) Lining Stress Check")
-
-# User inputs
-pi_MPa = st.number_input("Internal water pressure p_i (MPa)", 0.1, 10.0, 3.0, step=0.1)
-ri = st.number_input("Inner radius r_i (m)", 0.1, 5.0, 1.5, step=0.1)
-D_pen = st.number_input("Penstock diameter (m)", 1.0, 10.0, 3.0, step=0.1)
-re = D_pen / 2.0   # outer radius taken from input diameter
-ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 0.1, 10.0, 2.0, step=0.1)
-pext = st.slider("External confining pressure p_ext (MPa)", 0.0, 5.0, 0.5, 0.1)
-
-# Functions
-def hoop_stress(pi, pext, ri, r):
+def hoop_stress(pi, pe, ri, re, r):
     """Hoop stress distribution in thick-walled cylinder (Lame’s eq.)"""
-    A = (pi * ri**2 - pext * re**2) / (re**2 - ri**2)
-    B = (ri**2 * re**2 * (pext - pi)) / (re**2 - ri**2)
+    A = (pi * ri**2 - pe * re**2) / (re**2 - ri**2)
+    B = (ri**2 * re**2 * (pe - pi)) / (re**2 - ri**2)
     return A + B / (r**2)
 
 def required_pext_for_ft(pi, ri, re, ft):
-    """Required confinement to keep σθ(re) <= f_t"""
-    # Outer face hoop stress = ft → solve for p_ext
+    """Required confinement pressure to keep σθ(re) <= f_t"""
     return (pi * ri**2 - ft * (re**2 - ri**2)) / re**2
 
-# Computations
-sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # hoop stress at outer face
-pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
+# Compute profile
+sigma_outer = hoop_stress(p_i/1e6, p_e/1e6, r_i, r_o, r_o)  # in MPa
+pext_req = required_pext_for_ft(p_i/1e6, r_i, r_o, ft_MPa)
 
-# Stress distribution profile
-r_plot = np.linspace(ri * 1.001, re, 200)
-sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
+r_plot = np.linspace(r_i*1.001, r_o, 200)
+sigma_profile = hoop_stress(p_i/1e6, p_e/1e6, r_i, r_o, r_plot)
 
-# Figure
+# Plot
 fig_s, ax = plt.subplots(figsize=(8, 4.5))
 ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
 ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
-ax.axvline(ri, color="k", ls=":", label=f"r_i={ri:.2f} m")
-ax.axvline(re, color="k", ls="--", label=f"r_e={re:.2f} m")
+ax.axvline(r_i, color="k", ls=":", label=f"rᵢ={r_i:.2f} m")
+ax.axvline(r_o, color="k", ls="--", label=f"rₒ={r_o:.2f} m")
 ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
                 color="red", alpha=0.2, label="Cracking risk")
 ax.set_xlabel("Radius r (m)")
 ax.set_ylabel("Hoop stress σθ (MPa)")
 ax.set_title("Lining hoop stress distribution")
-ax.set_ylim(0, max(ft_MPa * 1.5, np.max(sigma_profile)*1.1))
 ax.grid(True, linestyle="--", alpha=0.35)
 ax.legend(loc="best")
 st.pyplot(fig_s)
 
 # Metrics
 c1, c2, c3 = st.columns(3)
-c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
+c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.2f}")
 c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
-c3.metric(
-    "Status",
-    "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
-    help=("Stress exceeds tensile strength; increase thickness or confinement."
-          if sigma_outer > ft_MPa else "Within tensile capacity at outer face.")
-)
+c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK")
+
 
 
 # --- Section 10: Pressure Tunnel Lining Stress ---
