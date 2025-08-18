@@ -1359,7 +1359,7 @@ c6.metric("Net head (m)", f"{H_net:.2f}")
 
 
 # ---------------- Diameter Estimator and Verification ----------------
-st.header("5) Penstock Diameter Verification")
+st.header("5) Penstock Diameter and velocity Verification")
 
 # Velocity checks
 st.subheader("Velocity checks (USBR guidance)")
@@ -1477,8 +1477,8 @@ with tabC:
             st.warning("Need valid Qp and L to run the head-loss-target method.")
 
 
-# ---- Figures / Equations reference (Section 4) ----
-with st.expander("Show figures / equations used (Section 4)"):
+# ---- Figures / Equations reference  ----
+with st.expander("Show figures / equations used"):
     st.markdown("**Core relations**")
     st.latex(r"h_f = \left(f \frac{L}{D} + \sum K \right)\frac{v^2}{2g}")
     st.latex(r"f \approx \frac{0.25}{\left[\log_{10}\!\left(\frac{\varepsilon}{3.7D} + \frac{5.74}{\mathrm{Re}^{0.9}}\right)\right]^2}\quad\text{(Swamee–Jain)}")
