@@ -1651,9 +1651,11 @@ else:
     st.error("⚠️ One or both confinement criteria are **not satisfied**.")
 
 
-
-# ===============================
 # --- Section 6: Pressure Tunnel Lining Stress ---
+import numpy as np
+import matplotlib.pyplot as plt
+import streamlit as st
+
 st.header("6) Pressure Tunnel: Lining Stress")
 
 gamma_w = 9800.0  # N/m³ (unit weight of water)
@@ -1687,19 +1689,23 @@ with st.expander("Rock Properties", expanded=False):
 try:
     r_i = d_p / 2.0                  # inner radius (m)
     r_o = r_i + t_l                  # outer radius (m)
-   # Pressures
-    p_i = gamma_w * h_s              # internal water pressure (Pa)
-    p_e = gamma_w * h_w              # external water pressure (Pa)
-    p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)    
 
-        # --- Hoop stress profile function (Pa) ---
-        def hoop_stress(pi, pe, ri, ro, r):  # Explicitly pass ro
-            return (
-                (pi * ri**2 - pe * ro**2) / (ro**2 - ri**2)  # Use "-" (hyphen)
-                + ((pi - pe) * ri**2 * ro**2) / ((ro**2 - ri**2) * r**2)  # Use "-"
-            )
+    if r_o <= r_i:
+        st.error("Invalid geometry: outer radius must be larger than inner radius.")
+    else:
+        # Pressures
+        p_i = gamma_w * h_s              # internal water pressure (Pa)
+        p_e = gamma_w * h_w              # external water pressure (Pa)
+        p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)
 
-        # Inner & outer faces (pass r_o explicitly)
+        # --- CORRECTED Hoop stress profile function (Pa) ---
+        def hoop_stress(pi, pe, ri, ro, r):
+            # Corrected formula with proper parentheses
+            term1 = (pi * ri**2 - pe * ro**2) / (ro**2 - ri**2)
+            term2 = ( (pi - pe) * ri**2 * ro**2 ) / ( (ro**2 - ri**2) * r**2 )
+            return term1 + term2
+
+        # Inner & outer faces
         sigma_theta_i = hoop_stress(p_i, p_e, r_i, r_o, r_i)
         sigma_theta_o = hoop_stress(p_i, p_e, r_i, r_o, r_o)
 
