@@ -1805,7 +1805,7 @@ with st.expander("Input Parameters for Surge Tank", expanded=True):
                        "Estimate using Stability Formula",
                        "Check Rule-of-Thumb Stability"])
 
-    if option == "Enter manually":
+if option == "Enter manually":
     A_s = st.number_input("Surge Tank Cross-sectional Area Aₛ (m²)", value=200.0, step=5.0)
 
 elif option == "Estimate using Area Ratio (Aₛ/Aₚ)":
