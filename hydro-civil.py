@@ -1697,6 +1697,26 @@ sigma_theta_o = (
 sigma_theta_i_MPa = sigma_theta_i / 1000.0
 sigma_theta_o_MPa = sigma_theta_o / 1000.0
 
+# ==============================================================
+# Extra UI: Rock Cover and Lining
+# ==============================================================
+def rock_cover_and_lining_ui():
+    """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
+
+    # Rock cover inputs
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        hs = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 300.0, 1.0)
+    with c2:
+        alpha = st.number_input("Tunnel inclination α (deg)", 0.0, 90.0, 20.0, 1.0)
+    with c3:
+        ri = st.number_input("Lining inner radius r_i (m)", 0.2, 10.0, 3.15, 0.05)
+    with c4:
+        t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
+
+    re = ri + t
+    gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
+    
 # -------------------
 # Results
 # -------------------
@@ -1722,33 +1742,13 @@ with st.expander("Lining Stress Equations (click to expand)"):
     st.latex(r"\sigma_{\theta,o} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_o^2}")
 
 
-# ==============================================================
-# Extra UI: Rock Cover and Lining
-# ==============================================================
-def rock_cover_and_lining_ui():
-    """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
-
-    # Rock cover inputs
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        hs = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 300.0, 1.0)
-    with c2:
-        alpha = st.number_input("Tunnel inclination α (deg)", 0.0, 90.0, 20.0, 1.0)
-    with c3:
-        ri = st.number_input("Lining inner radius r_i (m)", 0.2, 10.0, 3.15, 0.05)
-    with c4:
-        t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
-
-    re = ri + t
-    gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
-
     # Lining stress inputs
     st.subheader("Lining Hoop Stress (Lame solution)")
     c1, c2, c3 = st.columns(3)
     with c1:
         pi_MPa = st.number_input("Internal water pressure pᵢ (MPa)", 0.1, 20.0, 2.0, 0.1, key="pi_MPa")
     with c2:
-        pext = st.number_input("External confinement pₑ (MPa)", 0.0, 20.0, 0.0, 0.1, key="pext")
+        pext = st.number_input("External water pₑ (MPa)", 0.0, 20.0, 0.0, 0.1, key="pext")
     with c3:
         ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1, key="ft_MPa")
 
