@@ -1940,10 +1940,23 @@ with st.expander("📘 Rock & Concrete Properties (for lining checks)", expanded
 
 st.header("10) Downloads & Bibliography")
 
-# Download buttons (JSON & CSV already in your code)
-st.download_button("⬇ Download CSV (parameters)",
-    data=pd.DataFrame([flat]).to_csv(index=False).encode("utf-8"),
-    file_name="phes_parameters.csv")
+# Collect parameters into a dictionary for export
+results = {
+    "Q0": Q0,
+    "H": H,
+    "L": L,
+    "A_p_total": A_p_total,
+    "A_s": A_s,
+    # add more variables you want included
+}
+
+# Convert to CSV and provide download
+st.download_button(
+    "⬇ Download CSV (parameters)",
+    data=pd.DataFrame([results]).to_csv(index=False).encode("utf-8"),
+    file_name="phes_parameters.csv",
+    mime="text/csv"
+)
 
 st.markdown("### 📚 Bibliography (Teaching References)")
 st.markdown("""
