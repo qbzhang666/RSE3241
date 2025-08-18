@@ -1938,26 +1938,7 @@ with st.expander("📘 Rock & Concrete Properties (for lining checks)", expanded
     st.table(df_mat)
 
 
-st.header("10) Downloads & Bibliography")
-
-# Collect parameters into a dictionary for export
-results = {
-    "Q0": Q0,
-    "H": H,
-    "L": L,
-    "A_p_total": A_p_total,
-    "A_s": A_s,
-    # add more variables you want included
-}
-
-# Convert to CSV and provide download
-st.download_button(
-    "⬇ Download CSV (parameters)",
-    data=pd.DataFrame([results]).to_csv(index=False).encode("utf-8"),
-    file_name="phes_parameters.csv",
-    mime="text/csv"
-)
-
+st.header("10) Bibliography")
 st.markdown("### 📚 Bibliography (Teaching References)")
 st.markdown("""
 - USBR (1987). *Design of Small Dams*. 3rd ed. — Penstocks & hydraulics guidance  
