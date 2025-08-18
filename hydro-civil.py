@@ -329,8 +329,8 @@ with left:
     else:
         st.caption("No CSV? Edit a small table below (chainage increasing):")
         df_profile = pd.DataFrame({
-            "Chainage_m": [0, 500, 1000, 1500, 2300],           # demo values
-            "Elevation_m": [NWL_u, NWL_u-1, NWL_u-3, NWL_u-8, 450],
+            "Chainage_m": [0, 500, 1000, 1500, 2000, 2300],           # demo values
+            "Elevation_m": [NWL_u, NWL_u-1, NWL_u-3, NWL_u-8, 700, 450],
         })
         df_profile = st.data_editor(df_profile, num_rows="dynamic", use_container_width=True)
 
@@ -673,8 +673,7 @@ ax2.legend(loc='upper right')
 st.pyplot(fig2)
     
 # ------------------------------- Section 3: Penstock & Moody -------------------------
-st.header("3) Head Loss of Hydraulic System")
-st.subheader("Major Water Loss (with Moody)")
+st.header("3) Major Water Loss (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
     P_design = st.number_input("Design power (MW)", 10.0, 5000.0, float(st.session_state.get("design_power", P_design)))
@@ -1212,7 +1211,6 @@ df_hydraulics = pd.DataFrame({
     "Total Q (m³/s)":             [out_design_flow["Q_total"], out_max_flow["Q_total"]],
 })
 
-
 st.dataframe(
     df_hydraulics,
     use_container_width=True,
@@ -1291,90 +1289,6 @@ if "v_target" in st.session_state and not np.isnan(v_calc):
             f"📐 Calculated mean velocity: **{v_calc:.2f} m/s**"
         )
 
-
-# --------------- Section 3: Head Losses & Diameter Sizing ----------------
-st.subheader("Minor Head Loss by Local Loss Components (ΣK)")
-
-# Define local loss components
-components = {
-    "Entrance (bellmouth)": 0.15,
-    "Entrance (square)": 0.50,
-    "90° bend": 0.25,
-    "45° bend": 0.15,
-    "Gate valve (open)": 0.20,
-    "Butterfly valve (open)": 0.30,
-    "T-junction": 0.40,
-    "Exit": 1.00,
-}
-
-# Select which ones are active
-K_sum_global = 0.0
-cols = st.columns(4)
-for i, (comp, kval) in enumerate(components.items()):
-    default_on = comp in ["Entrance (bellmouth)", "90° bend", "Exit"]
-    with cols[i % 4]:
-        if st.checkbox(comp, value=default_on):
-            K_sum_global += kval
-
-st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
-
-# --- Compute with ΣK using the unified compute_block ---
-out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
-out_max    = compute_block(P_max,    min_head,   K_sum_global, hf_guess=40.0)
-
-# Build results table
-results_losses = pd.DataFrame({
-    "Case": ["Design", "Maximum"],
-    "Darcy f (-)": [out_design["f"], out_max["f"]],
-    "Reynolds Re (-)": [out_design["Re"], out_max["Re"]],
-    "Head loss hf_major (m)": [out_design["hf_major"], out_max["hf_major"]],
-    "Head loss hf_minor (m)": [out_design["hf_minor"], out_max["hf_minor"]],
-    "Head loss hf_total (m)": [out_design["hf"], out_max["hf"]],
-    "Net head h_net (m)": [out_design["h_net"], out_max["h_net"]],
-})
-
-st.dataframe(
-    results_losses,
-    use_container_width=True,
-    column_config={
-        "Darcy f (-)": st.column_config.NumberColumn(format="%.004f"),
-        "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
-        "Head loss hf_major (m)": st.column_config.NumberColumn(format="%.2f"),
-        "Head loss hf_minor (m)": st.column_config.NumberColumn(format="%.2f"),
-        "Head loss hf_total (m)": st.column_config.NumberColumn(format="%.2f"),
-        "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
-    }
-)
-
-# ---------------- Show equations ----------------
-st.subheader("4) Effective Head")
-
-with st.expander("Head Loss & Net Head Equations (click to expand)"):
-    st.latex(r"h_f = h_{f,\text{major}} + h_{f,\text{minor}}")
-    st.markdown("**Major head loss (Darcy–Weisbach):**")
-    st.latex(r"h_{f,\text{major}} = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g}")
-    st.markdown("**Minor head loss (Local loss components ΣK):**")
-    st.latex(r"h_{f,\text{minor}} = \Sigma K \cdot \frac{v^2}{2g}")
-    st.markdown("**Net head:**")
-    st.latex(r"H_\text{net} = H_\text{gross} - h_f")
-
-# ---------------- Show numerical results ----------------
-st.subheader("Calculated Results")
-
-hf_major = out_design["hf_major"]
-hf_minor = out_design["hf_minor"]
-hf_total = out_design["hf"]
-H_net    = out_design["h_net"]
-
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("h_f major (m)", f"{hf_major:.2f}")
-c2.metric("h_f minor (m)", f"{hf_minor:.2f}")
-c3.metric("h_f total (m)", f"{hf_total:.2f}")
-c4.metric("Net head (m)", f"{H_net:.2f}")
-
-# ---------------- Diameter Estimator and Verification ----------------
-st.header("5) Penstock Diameter Verification")
-
 # Velocity checks
 st.subheader("Velocity checks (USBR guidance)")
 v_design = out_design_flow["v"]; v_max = out_max_flow["v"]
@@ -1406,6 +1320,80 @@ with st.expander("Velocity guidance (USBR)"):
         *Reference: USBR, Design of Small Dams, 3rd Ed. (1987), Ch. 10 - Penstocks.*
         """
     )
+
+# --------------- Section 4: Head Losses & Diameter Sizing ----------------
+st.header("4) Minor Head Loss")
+
+# Local loss builder (ΣK)
+st.subheader("Local loss components (ΣK)")
+components = {
+    "Entrance (bellmouth)": 0.15, "Entrance (square)": 0.50,
+    "90° bend": 0.25, "45° bend": 0.15,
+    "Gate valve (open)": 0.20, "Butterfly valve (open)": 0.30,
+    "T-junction": 0.40, "Exit": 1.00
+}
+K_sum_global = 0.0
+cols = st.columns(4)
+for i, (comp, kval) in enumerate(components.items()):
+    default_on = comp in ["Entrance (bellmouth)", "90° bend", "Exit"]
+    with cols[i % 4]:
+        if st.checkbox(comp, value=default_on):
+            K_sum_global += kval
+st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
+
+# Compute with ΣK to show h_f and f (two-pass block)
+out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
+out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
+
+results_losses = pd.DataFrame({
+    "Case": ["Design", "Maximum"],
+    "Darcy f (-)": [out_design["f"], out_max["f"]],
+    "Reynolds Re (-)": [out_design["Re"], out_max["Re"]],
+    "Head loss h_f (m)": [out_design["hf"], out_max["hf"]],
+    "Net head h_net (m)": [out_design["h_net"], out_max["h_net"]],
+})
+st.dataframe(
+    results_losses, use_container_width=True,
+    column_config={
+        "Darcy f (-)": st.column_config.NumberColumn(format="%.004f"),
+        "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
+        "Head loss h_f (m)": st.column_config.NumberColumn(format="%.2f"),
+        "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
+    }
+)
+
+# --- Equations in LaTeX ---
+with st.expander("Head Loss & Net Head Equations (click to expand)"):
+
+    st.latex(r"h_f = h_{f,\text{major}} + h_{f,\text{minor}}")
+
+    st.markdown("**Major (frictional) loss:**")
+    st.latex(r"h_{f,\text{major}} = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g}")
+
+    st.markdown("**Minor (local) losses:**")
+    st.latex(r"h_{f,\text{minor}} = \Sigma K \cdot \frac{v^2}{2g}")
+
+    st.markdown("**Reynolds number:**")
+    st.latex(r"Re = \frac{\rho v D}{\mu}")
+
+    st.markdown("**Darcy friction factor (Colebrook eqn):**")
+    st.latex(
+        r"\frac{1}{\sqrt{f}} = -2 \log_{10}\!\left( \frac{\varepsilon}{3.7D} + \frac{2.51}{Re \sqrt{f}} \right)"
+    )
+
+    st.markdown("**Net head:**")
+    st.latex(r"H_\text{net} = H_\text{gross} - h_f")
+
+    st.markdown("**Velocity relation:**")
+    st.latex(r"v = \frac{Q}{A} = \frac{4Q}{\pi D^2}")
+
+    st.markdown("**With selected ΣK:**")
+    st.latex(r"h_{f,\text{minor}} = \Sigma K_\text{selected} \cdot \frac{v^2}{2g}")
+    st.latex(r"h_f = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g} + \Sigma K_\text{selected} \cdot \frac{v^2}{2g}")
+
+# ---------------- Effective Head and Diameter Estimator and Verification ----------------
+st.header("5) Effective Head and Penstock Diameter Verification")
+
 # --- Get per-penstock design flow robustly ---
 Qp_for_sizing = out_design_flow.get("Q_per", float("nan"))
 if (np.isnan(Qp_for_sizing) or Qp_for_sizing <= 0) and not np.isnan(out_design_flow.get("Q_total", float("nan"))):
