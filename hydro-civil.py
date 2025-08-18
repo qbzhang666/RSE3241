@@ -1722,9 +1722,10 @@ try:
 
         # ------------------ Results ------------------
         st.subheader("Calculated Lining Stress Results")
-        st.write(f"Internal pressure pᵢ = {p_i:.2e} Pa")
-        st.write(f"External pressure pₑ = {p_e:.2e} Pa")
-        st.write(f"Effective pore pressure p_f = {p_f:.2f} Pa")
+        st.write(f"Internal pressure pᵢ = {p_i/1e6:.2f} MPa")
+        st.write(f"External pressure pₑ = {p_e/1e6:.2f} MPa")
+        st.write(f"Effective pore pressure p_f = {p_f/1e6:.2f} MPa")
+
 
         st.markdown("**Hoop (circumferential) stress:**")
         st.write(f"σθ,i (inner surface) = {sigma_theta_i_MPa:.2f} MPa")
