@@ -1716,13 +1716,6 @@ def rock_cover_and_lining_ui():
 
     re = ri + t
     gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
-    CRV = snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=gamma_R)
-    FRV = norwegian_FRV(CRV, hs, alpha, gamma_w=9.81, gamma_R=gamma_R)
-
-    cc1, cc2 = st.columns(2)
-    cc1.metric("Snowy vertical cover C_RV (m)", f"{CRV:.1f}")
-    cc2.metric("Norwegian factor F_RV (-)", f"{FRV:.2f}")
-    st.markdown("**Target**: Typically F_RV ≥ 1.2–1.5 (site-dependent).")
 
     # Lining stress
     st.subheader("Lining Hoop Stress (Lame solution)")
