@@ -766,9 +766,10 @@ to the pipe diameter \\( D \\). It is dimensionless and, together with the Reyno
     st.caption("Teaching sources: USBR (1987), AWWA, ASCE/USACE typical roughness tables.")
 
 def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
-    """Two-pass iteration to refine f and h_f for given Ksum."""
+    """Two-pass iteration to refine f, Re, hf_major, hf_minor, and hf_total for given Ksum."""
     A = area_circle(D_pen)
-    # pass 1
+
+    # ---- Pass 1 (initial guess) ----
     h_net = h_span - hf_guess
     Q_total = Q_from_power(P_MW, h_net, eta_t)
     Q_per = safe_div(Q_total, N_pen)
@@ -782,10 +783,13 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
         rel_rough = safe_div(eps, D_pen)
         f_used = f_moody_swamee_jain(Re, rel_rough)
 
-    hf = headloss_darcy(f_used, L_pen, D_pen, v, Ksum=Ksum)
+    # split losses
+    hf_major = headloss_darcy(f_used, L_pen, D_pen, v, Ksum=0.0)
+    hf_minor = headloss_darcy(0.0, L_pen, D_pen, v, Ksum=Ksum)
+    hf_total = hf_major + hf_minor
 
-    # pass 2
-    h_net2 = h_span - hf
+    # ---- Pass 2 (refined with hf_total) ----
+    h_net2 = h_span - hf_total
     Q_total2 = Q_from_power(P_MW, h_net2, eta_t)
     Q_per2 = safe_div(Q_total2, N_pen)
     v2 = safe_div(Q_per2, A)
@@ -799,13 +803,21 @@ def compute_block(P_MW, h_span, Ksum, hf_guess=30.0):
         rel_rough2 = safe_div(eps, D_pen)
         f_used2 = f_moody_swamee_jain(Re2, rel_rough2)
 
-    hf2 = headloss_darcy(f_used2, L_pen, D_pen, v2, Ksum=Ksum)
+    # recompute split losses
+    hf_major2 = headloss_darcy(f_used2, L_pen, D_pen, v2, Ksum=0.0)
+    hf_minor2 = headloss_darcy(0.0, L_pen, D_pen, v2, Ksum=Ksum)
+    hf_total2 = hf_major2 + hf_minor2
 
     return dict(
-        f=f_used2, Re=Re2, v=v2, Q_total=Q_total2, Q_per=Q_per2,
-        h_net=h_net2, hf=hf2,
+        f=f_used2, Re=Re2, v=v2,
+        Q_total=Q_total2, Q_per=Q_per2,
+        h_net=h_net2,
+        hf=hf_total2,          # total
+        hf_major=hf_major2,    # new
+        hf_minor=hf_minor2,    # new
         rel_rough=(safe_div(eps, D_pen) if mode_f != "Manual (slider)" else None)
     )
+
 
 # Compute ignoring local losses first (Ksum=0) — clean view of Q & v
 out_design_flow = compute_block(P_design, gross_head, 0.0, hf_guess=20.0)
