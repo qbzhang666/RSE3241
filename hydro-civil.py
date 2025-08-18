@@ -1779,57 +1779,93 @@ try:
 except Exception as e:
     st.error(f"Error in stress calculation: {e}")
 
-# ------------------ Section 7: Surge Tank ------------------
+# ------------------ Section 7: Surge Tank ------------------ 
 st.header("Section 7: Surge Tank Design")
 
-# Penstock input
-Dp = st.number_input("Penstock Diameter Dₚ (m)", value=6.0, step=0.1)
-n_pipes = st.number_input("Number of Penstocks n", value=1, step=1)
-Ap_single = 3.1416 * (Dp**2) / 4
-Ap = n_pipes * Ap_single
-st.write(f"**Total Penstock Area Aₚ = {Ap:.2f} m²**")
+with st.expander("Input Parameters for Surge Tank", expanded=True):
+    # Penstock setup
+    n_pipes = st.number_input("Number of Penstocks connected to Surge Tank", value=1, step=1, min_value=1)
+    D_p = st.number_input("Penstock Diameter Dₚ (m)", value=4.0, step=0.1, format="%.2f")
+    
+    # Compute total penstock cross-sectional area
+    A_p_single = np.pi * (D_p**2) / 4
+    A_p_total = n_pipes * A_p_single
+    st.write(f"Penstock Area per pipe = {A_p_single:.2f} m²")
+    st.write(f"Total Penstock Area Aₚ = {A_p_total:.2f} m²")
 
-# Selection of method
-method = st.radio("Select Method to Define Surge Tank Area Aₛ:", 
-                  ("Direct Input (Trial Areas)", 
-                   "Ratio Method (Aₛ/Aₚ)", 
-                   "Stability-based Method"))
-
-# initialise results dictionary
-results = {}
-
-if method == "Direct Input (Trial Areas)":
-    As1 = st.number_input("Surge Tank Cross-sectional Area Aₛ₁ (m²)", value=200.0, step=10.0)
-    As2 = st.number_input("Surge Tank Cross-sectional Area Aₛ₂ (m²)", value=300.0, step=10.0)
-    As3 = st.number_input("Surge Tank Cross-sectional Area Aₛ₃ (m²)", value=400.0, step=10.0)
-    results["Trial Areas"] = [As1, As2, As3]
-
-elif method == "Ratio Method (Aₛ/Aₚ)":
-    R = st.number_input("Choose Area Ratio R = Aₛ/Aₚ", value=3.0, step=0.1)
-    As_ratio = R * Ap
-    results["Ratio Method"] = As_ratio
-
-elif method == "Stability-based Method":
+    # Discharge and head inputs
     Q0 = st.number_input("Rated Discharge Q₀ (m³/s)", value=50.0, step=1.0)
-    H = st.number_input("Head H (m)", value=100.0, step=1.0)
-    L = st.number_input("Waterway Length L (m)", value=2000.0, step=10.0)
-    a = 1000.0  # wave speed (simplified assumption)
-    omega = 3.1416 * a / L
-    As_stab = Q0 / (omega * H)
-    results["Stability Method"] = As_stab
+    H = st.number_input("Net Head H (m)", value=100.0, step=1.0)
+    L = st.number_input("Headrace Tunnel Length L (m)", value=1500.0, step=50.0)
 
-# ------------------ Results Summary ------------------
-st.subheader("Surge Tank Area Results")
+    # --- Surge Tank Area Options ---
+    option = st.radio("How to determine Surge Tank Area Aₛ:",
+                      ["Enter manually", 
+                       "Estimate using Area Ratio (Aₛ/Aₚ)", 
+                       "Estimate using Stability Formula",
+                       "Check Rule-of-Thumb Stability"])
 
-if "Trial Areas" in results:
-    st.write("**Trial Input Areas (m²):**", results["Trial Areas"])
+    if option == "Enter manually":
+        A_s = st.number_input("Surge Tank Cross-sectional Area Aₛ (m²)", value=200.0, step=5.0)
 
-if "Ratio Method" in results:
-    st.write(f"**From Ratio Method:** Aₛ = {results['Ratio Method']:.2f} m²")
+    elif option == "Estimate using Area Ratio (Aₛ/Aₚ)":
+        R = st.number_input("Choose Area Ratio R = Aₛ/Aₚ (default safe ~8)", value=8.0, step=1.0)
+        A_s = R * A_p_total
+        st.write(f"Estimated Surge Tank Area: Aₛ = {A_s:.2f} m² (using R = {R})")
 
-if "Stability Method" in results:
-    st.write(f"**From Stability Method:** Aₛ = {results['Stability Method']:.2f} m²")
+    elif option == "Estimate using Stability Formula":
+        # Assume water wave speed ~ 1000 m/s
+        a = 1000.0  
+        omega = np.pi * a / L  # angular frequency
+        A_s = Q0 / (omega * H)
+        st.write(f"Estimated Surge Tank Area (stability): Aₛ = {A_s:.2f} m²")
 
+    elif option == "Check Rule-of-Thumb Stability":
+        # Minimum R requirement
+        R_min = L / H
+        R_safe = 1.5 * R_min   # lower bound safety margin
+        R_high = 2.0 * R_min   # upper bound safety margin
+        
+        st.write(f"Minimum required ratio R_min = L/H = {R_min:.2f}")
+        st.write(f"Recommended practical range: {R_safe:.2f} ≤ R ≤ {R_high:.2f}")
+        
+        # Choose a value within the range
+        R = st.number_input("Choose R (within safe range)", value=R_safe, step=0.5)
+        A_s = R * A_p_total
+        st.write(f"Estimated Surge Tank Area: Aₛ = {A_s:.2f} m² (using R = {R:.2f})")
+
+    # Equivalent diameter (cylindrical tank assumption)
+    D_s = np.sqrt(4 * A_s / np.pi)
+    st.write(f"Equivalent Surge Tank Diameter ≈ {D_s:.2f} m")
+
+# ---- Equations ----
+with st.expander("Equations Used (Section 7)", expanded=False):
+    st.markdown("**(1) Penstock Area per Pipe**")
+    st.latex(r"A_{p,\;single} = \frac{\pi D_p^2}{4}")
+
+    st.markdown("**(2) Total Penstock Area**")
+    st.latex(r"A_p = n \cdot A_{p,\;single} = n \cdot \frac{\pi D_p^2}{4}")
+
+    st.markdown("**(3) Surge Tank Area Ratio**")
+    st.latex(r"R = \frac{A_s}{A_p}")
+
+    st.markdown("**(4) Stability-based Surge Tank Area**")
+    st.latex(r"A_s = \frac{Q_0}{\omega H}, \quad \omega \approx \frac{\pi a}{L}")
+
+    st.markdown("**(5) Rule-of-Thumb Stability Check**")
+    st.latex(r"\frac{A_s}{A_p} \geq \frac{L}{H}")
+
+    st.markdown("**(6) Equivalent Tank Diameter (cylindrical assumption)**")
+    st.latex(r"D_s = \sqrt{\frac{4 A_s}{\pi}}")
+
+# ---- Results ----
+st.subheader("Surge Tank Results")
+st.write(f"Number of Penstocks: {n_pipes}")
+st.write(f"Diameter per Penstock: {D_p:.2f} m")
+st.write(f"Total Penstock Area Aₚ: {A_p_total:.2f} m²")
+st.write(f"Surge Tank Area Aₛ: {A_s:.2f} m²")
+st.write(f"Area Ratio (Aₛ / Aₚ): {A_s / A_p_total:.2f}")
+st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 
 # ---- Equations ----
