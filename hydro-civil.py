@@ -1357,8 +1357,9 @@ with st.expander("Head Loss & Net Head Equations (click to expand)"):
     st.markdown("**Minor head loss (Local loss components ΣK):**")
     st.latex(r"h_{f,\text{minor}} = \Sigma K \cdot \frac{v^2}{2g}")
 
-    st.markdown("**Net head:**")
-    st.latex(r"H_\text{net} = H_\text{gross} - h_f")
+    st.markdown("**Net head (effective):**")
+    st.latex(r"H_\text{net} = H_\text{gross} - h_f - h_\text{draft}")
+
 
 
 # ---------------- Show numerical results ----------------
@@ -1374,12 +1375,14 @@ H_net    = out_design.get("h_net", float("nan"))
 # Draft head from earlier session_state
 h_draft = float(st.session_state.get("h_draft", float("nan")))
 
-c1, c2, c3, c4, c5 = st.columns(5)
+c1, c2, c3, c4, c5, c6 = st.columns(6)
 c1.metric("h_f major (m)", f"{hf_major:.2f}")
 c2.metric("h_f minor (m)", f"{hf_minor:.2f}")
 c3.metric("h_f total (m)", f"{hf_total:.2f}")
 c4.metric("Draft head (m)", f"{h_draft:.2f}")
-c5.metric("Net head (m)", f"{H_net:.2f}")
+c5.metric("Gross head (m)", f"{H_gross:.2f}")
+c6.metric("Net head (m)", f"{H_net:.2f}")
+
 
 # ---------------- Diameter Estimator and Verification ----------------
 st.header("5) Penstock Diameter Verification")
