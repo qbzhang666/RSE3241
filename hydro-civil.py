@@ -1780,7 +1780,7 @@ except Exception as e:
     st.error(f"Error in stress calculation: {e}")
 
 # ------------------ Section 7: Surge Tank ------------------ 
-st.header("Section 7: Surge Tank Design")
+st.header("7) Surge Tank Design")
 
 with st.expander("Input Parameters for Surge Tank", expanded=True):
     # Penstock setup
@@ -1821,18 +1821,29 @@ with st.expander("Input Parameters for Surge Tank", expanded=True):
         st.write(f"Estimated Surge Tank Area (stability): Aₛ = {A_s:.2f} m²")
 
     elif option == "Check Rule-of-Thumb Stability":
-        # Minimum R requirement
-        R_min = L / H
-        R_safe = 1.5 * R_min   # lower bound safety margin
-        R_high = 2.0 * R_min   # upper bound safety margin
-        
-        st.write(f"Minimum required ratio R_min = L/H = {R_min:.2f}")
-        st.write(f"Recommended practical range: {R_safe:.2f} ≤ R ≤ {R_high:.2f}")
-        
-        # Choose a value within the range
-        R = st.number_input("Choose R (within safe range)", value=R_safe, step=0.5)
-        A_s = R * A_p_total
-        st.write(f"Estimated Surge Tank Area: Aₛ = {A_s:.2f} m² (using R = {R:.2f})")
+    # Minimum R requirement
+    R_min = L / H
+    R_safe = 1.5 * R_min   # lower bound safety margin
+    R_high = 2.0 * R_min   # upper bound safety margin
+    
+    st.write(f"Minimum required ratio R_min = L/H = {R_min:.2f}")
+    st.write(f"Recommended practical range: {R_safe:.2f} ≤ R ≤ {R_high:.2f}")
+    
+    # User choice
+    R = st.number_input("Choose R (within safe range)", value=R_safe, step=0.5)
+    
+    # Warning if R is too small
+    if R < R_min:
+        st.warning(
+            f"⚠️ Selected R = {R:.2f} is **below the minimum requirement (L/H = {R_min:.2f})**. "
+            f"Please increase Aₛ. Suggested safe value: R = 1.5 × L/H ≈ {R_safe:.2f} "
+            f"(gives Aₛ = {R_safe*A_p_total:.2f} m²)."
+        )
+    
+    # Compute surge tank area
+    A_s = R * A_p_total
+    st.write(f"Estimated Surge Tank Area: Aₛ = {A_s:.2f} m² (using R = {R:.2f})")
+
 
     # Equivalent diameter (cylindrical tank assumption)
     D_s = np.sqrt(4 * A_s / np.pi)
