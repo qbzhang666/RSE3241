@@ -1328,47 +1328,32 @@ st.dataframe(
         "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
     }
 )
-st.header("4) Effective Head")
+st.subheader("4) Effective Head")
+
 # --- Equations in LaTeX ---
 with st.expander("Head Loss & Net Head Equations (click to expand)"):
 
     st.latex(r"h_f = h_{f,\text{major}} + h_{f,\text{minor}}")
 
-    st.markdown("**Major (frictional) loss:**")
+    st.markdown("**Major head loss (Darcy–Weisbach):**")
     st.latex(r"h_{f,\text{major}} = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g}")
 
-    st.markdown("**Minor (local) losses:**")
+    st.markdown("**Minor head loss (Local loss components ΣK):**")
     st.latex(r"h_{f,\text{minor}} = \Sigma K \cdot \frac{v^2}{2g}")
-
-    st.markdown("**Reynolds number:**")
-    st.latex(r"Re = \frac{\rho v D}{\mu}")
-
-    st.markdown("**Darcy friction factor (Colebrook eqn):**")
-    st.latex(
-        r"\frac{1}{\sqrt{f}} = -2 \log_{10}\!\left( \frac{\varepsilon}{3.7D} + \frac{2.51}{Re \sqrt{f}} \right)"
-    )
 
     st.markdown("**Net head:**")
     st.latex(r"H_\text{net} = H_\text{gross} - h_f")
-
-    st.markdown("**Velocity relation:**")
-    st.latex(r"v = \frac{Q}{A} = \frac{4Q}{\pi D^2}")
-
-    st.markdown("**With selected ΣK:**")
-    st.latex(r"h_{f,\text{minor}} = \Sigma K_\text{selected} \cdot \frac{v^2}{2g}")
-    st.latex(r"h_f = f \cdot \frac{L}{D} \cdot \frac{v^2}{2g} + \Sigma K_\text{selected} \cdot \frac{v^2}{2g}")
 
 
 # ---------------- Show numerical results ----------------
 st.subheader("Calculated Results")
 
-# Assuming these were computed in your pipeline already:
-hf_major = out_design.get("hf_major", float("nan"))
-hf_minor = out_design.get("hf_minor", float("nan"))
-hf_total = out_design.get("hf_total", float("nan"))
+# Use your pipeline outputs (already computed upstream)
+hf_major = out_design.get("hf_major", float("nan"))   # Darcy–Weisbach
+hf_minor = out_design.get("hf_minor", float("nan"))   # ΣK losses
+hf_total = out_design.get("hf", float("nan"))         # total = major + minor
 H_gross  = out_design.get("gross_head", float("nan"))
-H_net    = out_design.get("net_head", float("nan"))
-Re       = out_design.get("Re", float("nan"))
+H_net    = out_design.get("h_net", float("nan"))
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("h_f major (m)", f"{hf_major:.2f}")
@@ -1376,7 +1361,6 @@ c2.metric("h_f minor (m)", f"{hf_minor:.2f}")
 c3.metric("h_f total (m)", f"{hf_total:.2f}")
 c4.metric("Net head (m)", f"{H_net:.2f}")
 
-st.metric("Reynolds number", f"{Re:,.0f}")
 
 # ---------------- Diameter Estimator and Verification ----------------
 st.header("5) Penstock Diameter Verification")
