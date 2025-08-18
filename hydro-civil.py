@@ -253,18 +253,20 @@ gross_head = NWL_u - TWL_l            # H_g = NWL − TWL
 min_head   = LWL_u - HWL_l            # worst case
 head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))  # (LWL − TWL)/(HWL − TWL)
 
+# --- Save outputs so other sections can access ---
+st.session_state["gross_head"] = gross_head
+st.session_state["NWL_u"] = NWL_u
+st.session_state["Ha_u"] = Ha_u
+st.session_state["HFR"] = head_fluct_ratio
+
 # --- Visualisation ---
 fig_res, ax = plt.subplots(figsize=(8, 5))
-# storage bars
 ax.bar(["Upper"], [HWL_u - LWL_u], bottom=LWL_u, color="#3498DB", alpha=0.75, width=0.4)
 ax.bar(["Lower"], [HWL_l - TWL_l], bottom=TWL_l, color="#2ECC71", alpha=0.75, width=0.4)
-# NWL line (spans both bars)
 ax.hlines(NWL_u, -0.4, 1.4, colors="#34495E", linestyles="--", linewidth=2, label="NWL (upper)")
-# gross head arrow (NWL to TWL)
 ax.annotate("", xy=(1.0, NWL_u), xytext=(1.0, TWL_l),
             arrowprops=dict(arrowstyle="<->", color="#E74C3C", lw=2))
 ax.text(1.05, (NWL_u + TWL_l)/2, f"Hg ≈ {gross_head:.1f} m", color="#E74C3C", va="center")
-# min head arrow (LWL to HWL_l)
 ax.annotate("", xy=(0.2, LWL_u), xytext=(0.2, HWL_l),
             arrowprops=dict(arrowstyle="<->", color="#27AE60", lw=2))
 ax.text(0.08, (LWL_u + HWL_l)/2, f"Min ≈ {min_head:.1f} m", color="#27AE60", va="center")
@@ -288,33 +290,6 @@ m2.metric("NWL (m)", f"{NWL_u:.1f}")
 m3.metric("Gross head H_g = NWL−TWL (m)", f"{gross_head:.1f}")
 m4.metric("Head fluctuation ratio (HFR)", f"{head_fluct_ratio:.3f}")
 
-# Head fluctuation criterion (lower limit)
-st.markdown("**Head fluctuation rate**")
-st.latex(r"\text{HFR} = \frac{LWL - TWL}{HWL - TWL}")
-crit_col1, crit_col2 = st.columns([2, 1])
-with crit_col1:
-    turbine_choice = st.selectbox(
-        "Criterion (lower limit, choose turbine type or none):",
-        ["None (no check)", "Francis (≥ 0.70)", "Kaplan (≥ 0.55)"],
-        index=1
-    )
-with crit_col2:
-    custom_limit = st.number_input("Custom lower limit (optional)", 0.0, 1.0, 0.70, 0.01)
-
-if   turbine_choice.startswith("Francis"): limit = 0.70
-elif turbine_choice.startswith("Kaplan"):  limit = 0.55
-elif turbine_choice.startswith("None"):    limit = None
-else:                                       limit = None
-if limit is not None and custom_limit is not None:
-    limit = float(custom_limit)
-
-if limit is not None and not np.isnan(head_fluct_ratio):
-    st.markdown(f"**HFR:** {head_fluct_ratio:.3f}  •  **Lower limit:** {limit:.2f}")
-    if head_fluct_ratio >= limit:
-        st.success("Meets the recommended **minimum** (HFR ≥ limit).")
-    else:
-        st.error("Below the recommended **minimum** head fluctuation. "
-                 "Consider **raising LWL** or **increasing HWL − TWL**.")
 
 # ---------------------------- Section 2: Waterway profile & L estimator ----------------------------
 st.subheader("2) Waterway Profile & Penstock Geometry")
