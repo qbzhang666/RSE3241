@@ -1350,10 +1350,10 @@ with st.expander("Head Loss & Net Head Equations (click to expand)"):
 st.subheader("Calculated Results")
 
 # Use your pipeline outputs (already computed upstream)
-hf_major = out_design.get("Δh_major DW (recomp) (m)", float(hf_dw_design)"))   # Darcy–Weisbach
-hf_minor = out_design.get("hf_minor (m)", float("hf_minor"))   # ΣK losses
+hf_major = hf_dw_design                      # Darcy–Weisbach recomputed major loss
+hf_minor = out_design.get("hf_minor", float("nan"))   # ΣK minor losses
 hf_total = out_design.get("hf", float("nan"))         # total = major + minor
-H_gross  = out_design.get("gross_head", float("nan"))
+H_gross  = gross_head
 H_net    = out_design.get("h_net", float("nan"))
 
 c1, c2, c3, c4 = st.columns(4)
