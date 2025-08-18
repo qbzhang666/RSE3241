@@ -1291,8 +1291,9 @@ if "v_target" in st.session_state and not np.isnan(v_calc):
         )
 
 
-# --------------- Section 3: Head Losses & Diameter Sizing ----------------
+# --------------- Section 3: Minor Head Loss ----------------
 st.subheader("Minor Head Loss by Local loss components (ΣK)")
+
 components = {
     "Entrance (bellmouth)": 0.15, "Entrance (square)": 0.50,
     "90° bend": 0.25, "45° bend": 0.15,
@@ -1308,7 +1309,7 @@ for i, (comp, kval) in enumerate(components.items()):
             K_sum_global += kval
 st.metric("ΣK (selected)", f"{K_sum_global:.2f}")
 
-# Compute with ΣK to show h_f and f (two-pass block)
+# Compute with ΣK to show h_f_minor and f (two-pass block)
 out_design = compute_block(P_design, gross_head, K_sum_global, hf_guess=25.0)
 out_max    = compute_block(P_max,    min_head,  K_sum_global, hf_guess=40.0)
 
@@ -1316,18 +1317,20 @@ results_losses = pd.DataFrame({
     "Case": ["Design", "Maximum"],
     "Darcy f (-)": [out_design["f"], out_max["f"]],
     "Reynolds Re (-)": [out_design["Re"], out_max["Re"]],
-    "Head loss h_f (m)": [out_design["hf"], out_max["hf"]],
+    "Head loss h_f minor (m)": [out_design["hf_minor"], out_max["hf_minor"]],
     "Net head h_net (m)": [out_design["h_net"], out_max["h_net"]],
 })
+
 st.dataframe(
     results_losses, use_container_width=True,
     column_config={
         "Darcy f (-)": st.column_config.NumberColumn(format="%.004f"),
         "Reynolds Re (-)": st.column_config.NumberColumn(format="%.0f"),
-        "Head loss h_f (m)": st.column_config.NumberColumn(format="%.2f"),
+        "Head loss h_f minor (m)": st.column_config.NumberColumn(format="%.2f"),
         "Net head h_net (m)": st.column_config.NumberColumn(format="%.2f"),
     }
 )
+
 st.subheader("4) Effective Head")
 
 # --- Equations in LaTeX ---
