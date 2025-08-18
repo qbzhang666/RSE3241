@@ -1653,157 +1653,6 @@ else:
 # --- Section 6: Pressure Tunnel Lining Stress ---
 st.header("6) Pressure Tunnel: Lining Stress")
 
-# -------------------
-# Input parameters
-# -------------------
-gamma_w = 9.81  # kN/m³
-st.subheader("Input Parameters")
-
-lining_thickness = st.number_input(
-    "Lining thickness (m)", min_value=0.1, value=0.5, step=0.1
-)
-external_pressure = st.number_input(
-    "External pressure pₑ (kN/m²)", min_value=0.0, value=0.0, step=10.0
-)
-allowable_stress = st.number_input(
-    "Allowable tensile stress of lining (MPa)", min_value=0.1, value=2.0, step=0.1
-)
-
-# -------------------
-# Radii
-# -------------------
-r_i = D_pen / 2.0            # Internal radius (m)
-r_o = r_i + lining_thickness # External radius (m)
-
-# -------------------
-# Pressures
-# -------------------
-p_i = gamma_w * H_gross   # Internal water pressure (kN/m²)
-p_e = external_pressure   # External load input (kN/m²)
-
-# -------------------
-# Lame’s equations (hoop stress at inner & outer surface)
-# -------------------
-sigma_theta_i = (
-    (p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)
-    + ((p_i - p_e) * r_i**2 * r_o**2) / ((r_o**2 - r_i**2) * r_i**2)
-)
-sigma_theta_o = (
-    (p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)
-    + ((p_i - p_e) * r_i**2 * r_o**2) / ((r_o**2 - r_i**2) * r_o**2)
-)
-
-# Convert to MPa
-sigma_theta_i_MPa = sigma_theta_i / 1000.0
-sigma_theta_o_MPa = sigma_theta_o / 1000.0
-
-# -------------------
-# Results
-# -------------------
-st.subheader("Calculated Lining Stress Results")
-st.write(f"Internal pressure pᵢ = {p_i:.2f} kN/m²")
-st.write(f"External pressure pₑ = {p_e:.2f} kN/m²")
-st.write(f"Hoop stress at inner surface σθ,i = {sigma_theta_i_MPa:.2f} MPa")
-st.write(f"Hoop stress at outer surface σθ,o = {sigma_theta_o_MPa:.2f} MPa")
-
-# Check against allowable stress
-if sigma_theta_i_MPa <= allowable_stress and sigma_theta_o_MPa <= allowable_stress:
-    st.success("Lining stresses are within allowable limits ✅")
-else:
-    st.error("Lining stresses exceed allowable tensile stress ❌")
-
-# -------------------
-# Equations (expandable)
-# -------------------
-with st.expander("Lining Stress Equations (click to expand)"):
-    st.latex(r"p_i = \gamma_w \cdot H_{gross}")
-    st.latex(r"p_{net} = p_i - p_e")
-    st.latex(r"\sigma_{\theta,i} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_i^2}")
-    st.latex(r"\sigma_{\theta,o} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_o^2}")
-
-
-# ==============================================================
-# Extra UI: Rock Cover and Lining
-# ==============================================================
-def rock_cover_and_lining_ui():
-    """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
-
-    # Rock cover inputs
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        hs = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 300.0, 1.0)
-    with c2:
-        alpha = st.number_input("Tunnel inclination α (deg)", 0.0, 90.0, 20.0, 1.0)
-    with c3:
-        ri = st.number_input("Lining inner radius r_i (m)", 0.2, 10.0, 3.15, 0.05)
-    with c4:
-        t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
-
-    re = ri + t
-    gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
-
-    # Lining stress inputs
-    st.subheader("Lining Hoop Stress (Lame solution)")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        pi_MPa = st.number_input("Internal water pressure pᵢ (MPa)", 0.1, 20.0, 2.0, 0.1, key="pi_MPa")
-    with c2:
-        pext = st.number_input("External confinement pₑ (MPa)", 0.0, 20.0, 0.0, 0.1, key="pext")
-    with c3:
-        ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1, key="ft_MPa")
-
-    # Stress calculations
-    sigma_outer = hoop_stress(pi_MPa, pext, ri, re)        # Hoop stress at outer face
-    pext_req   = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
-
-    # Stress profile plot
-    r_plot = np.linspace(ri * 1.001, re, 200)
-    sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
-
-    fig_s, ax = plt.subplots(figsize=(8, 4.5))
-    ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
-    ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
-    ax.axvline(ri, color="k", ls=":", label=f"rᵢ = {ri:.2f} m")
-    ax.axvline(re, color="k", ls="--", label=f"rₒ = {re:.2f} m")
-    ax.fill_between(
-        r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
-        color="red", alpha=0.2, label="Cracking risk"
-    )
-    ax.set_xlabel("Radius r (m)")
-    ax.set_ylabel("Hoop stress σθ (MPa)")
-    ax.set_title("Lining hoop stress distribution")
-    ax.set_ylim(0, 100)  # adjust for readability
-    ax.grid(True, linestyle="--", alpha=0.35)
-    ax.legend(loc="best")
-    st.pyplot(fig_s)
-
-    # Display results
-    c1, c2, c3 = st.columns(3)
-    c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
-    c2.metric("Required pₑ (MPa)", f"{pext_req:.2f}")
-    c3.metric(
-        "Status",
-        "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
-        help=(
-            "Stress exceeds tensile strength; increase thickness or confinement."
-            if sigma_outer > ft_MPa else "Within tensile capacity at outer face."
-        )
-    )
-
-    return {
-        "hs": hs, "alpha_deg": alpha,
-        "ri_m": ri, "t_m": t, "re_m": re,
-        "pi_MPa": pi_MPa, "pext_MPa": pext, "ft_MPa": ft_MPa,
-        "sigma_outer_MPa": sigma_outer, "pext_required_MPa": pext_req,
-    }
-
-# Call UI section
-rock_summary = rock_cover_and_lining_ui()
-
-
-# --- Section 6: Pressure Tunnel Lining Stress ---
-st.header("10) Pressure Tunnel: Lining Stress")
-
 # Input parameters
 gamma_w = 9.81  # kN/m3
 st.subheader("Input Parameters")
@@ -1848,8 +1697,12 @@ with st.expander("Lining Stress Equations (click to expand)"):
     st.latex(r"\sigma_{\theta,i} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_i^2}")
     st.latex(r"\sigma_{\theta,o} = \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} + \frac{(p_i - p_e) r_i^2 r_o^2}{(r_o^2 - r_i^2) r_o^2}")
 
+
+# --------------------- Section 6 (modular): Rock Cover & Lining ----------
 def rock_cover_and_lining_ui():
     """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
+    st.header("5) Pressure Tunnel: Rock Cover & Lining Stress")
+
     # Rock cover inputs
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -1863,6 +1716,13 @@ def rock_cover_and_lining_ui():
 
     re = ri + t
     gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
+    CRV = snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=gamma_R)
+    FRV = norwegian_FRV(CRV, hs, alpha, gamma_w=9.81, gamma_R=gamma_R)
+
+    cc1, cc2 = st.columns(2)
+    cc1.metric("Snowy vertical cover C_RV (m)", f"{CRV:.1f}")
+    cc2.metric("Norwegian factor F_RV (-)", f"{FRV:.2f}")
+    st.markdown("**Target**: Typically F_RV ≥ 1.2–1.5 (site-dependent).")
 
     # Lining stress
     st.subheader("Lining Hoop Stress (Lame solution)")
@@ -1907,6 +1767,7 @@ def rock_cover_and_lining_ui():
 
     return {
         "hs": hs, "alpha_deg": alpha, "ri_m": ri, "t_m": t, "re_m": re,
+        "gamma_R_kNpm3": gamma_R, "CRV_m": CRV, "FRV": FRV,
         "pi_MPa": pi_MPa, "pext_MPa": pext, "ft_MPa": ft_MPa,
         "sigma_outer_MPa": sigma_outer, "pext_required_MPa": pext_req
     }
