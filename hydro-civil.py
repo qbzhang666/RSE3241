@@ -1650,7 +1650,7 @@ if F_RV >= F_req and F_RM >= F_req:
 else:
     st.error("⚠️ One or both confinement criteria are **not satisfied**.")
 
-# --- Section 6: Pressure Tunnel Lining Stress --- 
+# --- Section 6: Pressure Tunnel Lining Stress ---
 st.header("6) Pressure Tunnel: Lining Stress")
 
 gamma_w = 9800.0  # N/m³ (unit weight of water)
@@ -1732,6 +1732,7 @@ def required_pext_for_ft(pi, ri, re, ft_MPa):
 sigma_outer = hoop_stress(p_i, p_e, r_i, r_o, r_o)
 pext_req    = required_pext_for_ft(p_i, r_i, r_o, ft_MPa) / 1e6  # MPa
 
+# Stress distribution plot
 r_plot = np.linspace(r_i * 1.001, r_o, 200)
 sigma_profile = hoop_stress(p_i, p_e, r_i, r_o, r_plot)
 
@@ -1753,6 +1754,7 @@ c1, c2, c3 = st.columns(3)
 c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.2f}")
 c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
 c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK")
+
 
 
 # --- Section 10: Pressure Tunnel Lining Stress ---
