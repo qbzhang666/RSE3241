@@ -1698,11 +1698,10 @@ try:
         p_e = gamma_w * h_w              # external water pressure (Pa)
         p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)
 
-        # --- CORRECTED Hoop stress profile function (Pa) ---
+        # --- Corrected hoop stress profile function (Pa) ---
         def hoop_stress(pi, pe, ri, ro, r):
-            # Corrected formula with proper parentheses
             term1 = (pi * ri**2 - pe * ro**2) / (ro**2 - ri**2)
-            term2 = ( (pi - pe) * ri**2 * ro**2 ) / ( (ro**2 - ri**2) * r**2 )
+            term2 = ((pi - pe) * ri**2 * ro**2) / ((ro**2 - ri**2) * r**2)
             return term1 + term2
 
         # Inner & outer faces
@@ -1757,7 +1756,6 @@ try:
 
 except Exception as e:
     st.error(f"Error in stress calculation: {e}")
-
 
 
 # ------------------------------- Section 7: Surge Tank -------------------
