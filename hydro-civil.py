@@ -1657,35 +1657,37 @@ st.header("6) Pressure Tunnel: Lining Stress")
 # Input parameters
 # -------------------
 gamma_w = 9800.0  # N/m³ (unit weight of water)
-st.subheader("Input Parameters")
 
-# Hydrostatic heads
-c1, c2 = st.columns(2)
-with c1:
-    h_s = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 204.0, 1.0)
-with c2:
-    h_w = st.number_input("Groundwater level head h_w (m)", 0.0, 2000.0, 150.0, 1.0)
+import streamlit as st
 
-# Geometry
-D_pen = st.number_input("Penstock diameter (m)", 1.0, 10.0, 3.0, step=0.1)
-lining_thickness = st.number_input("Lining thickness (m)", min_value=0.1, value=0.5, step=0.1)
-r_i = D_pen / 2.0            # Internal radius
-r_o = r_i + lining_thickness # External radius
+st.header("Input Parameters")
 
-# Material properties
-E_c = st.number_input("Concrete modulus E_c (Pa)", value=3.5e10, step=1e9, format="%.2e")
-nu_c = st.number_input("Concrete Poisson’s ratio ν_c", value=0.167, step=0.01)
-E_r = st.number_input("Rock modulus E_r (Pa)", value=2.7e10, step=1e9, format="%.2e")
-nu_r = st.number_input("Rock Poisson’s ratio ν_r", value=0.20, step=0.01)
-ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 0.1, 10.0, 2.0, step=0.1)
+# --- Hydraulic Heads ---
+with st.expander("Hydraulic Heads", expanded=True):
+    c1, c2, c3 = st.columns(3)
+    h_s = c1.number_input("Hydrostatic head to crown h_s (m)", value=204.0)
+    h_w = c2.number_input("Groundwater level head h_w (m)", value=150.0)
+    eta = c3.number_input("Effective pore pressure factor η", value=1.0)
 
-# -------------------
-# Pressures (Pa)
-# -------------------
-p_i = gamma_w * h_s   # Internal pressure from water head
-p_e = gamma_w * h_w   # External groundwater pressure
-eta = st.number_input("Effective pore pressure factor η", min_value=0.0, value=1.0, step=0.1)
-p_f = eta * (p_i - p_e)
+# --- Geometry ---
+with st.expander("Geometry", expanded=True):
+    c1, c2 = st.columns(2)
+    d_p = c1.number_input("Penstock diameter (m)", value=3.0)
+    t_l = c2.number_input("Lining thickness (m)", value=0.5)
+
+# --- Concrete Properties ---
+with st.expander("Concrete Properties", expanded=False):
+    c1, c2, c3 = st.columns(3)
+    E_c = c1.number_input("Concrete modulus E_c (Pa)", value=3.5e10, format="%.2e")
+    v_c = c2.number_input("Concrete Poisson’s ratio ν_c", value=0.17)
+    f_t = c3.number_input("Concrete tensile strength f_t (MPa)", value=2.0)
+
+# --- Rock Properties ---
+with st.expander("Rock Properties", expanded=False):
+    c1, c2 = st.columns(2)
+    E_r = c1.number_input("Rock modulus E_r (Pa)", value=2.7e10, format="%.2e")
+    v_r = c2.number_input("Rock Poisson’s ratio ν_r", value=0.20)
+
 
 # -------------------
 # Lame’s equations (hoop stresses at inner & outer surface)
