@@ -1650,7 +1650,7 @@ if F_RV >= F_req and F_RM >= F_req:
 else:
     st.error("⚠️ One or both confinement criteria are **not satisfied**.")
 
-# --- Section 6: Pressure Tunnel Lining Stress ---
+# --- Section 6: Pressure Tunnel Lining Stress --- 
 st.header("6) Pressure Tunnel: Lining Stress")
 
 gamma_w = 9800.0  # N/m³ (unit weight of water)
@@ -1689,7 +1689,6 @@ p_e = gamma_w * h_w              # external water pressure (Pa)
 p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)
 
 # ------------------ Lame’s equations (Pa) ------------------
-# (make sure variables exist BEFORE this block)
 sigma_theta_i = (
     (p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)
     + ((p_i - p_e) * r_i**2 * r_o**2) / ((r_o**2 - r_i**2) * r_i**2)
@@ -1719,25 +1718,22 @@ else:
 # ------------------ Stress Distribution & Confinement Check ------------------
 st.subheader("Stress Distribution and Confinement Check")
 
-def hoop_stress(pi_MPa, pe_MPa, ri, re, r):
-    """Hoop stress σθ(r) in MPa using Lame’s solution."""
-    A = (pi_MPa * ri**2 - pe_MPa * re**2) / (re**2 - ri**2)
-    B = (ri**2 * re**2 * (pe_MPa - pi_MPa)) / (re**2 - ri**2)
-    return A + B / (r**2)
+def hoop_stress(pi, pe, ri, re, r):
+    """Hoop stress σθ(r) in MPa using Lame’s solution with Pa inputs."""
+    A = (pi * ri**2 - pe * re**2) / (re**2 - ri**2)
+    B = (ri**2 * re**2 * (pe - pi)) / (re**2 - ri**2)
+    return (A + B / (r**2)) / 1e6  # convert Pa → MPa
 
-def required_pext_for_ft(pi_MPa, ri, re, ft_MPa):
-    """Required external confining pressure (MPa) so that σθ(re) ≤ f_t."""
-    return (pi_MPa * ri**2 - ft_MPa * (re**2 - ri**2)) / re**2
+def required_pext_for_ft(pi, ri, re, ft_MPa):
+    """Required external confining pressure (Pa) so that σθ(re) ≤ f_t."""
+    return (pi * ri**2 - ft_MPa * 1e6 * (re**2 - ri**2)) / re**2
 
-# Use MPa for the plotting/confinement helpers
-pi_MPa = p_i / 1e6
-pe_MPa = p_e / 1e6
-
-sigma_outer = hoop_stress(pi_MPa, pe_MPa, r_i, r_o, r_o)
-pext_req    = required_pext_for_ft(pi_MPa, r_i, r_o, ft_MPa)
+# Use Pa consistently
+sigma_outer = hoop_stress(p_i, p_e, r_i, r_o, r_o)
+pext_req    = required_pext_for_ft(p_i, r_i, r_o, ft_MPa) / 1e6  # MPa
 
 r_plot = np.linspace(r_i * 1.001, r_o, 200)
-sigma_profile = hoop_stress(pi_MPa, pe_MPa, r_i, r_o, r_plot)
+sigma_profile = hoop_stress(p_i, p_e, r_i, r_o, r_plot)
 
 fig_s, ax = plt.subplots(figsize=(8, 4.5))
 ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
@@ -1757,15 +1753,6 @@ c1, c2, c3 = st.columns(3)
 c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.2f}")
 c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
 c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK")
-
-# ---- Equations (for teaching) ----
-with st.expander("Lining Stress Equations (click to expand)"):
-    st.latex(r"p_i = \gamma_w \, h_s,\qquad p_e = \gamma_w \, h_w,\qquad p_f = \eta\,(p_i-p_e)")
-    st.latex(r"""\sigma_{\theta}(r) =
-    \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} \;+\;
-    \frac{(p_i - p_e)\, r_i^2 r_o^2}{(r_o^2 - r_i^2)\, r^2}""")
-    st.latex(r"\sigma_{\theta,i}=\sigma_{\theta}(r_i),\qquad \sigma_{\theta,o}=\sigma_{\theta}(r_o)")
-    st.latex(r"p_{\text{ext, req}} = \dfrac{p_i r_i^2 - f_t (r_o^2 - r_i^2)}{r_o^2}")
 
 
 # --- Section 10: Pressure Tunnel Lining Stress ---
