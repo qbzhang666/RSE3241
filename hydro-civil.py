@@ -1530,7 +1530,7 @@ for Q in Q_grid:
         f_used = f_moody_swamee_jain(Re, rel_rough)
 
     # head loss
-    hf = headloss_darcy(f_used, L_pen, D_pen, v, Ksum=Ksum)
+    hf = headloss_darcy(f_used, L_pen, D_pen, v, Ksum=out_design.get("Ksum", 0.0))
     hf_list.append(hf)
     H_net_list.append(H_gross - hf)
 
