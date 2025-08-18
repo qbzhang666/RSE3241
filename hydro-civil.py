@@ -1800,8 +1800,10 @@ with st.expander("Input Parameters for Surge Tank", expanded=True):
     # Waterway length (for stability check)
     L = st.number_input("Headrace/Tailrace Waterway Length L (m)", value=2000.0, step=50.0)
 
-    # Surge tank area input
-    A_s = st.number_input("Surge Tank Cross-sectional Area Aₛ (m²)", value=200.0, step=5.0)
+    # Surge tank area input (multiple options)
+    A_s1 = st.number_input("Surge Tank Cross-sectional Area Aₛ₁ (m²)", value=200.0, step=5.0)
+    A_s2 = st.number_input("Surge Tank Cross-sectional Area Aₛ₂ (m²)", value=300.0, step=5.0)
+    A_s3 = st.number_input("Surge Tank Cross-sectional Area Aₛ₃ (m²)", value=400.0, step=5.0)
 
 # ---- Equations ----
 with st.expander("Equations Used (Section 7)", expanded=False):
@@ -1815,7 +1817,7 @@ with st.expander("Equations Used (Section 7)", expanded=False):
     st.latex(r"R = \frac{A_s}{A_p}")
 
     st.markdown("**(4) Rated Discharge** (Design discharge through the turbines)")
-    st.latex(r"Q_0 = \\text{Rated Discharge (m³/s)}")
+    st.latex(r"Q_0 = \text{Rated Discharge (m³/s)}")
 
     st.markdown("**(5) Stability Requirement (Rule-of-Thumb)**")
     st.latex(r"R \;\geq\; \frac{L}{H}")
@@ -1826,20 +1828,19 @@ st.subheader("Surge Tank Results")
 st.write(f"Number of Penstocks: {n_pipes}")
 st.write(f"Diameter per Penstock: {D_p:.2f} m")
 st.write(f"Total Penstock Area Aₚ: {A_p_total:.2f} m²")
-st.write(f"Surge Tank Area Aₛ: {A_s:.2f} m²")
 
-# Stability ratio
-R = A_s / A_p_total
-st.write(f"Area Ratio (Aₛ / Aₚ): {R:.2f}")
-
-# Stability check
+# Minimum stability requirement
 R_min = L / H
-if R >= R_min:
-    st.success(f"✔ Stability OK: R = {R:.2f} ≥ L/H = {R_min:.2f}")
-else:
-    st.error(f"⚠ Stability NOT satisfied: R = {R:.2f} < L/H = {R_min:.2f}. Increase Aₛ or reduce Aₚ.")
+st.info(f"Minimum Required Ratio: L/H = {R_min:.2f}")
 
-
+# Check all three options
+for i, A_s in enumerate([A_s1, A_s2, A_s3], start=1):
+    R = A_s / A_p_total
+    st.write(f"**Option {i}: Surge Tank Area Aₛ{i} = {A_s:.2f} m²** → Ratio R = {R:.2f}")
+    if R >= R_min:
+        st.success(f"✔ Stability OK: R = {R:.2f} ≥ {R_min:.2f}")
+    else:
+        st.error(f"⚠ Stability NOT satisfied: R = {R:.2f} < {R_min:.2f}. Increase Aₛ{i} or reduce Aₚ.")
 
 # ------------------------------- Section 8: Equations --------------------
 st.header("8) Core Equations (for teaching)")
