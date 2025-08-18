@@ -1573,154 +1573,202 @@ fig_power.update_layout(
 )
 st.plotly_chart(fig_power, use_container_width=True)
 
+# ===============================================
+# 5) Confinement Check (Norwegian Confinement Criteria)
+# ===============================================
+st.header("5) Confinement Check (Norwegian Confinement Criteria)")
 
-import numpy as np
+st.markdown(
+    "This section checks tunnel confinement stability using the Norwegian criteria. "
+    "It evaluates both the **factor of safety** for given rock covers and the **required rock cover** "
+    "for a target safety factor."
+)
 
-# -----------------------------
-# Norwegian Confinement Criteria
-# -----------------------------
+# --- User Inputs ---
+st.subheader("Input Parameters")
 
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    hs = st.number_input("Hydrostatic head h_s (m)", value=300.0, min_value=0.0)
+    alpha = st.number_input("Tunnel inclination α (degrees)", value=20.0, min_value=0.0, max_value=90.0)
+    beta = st.number_input("Slope angle β (degrees)", value=40.0, min_value=0.0, max_value=90.0)
+
+with col2:
+    gamma_w = st.number_input("Unit weight of water γ_w (kN/m³)", value=9.81, min_value=0.0)
+    gamma_r = st.number_input("Unit weight of rock γ_r (kN/m³)", value=26.0, min_value=0.0)
+
+with col3:
+    C_RV = st.number_input("Given vertical cover C_RV (m)", value=214.0, min_value=0.0)
+    C_RM = st.number_input("Given minimum cover C_RM (m)", value=182.0, min_value=0.0)
+    F_req = st.number_input("Required Factor of Safety F_req", value=1.2, min_value=0.1)
+
+# --- Calculations ---
 def confinement_factor(C_RV, C_RM, hs, gamma_r, gamma_w, alpha, beta):
-    """
-    Compute safety factors F_RV and F_RM based on given rock covers.
-    Parameters:
-        C_RV : float - vertical rock cover (m)
-        C_RM : float - minimum rock cover (m)
-        hs : float - static head, hydrostatic head (m)
-        gamma_r : float - unit weight of rock (kN/m³)
-        gamma_w : float - unit weight of water (kN/m³)
-        alpha : float - tunnel inclination (deg)
-        beta : float - slope angle (deg)
-    Returns:
-        F_RV, F_RM : floats - safety factors
-    """
     alpha_rad = np.radians(alpha)
     beta_rad = np.radians(beta)
-    
     F_RV = (C_RV * gamma_r * np.cos(alpha_rad)) / (hs * gamma_w)
     F_RM = (C_RM * gamma_r * np.cos(beta_rad)) / (hs * gamma_w)
-    
     return F_RV, F_RM
 
-
 def confinement_cover(F_req, hs, gamma_r, gamma_w, alpha, beta):
-    """
-    Compute required rock covers C_RV and C_RM for given safety factor.
-    Parameters:
-        F_req : float - required factor of safety
-        hs : float - static head, hydrostatic head (m)
-        gamma_r : float - unit weight of rock (kN/m³)
-        gamma_w : float - unit weight of water (kN/m³)
-        alpha : float - tunnel inclination (deg)
-        beta : float - slope angle (deg)
-    Returns:
-        C_RV_req, C_RM_req : floats - required vertical and minimum rock covers
-    """
     alpha_rad = np.radians(alpha)
     beta_rad = np.radians(beta)
-    
     C_RV_req = F_req * hs * gamma_w / (gamma_r * np.cos(alpha_rad))
     C_RM_req = F_req * hs * gamma_w / (gamma_r * np.cos(beta_rad))
-    
     return C_RV_req, C_RM_req
 
+F_RV, F_RM = confinement_factor(C_RV, C_RM, hs, gamma_r, gamma_w, alpha, beta)
+C_RV_req, C_RM_req = confinement_cover(F_req, hs, gamma_r, gamma_w, alpha, beta)
 
-# -----------------------------
-# Example (slide values)
-# -----------------------------
-if __name__ == "__main__":
-    # Given
-    hs = 300.0               # hydrostatic head (m)
-    gamma_w = 1000 * 9.81    # N/m³ (water density * g)
-    gamma_r = 2650 * 9.81    # N/m³ (rock density * g)
-    alpha = 20.0             # tunnel inclination (deg)
-    beta = 40.0              # slope angle (deg)
-    F_req = 1.2              # required safety factor
-    
-    # Option 1: Factor of Safety for given cover
-    C_RV_given, C_RM_given = 214.0, 182.0
-    F_RV, F_RM = confinement_factor(C_RV_given, C_RM_given, hs, gamma_r, gamma_w, alpha, beta)
-    print(f"Option 1 - Safety Factors:\nF_RV = {F_RV:.2f}, F_RM = {F_RM:.2f}")
-    
-    # Option 2: Required cover for given safety factor
-    C_RV_req, C_RM_req = confinement_cover(F_req, hs, gamma_r, gamma_w, alpha, beta)
-    print(f"Option 2 - Required Covers:\nC_RV = {C_RV_req:.1f} m, C_RM = {C_RM_req:.1f} m")
+# --- Equations ---
+with st.expander("Confinement Criteria Equations (click to expand)"):
 
-# --------------------- Section 6 (modular): Rock Cover & Lining ----------
-def rock_cover_and_lining_ui():
-    """Self-contained UI section for Rock Cover & Lining — returns a summary dict."""
-    st.header("5) Pressure Tunnel: Rock Cover & Lining Stress")
+    st.markdown("**Safety factors:**")
+    st.latex(r"F_{RV} = \frac{C_{RV} \cdot \gamma_r \cdot \cos(\alpha)}{h_s \cdot \gamma_w}")
+    st.latex(r"F_{RM} = \frac{C_{RM} \cdot \gamma_r \cdot \cos(\beta)}{h_s \cdot \gamma_w}")
 
-    # Rock cover inputs
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        hs = st.number_input("Hydrostatic head to crown h_s (m)", 10.0, 2000.0, 300.0, 1.0)
-    with c2:
-        alpha = st.number_input("Tunnel inclination α (deg)", 0.0, 90.0, 20.0, 1.0)
-    with c3:
-        ri = st.number_input("Lining inner radius r_i (m)", 0.2, 10.0, 3.15, 0.05)
-    with c4:
-        t = st.number_input("Lining thickness t (m)", 0.1, 2.0, 0.35, 0.01)
+    st.markdown("**Required covers for a target factor of safety:**")
+    st.latex(r"C_{RV,req} = \frac{F_{req} \cdot h_s \cdot \gamma_w}{\gamma_r \cdot \cos(\alpha)}")
+    st.latex(r"C_{RM,req} = \frac{F_{req} \cdot h_s \cdot \gamma_w}{\gamma_r \cdot \cos(\beta)}")
 
-    re = ri + t
-    gamma_R = st.slider("Rock unit weight γ_R (kN/m³)", 15.0, 30.0, 26.0, 0.5)
-    CRV = snowy_vertical_cover(hs, gamma_w=9.81, gamma_R=gamma_R)
-    FRV = norwegian_FRV(CRV, hs, alpha, gamma_w=9.81, gamma_R=gamma_R)
+# --- Results ---
+st.subheader("Calculated Results")
 
-    cc1, cc2 = st.columns(2)
-    cc1.metric("Snowy vertical cover C_RV (m)", f"{CRV:.1f}")
-    cc2.metric("Norwegian factor F_RV (-)", f"{FRV:.2f}")
-    st.markdown("**Target**: Typically F_RV ≥ 1.2–1.5 (site-dependent).")
+results = {
+    "Given Cover (m)": [C_RV, C_RM],
+    "Factor of Safety": [F_RV, F_RM],
+    "Required Cover (m)": [C_RV_req, C_RM_req],
+}
 
-    # Lining stress
-    st.subheader("Lining Hoop Stress (Lame solution)")
+df_conf = pd.DataFrame(results, index=["Vertical (RV)", "Minimum (RM)"])
+st.dataframe(df_conf.style.format("{:.2f}"))
+
+# --- Check Compliance ---
+if F_RV >= F_req and F_RM >= F_req:
+    st.success("✅ Both confinement criteria are satisfied.")
+else:
+    st.error("⚠️ One or both confinement criteria are **not satisfied**.")
+
+
+
+# ===============================
+# --- Section 6: Pressure Tunnel Lining Stress ---
+st.header("6) Pressure Tunnel: Lining Stress")
+
+gamma_w = 9800.0  # N/m³ (unit weight of water)
+
+# Input pressures
+p_i = gamma_w * h_s   # internal water pressure
+p_e = eta * gamma_w * h_w  # external groundwater pressure
+
+# Geometry
+r_i = penstock_diameter / 2
+r_o = r_i + lining_thickness
+
+# Radial stress at inner lining (Lamé’s equation)
+sigma_r_inner = (p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)
+
+
+st.header("Input Parameters")
+
+# ------------------ Grouped inputs ------------------
+with st.expander("Hydraulic Heads", expanded=True):
     c1, c2, c3 = st.columns(3)
-    with c1:
-        pi_MPa = st.number_input("Internal water pressure p_i (MPa)", 0.1, 20.0, 2.0, 0.1, key="pi_MPa")
-    with c2:
-        pext = st.number_input("External confinement p_ext (MPa)", 0.0, 20.0, 0.0, 0.1, key="pext")
-    with c3:
-        ft_MPa = st.number_input("Concrete tensile strength f_t (MPa)", 1.0, 10.0, 3.0, 0.1, key="ft_MPa")
+    h_s = c1.number_input("Hydrostatic head to crown h_s (m)", value=204.0)
+    h_w = c2.number_input("Groundwater level head h_w (m)", value=150.0)
+    eta = c3.number_input("Effective pore pressure factor η", value=1.0)
 
-    sigma_outer = hoop_stress(pi_MPa, pext, ri, re)   # at outer face
-    pext_req = required_pext_for_ft(pi_MPa, ri, re, ft_MPa)
+with st.expander("Geometry", expanded=True):
+    c1, c2 = st.columns(2)
+    d_p = c1.number_input("Penstock diameter (m)", value=3.0)
+    t_l = c2.number_input("Lining thickness (m)", value=0.5)
 
-    r_plot = np.linspace(ri * 1.001, re, 200)
-    sigma_profile = hoop_stress(pi_MPa, pext, ri, r_plot)
-
-    fig_s, ax = plt.subplots(figsize=(8, 4.5))
-    ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
-    ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
-    ax.axvline(ri, color="k", ls=":", label=f"ri={ri:.2f} m")
-    ax.axvline(re, color="k", ls="--", label=f"re={re:.2f} m")
-    ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
-                    color="red", alpha=0.2, label="Cracking risk")
-    ax.set_xlabel("Radius r (m)")
-    ax.set_ylabel("Hoop stress σθ (MPa)")
-    ax.set_title("Lining hoop stress distribution")
-    ax.set_ylim(0, 100)  # for readability
-    ax.grid(True, linestyle="--", alpha=0.35)
-    ax.legend(loc="best")
-    st.pyplot(fig_s)
-
+with st.expander("Concrete Properties", expanded=False):
     c1, c2, c3 = st.columns(3)
-    c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.1f}")
-    c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
-    c3.metric(
-        "Status",
-        "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK",
-        help=("Stress exceeds tensile strength; increase thickness or confinement."
-              if sigma_outer > ft_MPa else "Within tensile capacity at outer face.")
-    )
+    E_c  = c1.number_input("Concrete modulus E_c (Pa)", value=3.5e10, format="%.2e")
+    v_c  = c2.number_input("Concrete Poisson’s ratio ν_c", value=0.17)
+    ft_MPa = c3.number_input("Concrete tensile strength f_t (MPa)", value=2.0)
 
-    return {
-        "hs": hs, "alpha_deg": alpha, "ri_m": ri, "t_m": t, "re_m": re,
-        "gamma_R_kNpm3": gamma_R, "CRV_m": CRV, "FRV": FRV,
-        "pi_MPa": pi_MPa, "pext_MPa": pext, "ft_MPa": ft_MPa,
-        "sigma_outer_MPa": sigma_outer, "pext_required_MPa": pext_req
-    }
+with st.expander("Rock Properties", expanded=False):
+    c1, c2 = st.columns(2)
+    E_r = c1.number_input("Rock modulus E_r (Pa)", value=2.7e10, format="%.2e")
+    v_r = c2.number_input("Rock Poisson’s ratio ν_r", value=0.20)
 
-rock_summary = rock_cover_and_lining_ui()  # returns dict (for export)
+# ------------------ Calculations ------------------
+try:
+    r_i = d_p / 2.0                  # inner radius (m)
+    r_o = r_i + t_l                  # outer radius (m)
+
+    if r_o <= r_i:
+        st.error("Invalid geometry: outer radius must be larger than inner radius.")
+    else:
+        # Pressures
+        p_i = gamma_w * h_s              # internal water pressure (Pa)
+        p_e = gamma_w * h_w              # external water pressure (Pa)
+        p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)
+
+        # --- Hoop stress profile function (Pa) ---
+        def hoop_stress(pi, pe, ri, ro, r):  # Explicitly pass ro
+            return (
+                (pi * ri**2 - pe * ro**2) / (ro**2 - ri**2)  # Use "-" (hyphen)
+                + ((pi - pe) * ri**2 * ro**2) / ((ro**2 - ri**2) * r**2)  # Use "-"
+            )
+
+        # Inner & outer faces (pass r_o explicitly)
+        sigma_theta_i = hoop_stress(p_i, p_e, r_i, r_o, r_i)
+        sigma_theta_o = hoop_stress(p_i, p_e, r_i, r_o, r_o)
+
+        sigma_theta_i_MPa = sigma_theta_i / 1e6
+        sigma_theta_o_MPa = sigma_theta_o / 1e6
+
+        # ------------------ Results ------------------
+        st.subheader("Calculated Lining Stress Results")
+        st.write(f"Internal pressure pᵢ = {p_i:.2e} Pa")
+        st.write(f"External pressure pₑ = {p_e:.2e} Pa")
+        st.write(f"Effective pore pressure p_f = {p_f:.2f} Pa")
+        st.write(f"Hoop stress at inner surface σθ,i = {sigma_theta_i_MPa:.2f} MPa")
+        st.write(f"Hoop stress at outer surface σθ,o = {sigma_theta_o_MPa:.2f} MPa")
+
+        if sigma_theta_i_MPa <= ft_MPa and sigma_theta_o_MPa <= ft_MPa:
+            st.success("Lining stresses are within allowable limits ✅")
+        else:
+            st.error("Lining stresses exceed allowable tensile stress ❌")
+
+        # ------------------ Stress distribution plot ------------------
+        r_plot = np.linspace(r_i * 1.001, r_o, 200)
+        sigma_profile = hoop_stress(p_i, p_e, r_i, r_o, r_plot) / 1e6  # MPa
+
+        fig_s, ax = plt.subplots(figsize=(8, 4.5))
+        ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
+        ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
+        ax.axvline(r_i, color="k", ls=":", label=f"ri={r_i:.2f} m")
+        ax.axvline(r_o, color="k", ls="--", label=f"ro={r_o:.2f} m")
+        ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
+                        color="red", alpha=0.2, label="Cracking risk")
+        ax.set_xlabel("Radius r (m)")
+        ax.set_ylabel("Hoop stress σθ (MPa)")
+        ax.set_title("Lining hoop stress distribution")
+        ax.set_ylim(0, max(ft_MPa*1.5, sigma_profile.max()*1.2))
+        ax.grid(True, linestyle="--", alpha=0.35)
+        ax.legend(loc="best")
+        st.pyplot(fig_s)
+
+        # ------------------ Metrics summary ------------------
+        c1, c2, c3 = st.columns(3)
+        c1.metric("σθ @ inner face (MPa)", f"{sigma_theta_i_MPa:.1f}")
+        c2.metric("σθ @ outer face (MPa)", f"{sigma_theta_o_MPa:.1f}")
+        c3.metric(
+            "Status",
+            "⚠️ Cracking likely" if sigma_theta_o_MPa > ft_MPa else "✅ OK",
+            help=("Stress exceeds tensile strength; increase thickness or confinement."
+                  if sigma_theta_o_MPa > ft_MPa else "Within tensile capacity at outer face.")
+        )
+
+except Exception as e:
+    st.error(f"Error in stress calculation: {e}")
+
+
 
 # ------------------------------- Section 7: Surge Tank -------------------
 st.header("7) Surge Tank — First Cut")
