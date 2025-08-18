@@ -1782,18 +1782,35 @@ except Exception as e:
 
 
 
-# ------------------------------- Section 7: Surge Tank -------------------
-st.header("7) Surge Tank — First Cut")
-Ah = area_circle(D_pen)  # per conduit; for multi-branch, use local area at the tank location
-Lh = st.number_input("Headrace length to surge tank L_h (m)", 100.0, 100000.0, 15000.0, 100.0)
-ratio = st.number_input("Area ratio A_s/A_h (-)", 1.0, 10.0, 4.0, 0.1)
-surge = surge_tank_first_cut(Ah, Lh, ratio=ratio)
+# ------------------ Section 7: Surge Tank ------------------
+st.header("Section 7: Surge Tank Design")
 
-c1, c2, c3 = st.columns(3)
-c1.metric("A_h (m²)", f"{Ah:.2f}")
-c2.metric("A_s (m²)", f"{surge['As']:.2f}")
-c3.metric("Natural period T_n (s)", f"{surge['Tn']:.1f}")
-st.caption("Rule-of-thumb only. Real designs require full water-hammer/transient analysis.")
+# Inputs
+st.subheader("Input Parameters")
+Q0 = st.number_input("Rated Discharge Q₀ (m³/s)", value=50.0, step=1.0)
+L = st.number_input("Headrace Length L (m)", value=2000.0, step=100.0)
+Ap = st.number_input("Penstock Area Aₚ (m²)", value=5.0, step=0.5)
+h_allow = st.number_input("Allowable Surge Height hₐₗₗₒw (m)", value=5.0, step=0.5)
+
+# Tank sizing calculation
+g = 9.81
+As_req = (Q0 * L) / (g * h_allow)   # Simplified Jaeger estimate
+Ds_req = (4 * As_req / 3.1416) ** 0.5  # Circular diameter
+
+# Natural oscillation period (using trial As_req)
+Tn = 2 * 3.1416 * ((L * As_req) / (g * Ap))**0.5
+
+# Results
+st.subheader("Estimated Tank Dimensions")
+st.write(f"Required Surge Tank Area Aₛ ≈ {As_req:,.2f} m²")
+st.write(f"Equivalent Diameter Dₛ ≈ {Ds_req:,.2f} m")
+st.write(f"Natural Oscillation Period Tₙ ≈ {Tn:.2f} s")
+
+# ------------------ Equations Reference ------------------
+with st.expander("Equations Used (Section 7)", expanded=False):
+    st.latex(r"A_s \geq \frac{Q_0 L}{g \, h_{allow}}")
+    st.latex(r"D_s = \sqrt{\frac{4 A_s}{\pi}}")
+    st.latex(r"T_n = 2\pi \sqrt{\frac{L \, A_s}{g A_p}}")
 
 
 
