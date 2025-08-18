@@ -1653,45 +1653,43 @@ else:
 # --- Section 6: Pressure Tunnel Lining Stress ---
 st.header("6) Pressure Tunnel: Lining Stress")
 
-# -------------------
-# Input parameters
-# -------------------
 gamma_w = 9800.0  # N/m³ (unit weight of water)
-
-import streamlit as st
 
 st.header("Input Parameters")
 
-# --- Hydraulic Heads ---
+# ------------------ Grouped inputs ------------------
 with st.expander("Hydraulic Heads", expanded=True):
     c1, c2, c3 = st.columns(3)
     h_s = c1.number_input("Hydrostatic head to crown h_s (m)", value=204.0)
     h_w = c2.number_input("Groundwater level head h_w (m)", value=150.0)
     eta = c3.number_input("Effective pore pressure factor η", value=1.0)
 
-# --- Geometry ---
 with st.expander("Geometry", expanded=True):
     c1, c2 = st.columns(2)
     d_p = c1.number_input("Penstock diameter (m)", value=3.0)
     t_l = c2.number_input("Lining thickness (m)", value=0.5)
 
-# --- Concrete Properties ---
 with st.expander("Concrete Properties", expanded=False):
     c1, c2, c3 = st.columns(3)
-    E_c = c1.number_input("Concrete modulus E_c (Pa)", value=3.5e10, format="%.2e")
-    v_c = c2.number_input("Concrete Poisson’s ratio ν_c", value=0.17)
-    f_t = c3.number_input("Concrete tensile strength f_t (MPa)", value=2.0)
+    E_c  = c1.number_input("Concrete modulus E_c (Pa)", value=3.5e10, format="%.2e")
+    v_c  = c2.number_input("Concrete Poisson’s ratio ν_c", value=0.17)
+    ft_MPa = c3.number_input("Concrete tensile strength f_t (MPa)", value=2.0)
 
-# --- Rock Properties ---
 with st.expander("Rock Properties", expanded=False):
     c1, c2 = st.columns(2)
     E_r = c1.number_input("Rock modulus E_r (Pa)", value=2.7e10, format="%.2e")
     v_r = c2.number_input("Rock Poisson’s ratio ν_r", value=0.20)
 
+# ------------------ Derived geometry & pressures ------------------
+r_i = d_p / 2.0                  # inner radius (m)
+r_o = r_i + t_l                  # outer radius (m)
 
-# -------------------
-# Lame’s equations (hoop stresses at inner & outer surface)
-# -------------------
+p_i = gamma_w * h_s              # internal water pressure (Pa)
+p_e = gamma_w * h_w              # external water pressure (Pa)
+p_f = eta * (p_i - p_e)          # effective pore pressure (Pa)
+
+# ------------------ Lame’s equations (Pa) ------------------
+# (make sure variables exist BEFORE this block)
 sigma_theta_i = (
     (p_i * r_i**2 - p_e * r_o**2) / (r_o**2 - r_i**2)
     + ((p_i - p_e) * r_i**2 * r_o**2) / ((r_o**2 - r_i**2) * r_i**2)
@@ -1701,13 +1699,11 @@ sigma_theta_o = (
     + ((p_i - p_e) * r_i**2 * r_o**2) / ((r_o**2 - r_i**2) * r_o**2)
 )
 
-# Convert to MPa
+# Convert to MPa for display
 sigma_theta_i_MPa = sigma_theta_i / 1e6
 sigma_theta_o_MPa = sigma_theta_o / 1e6
 
-# -------------------
-# Results
-# -------------------
+# ------------------ Results ------------------
 st.subheader("Calculated Lining Stress Results")
 st.write(f"Internal pressure pᵢ = {p_i:.2e} Pa")
 st.write(f"External pressure pₑ = {p_e:.2e} Pa")
@@ -1720,34 +1716,34 @@ if sigma_theta_i_MPa <= ft_MPa and sigma_theta_o_MPa <= ft_MPa:
 else:
     st.error("Lining stresses exceed allowable tensile stress ❌")
 
-# -------------------
-# Stress Distribution & Confinement Check
-# -------------------
+# ------------------ Stress Distribution & Confinement Check ------------------
 st.subheader("Stress Distribution and Confinement Check")
 
-def hoop_stress(pi, pe, ri, re, r):
-    """Hoop stress distribution in thick-walled cylinder (Lame’s eq.)"""
-    A = (pi * ri**2 - pe * re**2) / (re**2 - ri**2)
-    B = (ri**2 * re**2 * (pe - pi)) / (re**2 - ri**2)
+def hoop_stress(pi_MPa, pe_MPa, ri, re, r):
+    """Hoop stress σθ(r) in MPa using Lame’s solution."""
+    A = (pi_MPa * ri**2 - pe_MPa * re**2) / (re**2 - ri**2)
+    B = (ri**2 * re**2 * (pe_MPa - pi_MPa)) / (re**2 - ri**2)
     return A + B / (r**2)
 
-def required_pext_for_ft(pi, ri, re, ft):
-    """Required confinement pressure to keep σθ(re) <= f_t"""
-    return (pi * ri**2 - ft * (re**2 - ri**2)) / re**2
+def required_pext_for_ft(pi_MPa, ri, re, ft_MPa):
+    """Required external confining pressure (MPa) so that σθ(re) ≤ f_t."""
+    return (pi_MPa * ri**2 - ft_MPa * (re**2 - ri**2)) / re**2
 
-# Compute profile
-sigma_outer = hoop_stress(p_i/1e6, p_e/1e6, r_i, r_o, r_o)  # in MPa
-pext_req = required_pext_for_ft(p_i/1e6, r_i, r_o, ft_MPa)
+# Use MPa for the plotting/confinement helpers
+pi_MPa = p_i / 1e6
+pe_MPa = p_e / 1e6
 
-r_plot = np.linspace(r_i*1.001, r_o, 200)
-sigma_profile = hoop_stress(p_i/1e6, p_e/1e6, r_i, r_o, r_plot)
+sigma_outer = hoop_stress(pi_MPa, pe_MPa, r_i, r_o, r_o)
+pext_req    = required_pext_for_ft(pi_MPa, r_i, r_o, ft_MPa)
 
-# Plot
+r_plot = np.linspace(r_i * 1.001, r_o, 200)
+sigma_profile = hoop_stress(pi_MPa, pe_MPa, r_i, r_o, r_plot)
+
 fig_s, ax = plt.subplots(figsize=(8, 4.5))
 ax.plot(r_plot, sigma_profile, lw=2.2, label="σθ(r)")
 ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
-ax.axvline(r_i, color="k", ls=":", label=f"rᵢ={r_i:.2f} m")
-ax.axvline(r_o, color="k", ls="--", label=f"rₒ={r_o:.2f} m")
+ax.axvline(r_i, color="k", ls=":",  label=f"rᵢ = {r_i:.2f} m")
+ax.axvline(r_o, color="k", ls="--", label=f"rₒ = {r_o:.2f} m")
 ax.fill_between(r_plot, sigma_profile, ft_MPa, where=(sigma_profile > ft_MPa),
                 color="red", alpha=0.2, label="Cracking risk")
 ax.set_xlabel("Radius r (m)")
@@ -1757,12 +1753,19 @@ ax.grid(True, linestyle="--", alpha=0.35)
 ax.legend(loc="best")
 st.pyplot(fig_s)
 
-# Metrics
 c1, c2, c3 = st.columns(3)
 c1.metric("σθ @ outer face (MPa)", f"{sigma_outer:.2f}")
 c2.metric("Required p_ext (MPa)", f"{pext_req:.2f}")
 c3.metric("Status", "⚠️ Cracking likely" if sigma_outer > ft_MPa else "✅ OK")
 
+# ---- Equations (for teaching) ----
+with st.expander("Lining Stress Equations (click to expand)"):
+    st.latex(r"p_i = \gamma_w \, h_s,\qquad p_e = \gamma_w \, h_w,\qquad p_f = \eta\,(p_i-p_e)")
+    st.latex(r"""\sigma_{\theta}(r) =
+    \frac{p_i r_i^2 - p_e r_o^2}{r_o^2 - r_i^2} \;+\;
+    \frac{(p_i - p_e)\, r_i^2 r_o^2}{(r_o^2 - r_i^2)\, r^2}""")
+    st.latex(r"\sigma_{\theta,i}=\sigma_{\theta}(r_i),\qquad \sigma_{\theta,o}=\sigma_{\theta}(r_o)")
+    st.latex(r"p_{\text{ext, req}} = \dfrac{p_i r_i^2 - f_t (r_o^2 - r_i^2)}{r_o^2}")
 
 
 # --- Section 10: Pressure Tunnel Lining Stress ---
