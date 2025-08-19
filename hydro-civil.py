@@ -1769,8 +1769,11 @@ try:
 # prevent auto-expansion in Streamlit
         st.pyplot(fig_s, use_container_width=False, clear_figure=True)
 
+plt.rcParams.update({
+    "figure.figsize": (5, 3),
+    "figure.dpi": 100
+})
         
-
         # ------------------ Metrics summary ------------------
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("σθ @ inner (MPa)", f"{sigma_theta_i_MPa:.1f}")
