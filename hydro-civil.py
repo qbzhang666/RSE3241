@@ -1929,6 +1929,61 @@ with tabS:
     st.latex(r"\frac{A_s}{A_p} \;\geq\; \frac{L}{H}")
     st.caption("⚠️ Teaching approximations only — detailed design needs transient surge analysis (e.g., Method of Characteristics).")
 
+# ---------------- Step 9: Underground Machine Hall Design ----------------
+st.header("Step 9 · Underground Machine Hall Design")
+
+# Preset values (from Step 1 & 2)
+P_design = st.session_state.get("P_design", 2000.0)  # MW
+N_units = st.session_state.get("N_units", 6)        # number of units
+N_pen = st.session_state.get("N_pen", 6)            # penstocks
+z_TCL = st.session_state.get("z_TCL", -200.0)       # turbine centre line elevation
+
+P_unit = P_design / N_units
+
+st.write(f"**Design Power:** {P_design:.0f} MW")
+st.write(f"**Units:** {N_units} × {P_unit:.0f} MW each")
+st.write(f"**Turbine Centre Line Elevation:** {z_TCL:.1f} m")
+
+# Cavern Shape Options
+shape = st.selectbox(
+    "Select Machine Hall Shape:",
+    ["Mushroom-Shaped", "Horseshoe-Shaped", "Elliptical"]
+)
+
+# Default dimensions (approx.)
+unit_width = 25.0   # m per unit (incl. clearance)
+erection_bay = 30.0 # m
+B_hall = 25.0       # base width
+H_hall = 55.0       # average height above turbine
+L_hall = N_units * unit_width + erection_bay
+
+# Shape adjustment factors (affects excavation volume & span)
+shape_factor = {
+    "Mushroom-Shaped": 0.95,   # less floor volume
+    "Horseshoe-Shaped": 1.00,  # baseline
+    "Elliptical": 1.10         # slightly more excavation
+}
+adj = shape_factor[shape]
+
+# Cavern volume
+V_cavern = B_hall * H_hall * L_hall * adj
+
+st.subheader("Machine Hall Dimensions")
+st.write(f"- **Width (B):** {B_hall:.1f} m")
+st.write(f"- **Height (H):** {H_hall:.1f} m")
+st.write(f"- **Length (L):** {L_hall:.1f} m")
+st.write(f"- **Shape:** {shape}")
+st.write(f"- **Excavation Volume:** ~{V_cavern/1000:.1f} ×10³ m³")
+
+# Visual hint (placeholder for diagram)
+if shape == "Mushroom-Shaped":
+    st.info("Mushroom: Narrower base, wider crown, good for high stress.")
+elif shape == "Horseshoe-Shaped":
+    st.info("Horseshoe: Balanced stability, common in hydropower caverns.")
+elif shape == "Elliptical":
+    st.info("Elliptical: Smooth stress redistribution, suits weaker rock.")
+
+
 
 st.subheader("9) Reference Tables")
 
