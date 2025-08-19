@@ -1930,19 +1930,22 @@ with tabS:
     st.caption("⚠️ Teaching approximations only — detailed design needs transient surge analysis (e.g., Method of Characteristics).")
 
 # ---------------- Step 9: Underground Machine Hall Design ----------------
+import streamlit as st
+import numpy as np
+
 st.header("Step 9 · Underground Machine Hall Design")
 
-# Preset values (from Step 1 & 2)
-P_design = st.session_state.get("P_design", 2000.0)  # MW
-N_units = st.session_state.get("N_units", 6)        # number of units
-N_pen = st.session_state.get("N_pen", 6)            # penstocks
-z_TCL = st.session_state.get("z_TCL", -200.0)       # turbine centre line elevation
+# --- Pull values from session_state (set in Step 1 & Step 2) ---
+P_design = st.session_state.get("P_design", 2000.0)      # MW
+N_units = st.session_state.get("N_units", 6)             # number of units
+N_pen = st.session_state.get("N_pen", 6)                 # penstocks
+turbine_abs = st.session_state.get("turbine_abs", 180.0) # Calculated Turbine CL elevation
 
 P_unit = P_design / N_units
 
 st.write(f"**Design Power:** {P_design:.0f} MW")
 st.write(f"**Units:** {N_units} × {P_unit:.0f} MW each")
-st.write(f"**Turbine Centre Line Elevation:** {z_TCL:.1f} m")
+st.metric("Calculated Turbine CL elevation", f"{turbine_abs:.2f} m")
 
 # Cavern Shape Options
 shape = st.selectbox(
@@ -1954,35 +1957,49 @@ shape = st.selectbox(
 unit_width = 25.0   # m per unit (incl. clearance)
 erection_bay = 30.0 # m
 B_hall = 25.0       # base width
-H_hall = 55.0       # average height above turbine
+H_hall = 55.0       # average height above turbine CL
 L_hall = N_units * unit_width + erection_bay
 
-# Shape adjustment factors (affects excavation volume & span)
+# Shape adjustment factors
 shape_factor = {
-    "Mushroom-Shaped": 0.95,   # less floor volume
-    "Horseshoe-Shaped": 1.00,  # baseline
-    "Elliptical": 1.10         # slightly more excavation
+    "Mushroom-Shaped": 0.95,
+    "Horseshoe-Shaped": 1.00,
+    "Elliptical": 1.10
 }
 adj = shape_factor[shape]
 
 # Cavern volume
 V_cavern = B_hall * H_hall * L_hall * adj
 
+# Crown elevation (top of cavern)
+crown_elev = turbine_abs + H_hall
+
+# --- User input: Depth of cavern crown from surface ---
+cover_depth = st.number_input("Cavern cover depth above crown (m)", value=300.0, step=10.0)
+
+# --- Vertical in-situ stress calculation ---
+gamma = st.number_input("Rock unit weight γ (kN/m³)", value=27.0, step=0.5)  # default 27 kN/m³
+sigma_v = gamma * cover_depth / 1000.0  # Convert to MPa (since kN/m² = kPa)
+
 st.subheader("Machine Hall Dimensions")
 st.write(f"- **Width (B):** {B_hall:.1f} m")
-st.write(f"- **Height (H):** {H_hall:.1f} m")
+st.write(f"- **Height (H):** {H_hall:.1f} m (above TCL @ {turbine_abs:.2f} m)")
 st.write(f"- **Length (L):** {L_hall:.1f} m")
 st.write(f"- **Shape:** {shape}")
 st.write(f"- **Excavation Volume:** ~{V_cavern/1000:.1f} ×10³ m³")
+st.write(f"- **Crown Elevation (Top of Hall):** {crown_elev:.2f} m")
 
-# Visual hint (placeholder for diagram)
-if shape == "Mushroom-Shaped":
-    st.info("Mushroom: Narrower base, wider crown, good for high stress.")
-elif shape == "Horseshoe-Shaped":
-    st.info("Horseshoe: Balanced stability, common in hydropower caverns.")
-elif shape == "Elliptical":
-    st.info("Elliptical: Smooth stress redistribution, suits weaker rock.")
+st.subheader("In-Situ Stress Estimation")
+st.write(f"- **Cover depth above crown:** {cover_depth:.1f} m")
+st.write(f"- **Unit weight of rock γ:** {gamma:.1f} kN/m³")
+st.metric("Estimated Vertical In-Situ Stress σᵥ", f"{sigma_v:.2f} MPa")
 
+st.info(
+    "👉 This vertical stress is only a **first-order estimate**.\n\n"
+    "For engineering design, students should use **Numerical Modelling (FEA/FDM)** "
+    "to evaluate the stress distribution, deformation, and support requirements "
+    "in software such as **FLAC3D, Phase2, or MIDAS GTS**."
+)
 
 
 st.subheader("9) Reference Tables")
