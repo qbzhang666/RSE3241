@@ -234,15 +234,14 @@ with st.sidebar:
 
 
 import matplotlib.pyplot as plt
-
 plt.rcParams.update({
-    "figure.figsize": (6, 4),   # default width, height in inches
-    "figure.dpi": 100,          # resolution
+    "figure.figsize": (5, 3),   # smaller default
+    "figure.dpi": 100,
     "axes.titlesize": 12,
     "axes.labelsize": 11,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "legend.fontsize": 10
+    "legend.fontsize": 9
 })
 
 # ------------------------------- Section 1: Reservoirs -------------------------------
