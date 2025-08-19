@@ -540,16 +540,16 @@ if not np.isnan(H_g_val):
                 textcoords="offset points", fontsize=10, color="red")
 
 # Axis: 0 at bottom, negatives upward (as per your screenshot)
-ax.set_xlim(-10, 610)
-ax.set_ylim(0, -70)
+ax.set_xlim(-10, 810)
+ax.set_ylim(0, -100)
 ax.set_xlabel("Maximum pumping head (m)", fontsize=12)
 ax.set_ylabel("Draft head (m)", fontsize=12)
 ax.set_title("Relationship: Pumping head vs Draft head", fontsize=14)
 
 # Guide lines
-for yref in range(-70, 1, 10):
+for yref in range(-100, 1, 10):
     ax.axhline(yref, color="gray", linestyle=":", alpha=0.4)
-for xref in [0, 100, 200, 300, 400, 500, 600]:
+for xref in [0, 100, 200, 300, 400, 500, 600, 700, 800]:
     ax.axvline(xref, color="gray", linestyle=":", alpha=0.25)
 
 ax.legend(loc="upper right", fontsize=9)
