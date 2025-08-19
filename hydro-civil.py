@@ -1749,21 +1749,27 @@ try:
         sigma_theta_profile = hoop_stress(p_i, p_e, r_i, r_o, r_plot) / 1e6  # MPa
         sigma_r_profile = radial_stress(p_i, p_e, r_i, r_o, r_plot) / 1e6    # MPa
 
-        fig_s, ax = plt.subplots(figsize=(8, 4.5))
+        fig_s, ax = plt.subplots(figsize=(8, 4.5), dpi=120)   # add dpi for crispness
         ax.plot(r_plot, sigma_theta_profile, lw=2.2, label="Hoop stress σθ(r)")
         ax.plot(r_plot, sigma_r_profile, lw=2.2, label="Radial stress σr(r)")
         ax.axhline(ft_MPa, color="g", ls="--", label=f"f_t = {ft_MPa:.1f} MPa")
         ax.axvline(r_i, color="k", ls=":", label=f"ri={r_i:.2f} m")
         ax.axvline(r_o, color="k", ls="--", label=f"ro={r_o:.2f} m")
-        ax.fill_between(r_plot, sigma_theta_profile, ft_MPa,
-                        where=(sigma_theta_profile > ft_MPa),
-                        color="red", alpha=0.2, label="Cracking risk")
+        ax.fill_between(
+            r_plot, sigma_theta_profile, ft_MPa,
+            where=(sigma_theta_profile > ft_MPa),
+            color="red", alpha=0.2, label="Cracking risk"
+        )
         ax.set_xlabel("Radius r (m)")
         ax.set_ylabel("Stress (MPa)")
         ax.set_title("Radial & Hoop Stress Distribution in Lining")
         ax.grid(True, linestyle="--", alpha=0.35)
         ax.legend(loc="best")
-        st.pyplot(fig_s)
+
+# prevent auto-expansion in Streamlit
+        st.pyplot(fig_s, use_container_width=False, clear_figure=True)
+
+        
 
         # ------------------ Metrics summary ------------------
         c1, c2, c3, c4 = st.columns(4)
