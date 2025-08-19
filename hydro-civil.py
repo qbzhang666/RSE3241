@@ -499,8 +499,8 @@ st.subheader("Turbine Center Line (CL) and Draft Head")
 st.markdown("**Relation between Maximum Pumping Head and Draft Head**")
 
 # Digitized reference points from the purple curve (x = max pumping head [m], y = draft head [m, negative])
-xk = np.array([100, 200, 300, 400, 500, 600], dtype=float)
-yk = np.array([-23, -33, -42, -50, -58, -66], dtype=float)
+xk = np.array([100, 200, 300, 400, 500, 600, 800], dtype=float)
+yk = np.array([-23, -33, -42, -50, -58, -66, -84], dtype=float)
 
 # Smooth cubic fit to the reference points
 coef = np.polyfit(xk, yk, 3)
