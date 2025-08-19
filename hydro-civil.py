@@ -1933,15 +1933,28 @@ with tabS:
 
 st.header("Step 9 · Underground Power Station")
 
-# --- Pull values from session_state (set in Preset / Step 1 & Step 2) ---
-P_design = st.session_state.get("P_design", 2000.0)      # MW
-N_units  = st.session_state.get("N", 6)                  # <- use preset key
-N_pen    = st.session_state.get("N_pen", 6)              # penstocks
-turbine_abs = st.session_state.get("turbine_abs", 180.0) # Turbine CL elevation
+# --- Mode Selection ---
+input_mode = st.radio(
+    "Choose input mode:",
+    ["Use Preset (from Step 1 & 2)", "Enter manually"]
+)
+
+# --- Case 1: Use Preset ---
+if input_mode == "Use Preset (from Step 1 & 2)":
+    P_design = st.session_state.get("P_design", 500.0)      # MW
+    N_units  = st.session_state.get("N", 2)                 # units
+    turbine_abs = st.session_state.get("turbine_abs", 180.0)
+
+# --- Case 2: Manual Input ---
+else:
+    P_design = st.number_input("Design Power P_design (MW)", value=500.0, step=50.0)
+    N_units  = st.number_input("Number of Units N", value=2, step=1, min_value=1)
+    turbine_abs = st.number_input("Turbine Centre Line Elevation (m)", value=180.0, step=1.0)
 
 # Per-unit capacity
 P_unit = P_design / N_units if N_units > 0 else 0
 
+# --- Display key project data ---
 st.write(f"**Design Power:** {P_design:.0f} MW")
 st.write(f"**Units:** {N_units} × {P_unit:.0f} MW each")
 st.metric("Calculated Turbine CL elevation", f"{turbine_abs:.2f} m")
@@ -1955,47 +1968,43 @@ shape = st.selectbox(
 # --- Example dimensions ---
 unit_width   = 25.0   # m per unit (incl. clearance)
 erection_bay = 30.0   # m
-B_hall = 25.0         # width
-H_hall = 55.0         # height above turbine CL
+B_hall = 25.0
+H_hall = 55.0
 L_hall = N_units * unit_width + erection_bay
 
-# Shape adjustment factors (optional, can scale dimensions later)
-shape_factor = {
-    "Mushroom-Shaped": 0.95,
-    "Horseshoe-Shaped": 1.00,
-    "Elliptical": 1.10
-}
+# Apply shape scaling factor
+shape_factor = {"Mushroom-Shaped": 0.95, "Horseshoe-Shaped": 1.00, "Elliptical": 1.10}
 adj = shape_factor[shape]
+B_hall *= adj
+H_hall *= adj
+L_hall *= adj
 
-# Crown elevation (top of cavern)
+# Crown elevation
 crown_elev = turbine_abs + H_hall
 
-# --- User input: Cover depth above crown ---
+# --- User input: Cover depth ---
 cover_depth = st.number_input("Cavern cover depth above crown (m)", value=300.0, step=10.0)
 
-# --- Vertical in-situ stress calculation ---
+# Vertical stress
 gamma = st.number_input("Rock unit weight γ (kN/m³)", value=27.0, step=0.5)  
-sigma_v = gamma * cover_depth / 1000.0  # in MPa
+sigma_v = gamma * cover_depth / 1000.0  # MPa
 
-# ---------------- Output Section ----------------
-st.subheader("Machine Hall Dimensions (Example only)")
+# ---------------- Output ----------------
+st.subheader("Machine Hall Dimensions (Example)")
 st.write(f"- **Width (B):** {B_hall:.1f} m")
-st.write(f"- **Height (H):** {H_hall:.1f} m (above TCL @ {turbine_abs:.2f} m)")
+st.write(f"- **Height (H):** {H_hall:.1f} m")
 st.write(f"- **Length (L):** {L_hall:.1f} m")
 st.write(f"- **Shape:** {shape}")
-st.write(f"- **Crown Elevation (Top of Hall):** {crown_elev:.2f} m")
+st.write(f"- **Crown Elevation:** {crown_elev:.2f} m")
 
-st.subheader("In-Situ Stress Estimation")
+st.subheader("In-Situ Stress Estimate")
 st.write(f"- **Cover depth above crown:** {cover_depth:.1f} m")
-st.write(f"- **Unit weight of rock γ:** {gamma:.1f} kN/m³")
-st.metric("Estimated Vertical In-Situ Stress σᵥ", f"{sigma_v:.2f} MPa")
+st.write(f"- **Unit weight γ:** {gamma:.1f} kN/m³")
+st.metric("Vertical In-Situ Stress σᵥ", f"{sigma_v:.2f} MPa")
 
-# Guidance for students
 st.info(
-    "👉 This vertical stress is only a **first-order estimate**.\n\n"
-    "For engineering design, students should next use **Finite Element Analysis (FEA)** "
-    "to evaluate the full stress distribution, cavern deformation, and required support. "
-    "This links with advanced analysis taught in **RSE3010 Mine Geotechnical Engineering**."
+    "👉 Students should now carry out **Finite Element Analysis (FEA)** to "
+    "verify stress distribution, cavern deformation, and support design."
 )
 
 
