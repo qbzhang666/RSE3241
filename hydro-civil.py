@@ -504,7 +504,7 @@ yk = np.array([-23, -33, -42, -50, -58, -66, -84], dtype=float)
 
 # Smooth cubic fit to the reference points
 coef = np.polyfit(xk, yk, 3)
-x = np.linspace(0.0, 600.0, 500)
+x = np.linspace(0.0, 800.0, 500)
 y = np.polyval(coef, x)
 
 # Use gross head from Section 1 as the "maximum pumping head" (horizontal axis input)
