@@ -291,7 +291,7 @@ m4.metric("Head fluctuation ratio (HFR)", f"{head_fluct_ratio:.3f}")
 
 
 # ---------------------------- Section 2: Waterway profile & L estimator ----------------------------
-st.subheader("2) Waterway Profile & Penstock Geometry")
+st.header("2) Waterway Profile & Penstock Geometry")
 
 # UI: CSV or quick editor
 left, right = st.columns([2, 1])
@@ -1318,7 +1318,7 @@ st.dataframe(
     }
 )
 
-st.subheader("4) Effective Head")
+st.header("4) Effective Net Head")
 
 with st.expander("Head Loss & Net Head Equations (click to expand)"):
 
@@ -1500,7 +1500,7 @@ with st.expander("Show figures / equations used"):
     )
 
 # ------------------------------- Section 5: System Curve ------------------
-st.header("5) System Head & Power Curves (didactic)")
+st.suheader("5) System Head & Power Curves (didactic)")
 
 # Gross head from Section 1
 H_gross = gross_head
@@ -1575,7 +1575,7 @@ st.plotly_chart(fig_power, use_container_width=True)
 # ===============================================
 # 5) Confinement Check (Norwegian Confinement Criteria)
 # ===============================================
-st.header("5) Confinement Check (Norwegian Confinement Criteria)")
+st.header("6) Confinement Check (Norwegian Criteria)")
 
 st.markdown(
     "This section checks tunnel confinement stability using the Norwegian criteria. "
@@ -1651,8 +1651,8 @@ else:
 
 
 # ===============================
-# --- Section 6: Pressure Tunnel Lining Stress ---
-st.header("6) Pressure Tunnel: Lining Stress")
+# --- Section 7: Pressure Tunnel Lining Stress ---
+st.header("7) Pressure Tunnel: Lining Stress")
 
 gamma_w = 9800.0  # N/m³ (unit weight of water)
 
@@ -1778,8 +1778,8 @@ try:
 except Exception as e:
     st.error(f"Error in stress calculation: {e}")
 
-# ------------------ Section 7: Surge Tank ------------------ 
-st.header("7) Surge Tank Design")
+# ------------------ Section 8: Surge Tank ------------------ 
+st.header("8) Surge Tank Design")
 
 with st.expander("Input Parameters for Surge Tank", expanded=True):
     # Penstock setup
@@ -1868,7 +1868,7 @@ st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 
 
-st.header("8) Core Equations")
+st.header("9) Core Equations")
 
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining & Rock)", "Surge/Waterhammer"])
 
@@ -1908,7 +1908,7 @@ with tabS:
     st.caption("⚠️ Teaching approximations only — detailed design needs transient surge analysis (e.g., Method of Characteristics).")
 
 
-st.header("9) Reference Tables (typical classroom values)")
+st.subheader("9) Reference Tables (typical classroom values)")
 
 with st.expander("📘 Typical Darcy Friction Factors (f)", expanded=False):
     df_f = pd.DataFrame({
