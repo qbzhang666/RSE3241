@@ -231,6 +231,20 @@ with st.sidebar:
 
 
     st.caption("All units SI; water ρ=1000 kg/m³, g=9.81 m/s².")
+
+
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({
+    "figure.figsize": (6, 4),   # default width, height in inches
+    "figure.dpi": 100,          # resolution
+    "axes.titlesize": 12,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "legend.fontsize": 10
+})
+
 # ------------------------------- Section 1: Reservoirs -------------------------------
 st.header("1) Reservoir Levels, NWL & Rating Head")
 
