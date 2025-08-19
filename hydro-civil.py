@@ -177,7 +177,7 @@ with st.sidebar:
     st.header("Presets & Settings")
     preset = st.selectbox(
         "Preset", 
-        ["Your Project, " "Snowy 2.0 · Ravine", "Snowy 2.0 · Plateau", "Kidston"]
+        ["Your Project", "Snowy 2.0 · Ravine", "Snowy 2.0 · Plateau", "Kidston"]
     )
 
     # Show warning if a preset is chosen but not yet applied
