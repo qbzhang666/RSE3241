@@ -173,35 +173,40 @@ st.title("Pumped Hydro Energy Storage — Civil Design")
 
 
 # ------------------------------- Presets -------------------------------
-# Presets
 with st.sidebar:
     st.header("Presets & Settings")
     preset = st.selectbox(
         "Preset", 
-        ["Snowy 2.0 · Plateau (NEW)", "Snowy 2.0 · Plateau (DET)", "Kidston", "Your Project" ]
+        ["Your Project, " "Snowy 2.0 · Ravine", "Snowy 2.0 · Plateau", "Kidston"]
     )
+
+    # Show warning if a preset is chosen but not yet applied
+    if preset != "Your Project":
+        st.warning("Click **Apply preset** to confirm this preset before continuing.")
+
     if st.button("Apply preset"):
-        if preset == "Snowy 2.0 · Plateau (NEW)":
+        if preset == "Snowy 2.0 · Ravine":
             st.session_state.update(dict(
-                HWL_u=1100.0, LWL_u=1080.0, HWL_l=450.0, TWL_l=420.0,
+                HWL_u=1100.0, LWL_u=1000.0, HWL_l=450.0, TWL_l=410.0,
                 eta_t=0.90, N=6, hf1=28.0, hf2=70.0, 
                 P1=1000.0, P2=2000.0,
                 P_design=2000.0, N_pen=6
             ))
-        elif preset == "Snowy 2.0 · Plateau (DET)":
+        elif preset == "Snowy 2.0 · Plateau":
             st.session_state.update(dict(
                 HWL_u=1100.0, LWL_u=1080.0, HWL_l=450.0, TWL_l=420.0,
                 eta_t=0.90, N=6, hf1=30.0, hf2=106.0, 
                 P1=1000.0, P2=2000.0,
                 P_design=2000.0, N_pen=6
             ))
-        elif preset == "Kidston (example)":
+        elif preset == "Kidston":
             st.session_state.update(dict(
                 HWL_u=500.0, LWL_u=490.0, HWL_l=230.0, TWL_l=220.0,
                 eta_t=0.90, N=2, hf1=6.0, hf2=18.0, 
                 P1=250.0, P2=500.0,
                 P_design=500.0, N_pen=2
             ))
+
     # Power
     P_design = st.number_input(
         "Design power: P_design (MW)", 1.0, 5000.0, 
