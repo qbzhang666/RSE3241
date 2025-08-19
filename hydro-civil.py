@@ -2003,7 +2003,7 @@ st.write(f"- **Unit weight γ:** {gamma:.1f} kN/m³")
 st.metric("Vertical In-Situ Stress σᵥ", f"{sigma_v:.2f} MPa")
 
 st.info(
-    "👉 Students should now carry out **Finite Element Analysis (FEA)** to "
+    "👉 You should now carry out **Finite Element Analysis (FEA)** to "
     "verify stress distribution, cavern deformation, and support design."
 )
 
