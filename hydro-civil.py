@@ -553,9 +553,7 @@ for xref in [0, 100, 200, 300, 400, 500, 600, 700, 800]:
 
 ax.legend(loc="upper right", fontsize=9)
 ax.grid(False)
-st.pyplot(fig)
-
-
+st.pyplot(fig, use_container_width=False)
 
 with st.expander("Turbine Center Setting (click to expand)"):
 
@@ -1447,7 +1445,8 @@ with tabA:
     ax.set_ylabel("Penstock diameter D (m)")
     ax.set_title("Diameter vs discharge")
     ax.grid(True, ls="--", alpha=0.7); ax.legend(loc="upper left")
-    st.pyplot(fig)
+    st.pyplot(fig, use_container_width=False)
+
 
     if st.button("Apply suggested D (chart fit)", key="btn_apply_chart"):
         if not np.isnan(D_ext):
