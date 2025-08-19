@@ -178,7 +178,7 @@ with st.sidebar:
     st.header("Presets & Settings")
     preset = st.selectbox(
         "Preset", 
-        ["None", "Snowy 2.0 · Plateau (NEW)", "Snowy 2.0 · Plateau (DET)", "Kidston (example)"]
+        ["Snowy 2.0 · Plateau (NEW)", "Snowy 2.0 · Plateau (DET)", "Kidston", "Your Project" ]
     )
     if st.button("Apply preset"):
         if preset == "Snowy 2.0 · Plateau (NEW)":
