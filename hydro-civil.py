@@ -246,13 +246,6 @@ plt.rcParams.update({
     "legend.fontsize": 9
 })
 
-# Create figure with rcParams defaults
-fig, ax = plt.subplots()   # will use (5,3) from rcParams
-ax.plot(Re, f, label="ε/D=0")   # <-- your actual data plotting here
-ax.set_xlabel("Re")
-ax.set_ylabel("f")
-ax.legend()
-
 # Render in Streamlit
 st.pyplot(fig, clear_figure=True, use_container_width=False)
 
