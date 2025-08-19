@@ -1908,7 +1908,7 @@ with tabS:
     st.caption("⚠️ Teaching approximations only — detailed design needs transient surge analysis (e.g., Method of Characteristics).")
 
 
-st.subheader("9) Reference Tables (typical classroom values)")
+st.subheader("9) Reference Tables")
 
 with st.expander("📘 Typical Darcy Friction Factors (f)", expanded=False):
     df_f = pd.DataFrame({
