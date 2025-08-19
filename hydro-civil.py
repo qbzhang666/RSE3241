@@ -234,8 +234,6 @@ with st.sidebar:
 
 
 import matplotlib.pyplot as plt
-
-# Global defaults
 plt.rcParams.update({
     "figure.figsize": (5, 3),   # smaller default
     "figure.dpi": 100,
@@ -245,9 +243,6 @@ plt.rcParams.update({
     "ytick.labelsize": 10,
     "legend.fontsize": 9
 })
-
-# Render in Streamlit
-st.pyplot(fig, clear_figure=True, use_container_width=False)
 
 # ------------------------------- Section 1: Reservoirs -------------------------------
 st.header("1) Reservoir Levels, NWL & Rating Head")
