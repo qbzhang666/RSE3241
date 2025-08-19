@@ -1930,18 +1930,17 @@ with tabS:
     st.caption("⚠️ Teaching approximations only — detailed design needs transient surge analysis (e.g., Method of Characteristics).")
 
 # ---------------- Step 9: Underground Machine Hall Design ----------------
-import streamlit as st
-import numpy as np
 
-st.header("Step 9 · Underground Machine Hall Design")
+st.header("Step 9 · Underground Power Station")
 
-# --- Pull values from session_state (set in Step 1 & Step 2) ---
+# --- Pull values from session_state (set in Preset / Step 1 & Step 2) ---
 P_design = st.session_state.get("P_design", 2000.0)      # MW
-N_units = st.session_state.get("N_units", 6)             # number of units
-N_pen = st.session_state.get("N_pen", 6)                 # penstocks
-turbine_abs = st.session_state.get("turbine_abs", 180.0) # Calculated Turbine CL elevation
+N_units  = st.session_state.get("N", 6)                  # <- use preset key
+N_pen    = st.session_state.get("N_pen", 6)              # penstocks
+turbine_abs = st.session_state.get("turbine_abs", 180.0) # Turbine CL elevation
 
-P_unit = P_design / N_units
+# Per-unit capacity
+P_unit = P_design / N_units if N_units > 0 else 0
 
 st.write(f"**Design Power:** {P_design:.0f} MW")
 st.write(f"**Units:** {N_units} × {P_unit:.0f} MW each")
@@ -1953,14 +1952,14 @@ shape = st.selectbox(
     ["Mushroom-Shaped", "Horseshoe-Shaped", "Elliptical"]
 )
 
-# Default dimensions (approx.)
-unit_width = 25.0   # m per unit (incl. clearance)
-erection_bay = 30.0 # m
-B_hall = 25.0       # base width
-H_hall = 55.0       # average height above turbine CL
+# --- Example dimensions ---
+unit_width   = 25.0   # m per unit (incl. clearance)
+erection_bay = 30.0   # m
+B_hall = 25.0         # width
+H_hall = 55.0         # height above turbine CL
 L_hall = N_units * unit_width + erection_bay
 
-# Shape adjustment factors
+# Shape adjustment factors (optional, can scale dimensions later)
 shape_factor = {
     "Mushroom-Shaped": 0.95,
     "Horseshoe-Shaped": 1.00,
@@ -1968,25 +1967,22 @@ shape_factor = {
 }
 adj = shape_factor[shape]
 
-# Cavern volume
-V_cavern = B_hall * H_hall * L_hall * adj
-
 # Crown elevation (top of cavern)
 crown_elev = turbine_abs + H_hall
 
-# --- User input: Depth of cavern crown from surface ---
+# --- User input: Cover depth above crown ---
 cover_depth = st.number_input("Cavern cover depth above crown (m)", value=300.0, step=10.0)
 
 # --- Vertical in-situ stress calculation ---
-gamma = st.number_input("Rock unit weight γ (kN/m³)", value=27.0, step=0.5)  # default 27 kN/m³
-sigma_v = gamma * cover_depth / 1000.0  # Convert to MPa (since kN/m² = kPa)
+gamma = st.number_input("Rock unit weight γ (kN/m³)", value=27.0, step=0.5)  
+sigma_v = gamma * cover_depth / 1000.0  # in MPa
 
-st.subheader("Machine Hall Dimensions")
+# ---------------- Output Section ----------------
+st.subheader("Machine Hall Dimensions (Example only)")
 st.write(f"- **Width (B):** {B_hall:.1f} m")
 st.write(f"- **Height (H):** {H_hall:.1f} m (above TCL @ {turbine_abs:.2f} m)")
 st.write(f"- **Length (L):** {L_hall:.1f} m")
 st.write(f"- **Shape:** {shape}")
-st.write(f"- **Excavation Volume:** ~{V_cavern/1000:.1f} ×10³ m³")
 st.write(f"- **Crown Elevation (Top of Hall):** {crown_elev:.2f} m")
 
 st.subheader("In-Situ Stress Estimation")
@@ -1994,11 +1990,12 @@ st.write(f"- **Cover depth above crown:** {cover_depth:.1f} m")
 st.write(f"- **Unit weight of rock γ:** {gamma:.1f} kN/m³")
 st.metric("Estimated Vertical In-Situ Stress σᵥ", f"{sigma_v:.2f} MPa")
 
+# Guidance for students
 st.info(
     "👉 This vertical stress is only a **first-order estimate**.\n\n"
-    "For engineering design, students should use **Numerical Modelling (FEA/FDM)** "
-    "to evaluate the stress distribution, deformation, and support requirements "
-    "in software such as **FLAC3D, Phase2, or MIDAS GTS**."
+    "For engineering design, students should next use **Finite Element Analysis (FEA)** "
+    "to evaluate the full stress distribution, cavern deformation, and required support. "
+    "This links with advanced analysis taught in **RSE3010 Mine Geotechnical Engineering**."
 )
 
 
