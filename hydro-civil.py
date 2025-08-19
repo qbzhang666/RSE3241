@@ -177,11 +177,11 @@ with st.sidebar:
     st.header("Presets & Settings")
     preset = st.selectbox(
         "Preset", 
-        ["Your Project", "Snowy 2.0 · Ravine", "Snowy 2.0 · Plateau", "Kidston"]
+        ["Select Project", "Snowy 2.0 · Ravine", "Snowy 2.0 · Plateau", "Kidston"]
     )
 
     # Show warning if a preset is chosen but not yet applied
-    if preset != "Your Project":
+    if preset != "Select Project":
         st.warning("Click **Apply preset** to confirm this preset before continuing.")
 
     if st.button("Apply preset"):
