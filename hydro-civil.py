@@ -1573,7 +1573,7 @@ fig_power.update_layout(
 st.plotly_chart(fig_power, use_container_width=True)
 
 # ===============================================
-# 5) Confinement Check (Norwegian Confinement Criteria)
+# 6) Confinement Check (Norwegian Confinement Criteria)
 # ===============================================
 st.header("6) Confinement Check (Norwegian Criteria)")
 
