@@ -1500,7 +1500,7 @@ with st.expander("Show figures / equations used"):
     )
 
 # ------------------------------- Section 5: System Curve ------------------
-st.suheader("5) System Head & Power Curves (didactic)")
+st.subheader("5) System Head & Power Curves (didactic)")
 
 # Gross head from Section 1
 H_gross = gross_head
