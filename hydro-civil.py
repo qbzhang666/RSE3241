@@ -1889,93 +1889,118 @@ st.write(f"Area Ratio (Aₛ / Aₚ): {A_s / A_p_total:.2f}")
 st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 
-
-
+# ----------------------------
+# Step 9: Underground Cavern Layout (Machine Hall + Transformer Hall + IPB)
+# ----------------------------
 import numpy as np
 import matplotlib.pyplot as plt
+import streamlit as st
 
-# ---------- Minimal inputs students keep ----------
-st.subheader("Cavern Layout Parameters")
+st.header("Step 9: Underground Powerstation Cavern Layout")
+
+# ---------------- Instructions for Students ----------------
+st.markdown("""
+### How to Decide Hall Dimensions
+- **Machine Hall (B_m, H_m, L_m):**
+  - **Width (B_m):** usually 18–25 m depending on unit size & cranes.
+  - **Height (H_m):** 25–40 m depending on crane clearance & draft tubes.
+  - **Length (L_m):** depends on number of units:  
+    \\( L_m = \\, L_{margin,left} + (N-1) \\times spacing + L_{margin,right} \\).  
+- **Transformer Hall (B_t, H_t, L_t):**
+  - Simplified as a parallel cavern.  
+  - **Width (B_t):** ~12–20 m (transformer bays).  
+  - **Height (H_t):** ~12–18 m (fire clearance + ventilation).  
+  - **Length (L_t):** ~60–80% of machine hall length (flexible).  
+- **Separation Distance (S_mt):**
+  - 15–25 m typically (space for IPB galleries + fire separation).  
+- **IPB Galleries:**
+  - Placed between halls at unit centres.  
+  - Width: 2–4 m, Height: 2–3 m.
+""")
+
+# ---------------- User Inputs ----------------
+st.subheader("Cavern Parameters")
+
+# General inputs
+N_units = st.number_input("Number of turbine units", 1, 8, 4, 1)
 unit_spacing = st.number_input("Unit centre-to-centre spacing (m)", 10.0, 60.0, 30.0, 1.0)
 left_margin  = st.number_input("Left end clearance (m)", 0.0, 50.0, 10.0, 1.0)
 right_margin = st.number_input("Right end clearance (m)", 0.0, 50.0, 10.0, 1.0)
-S_mt         = st.number_input("Separation between halls S_mt (m)", 12.0, 60.0, 22.0, 1.0)
-ipb_w        = st.number_input("IPB gallery width (m)", 1.5, 6.0, 2.5, 0.1)
-ipb_h        = st.number_input("IPB gallery height (m)", 1.5, 5.0, 3.0, 0.1)
 
-# ---------- Machine hall dimensions you already computed earlier ----------
-B_m, H_m, L_m = B_hall, H_hall, L_hall  # keep your existing values
-
-# Make machine-hall length consistent with unit spacing (optional but nice)
+# Machine hall
+B_m = st.number_input("Machine Hall Width B_m (m)", 10.0, 30.0, 22.0, 0.5)
+H_m = st.number_input("Machine Hall Height H_m (m)", 10.0, 45.0, 30.0, 0.5)
 L_m = left_margin + (N_units - 1) * unit_spacing + right_margin
 
-# ---------- Generic transformer hall (no detailed design) ----------
-# • Width/height scaled off machine hall with sensible floors
-# • Length a fraction of machine-hall length (editable knob)
-L_t_ratio = st.slider("Transformer hall length ratio  (L_t = ratio × L_m)", 0.50, 0.80, 0.60, 0.05)
-B_t = max(12.0, 0.60 * B_m)      # ≥ ~12 m or 60% of machine-hall width
-H_t = max(12.0, 0.60 * H_m)      # ≥ ~12 m or 60% of machine-hall height
-L_t = L_t_ratio * L_m
+# Separation between halls
+S_mt = st.number_input("Separation between halls S_mt (m)", 12.0, 60.0, 22.0, 1.0)
 
-# ---------- IPB centres (one per unit) ----------
-x_centres = np.linspace(left_margin, L_m - right_margin, N_units) if N_units > 1 else np.array([L_m/2])
+# Transformer hall (simple version)
+B_t = st.number_input("Transformer Hall Width B_t (m)", 10.0, 25.0, 15.0, 0.5)
+H_t = st.number_input("Transformer Hall Height H_t (m)", 10.0, 20.0, 15.0, 0.5)
+L_t = st.number_input("Transformer Hall Length L_t (m)", 20.0, 250.0, max(60.0, L_m*0.7), 1.0)
 
-# ---------- Coordinates for rectangles ----------
-# Machine Hall: from y=0 to +H_m
+# IPB galleries
+ipb_w = st.number_input("IPB gallery width (m)", 1.5, 6.0, 2.5, 0.1)
+ipb_h = st.number_input("IPB gallery height (m)", 1.5, 5.0, 3.0, 0.1)
+
+# ---------------- Coordinates ----------------
+# Machine Hall rectangle
 mh_x0, mh_y0 = 0.0, 0.0
 mh_w, mh_h   = L_m, H_m
 
-# Transformer Hall: same x span origin, placed below machine hall by S_mt
+# Transformer Hall rectangle
 th_x0, th_y_top = 0.0, -S_mt
 th_w, th_h      = L_t, H_t
 th_y0           = th_y_top - th_h
 
-# IPBs: vertical ducts between halls
-ipb_y0 = th_y_top
-ipb_h_eff = 0.0 - ipb_y0  # should equal S_mt
+# IPB galleries (aligned with unit centres)
+x_centres = np.linspace(left_margin, L_m - right_margin, N_units) if N_units > 1 else np.array([L_m/2])
+ipb_y0, ipb_y1 = th_y_top, 0.0  # span between halls
+ipb_h_eff = ipb_y1 - ipb_y0
 
-# ---------- Plot (kept compact) ----------
+# ---------------- Plot Function ----------------
 def add_rect(ax, x0, y0, w, h, **kwargs):
     ax.add_patch(plt.Rectangle((x0, y0), w, h, fill=False, **kwargs))
 
 st.subheader("Cavern Layout (schematic)")
-fig, ax = plt.subplots(figsize=(7.2, 4.2), dpi=120)
+fig, ax = plt.subplots(figsize=(8, 4.5), dpi=120)
 
 # Machine Hall
 add_rect(ax, mh_x0, mh_y0, mh_w, mh_h, linewidth=2.2, edgecolor="#1f77b4", label="Machine Hall")
 
-# Transformer Hall (generic)
-add_rect(ax, th_x0, th_y0, th_w, th_h, linewidth=2.0, edgecolor="#d62728", label="Transformer Hall (generic)")
+# Transformer Hall
+add_rect(ax, th_x0, th_y0, th_w, th_h, linewidth=2.0, edgecolor="#d62728", label="Transformer Hall")
 
-# IPB galleries
+# IPB galleries (vertical connectors)
 for xc in x_centres:
-    x0 = xc - ipb_w/2
+    x0 = xc - ipb_w / 2.0
     add_rect(ax, x0, ipb_y0, ipb_w, ipb_h_eff, linewidth=2.0, edgecolor="#2ca02c")
 
-# Legend & cosmetics
+# Legend
 mh_leg, = ax.plot([], [], color="#1f77b4", lw=3, label="Machine Hall")
 ipb_leg, = ax.plot([], [], color="#2ca02c", lw=3, label="IPB")
 th_leg, = ax.plot([], [], color="#d62728", lw=3, label="Transformer Hall")
 ax.legend(handles=[mh_leg, ipb_leg, th_leg], loc="lower right")
 
+# Cosmetics
 ax.set_title("Underground Caverns Layout (schematic)")
 ax.set_aspect("equal", adjustable="box")
-xmax = max(L_m, L_t)
-ax.set_xlim(-5, xmax + 5)
+ax.set_xlim(-5, max(L_m, L_t) + 5)
 ax.set_ylim(th_y0 - 5, H_m + 5)
-ax.set_xlabel("Longitudinal direction (m)")
+ax.set_xlabel("Longitudinal (m)")
 ax.set_ylabel("Vertical (m)")
 ax.grid(True, alpha=0.25, linestyle="--")
 
 st.pyplot(fig, use_container_width=False, clear_figure=True)
 
-# Quick read-out
-st.caption(
-    f"IPBs: {N_units} (one per unit), centred along Machine Hall. "
-    f"Separation S_mt = {S_mt:.1f} m. "
-    f"Transformer Hall shown as generic placeholder (no detailed design)."
-)
-
+# ---------------- Results ----------------
+st.markdown(f"""
+- Machine Hall: Width = {B_m:.1f} m, Height = {H_m:.1f} m, Length = {L_m:.1f} m  
+- Transformer Hall: Width = {B_t:.1f} m, Height = {H_t:.1f} m, Length = {L_t:.1f} m  
+- Separation S_mt = {S_mt:.1f} m  
+- IPB galleries: {N_units} (aligned with turbine units, width {ipb_w:.1f} m, height {ipb_h:.1f} m)  
+""")
 
 st.header("10) Core Equations")
 
