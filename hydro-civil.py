@@ -1891,157 +1891,90 @@ st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 
 
-# ---------------- Step 9: Underground Power Station Caverns ----------------
-st.header("9) Underground Power Station Caverns")
-
-# ---------- Pull from presets (Step 1 & 2) with safe fallbacks ----------
-P_design   = float(st.session_state.get("P_design", 500.0))   # MW
-N          = int(st.session_state.get("N", 2))                # units
-turbine_abs = float(st.session_state.get("turbine_abs", 180.0))
-
-# Manual override (optional) so students can explore
-with st.expander("📥 (Optional) Override key inputs for exploration"):
-    P_design = st.number_input("Design Power P_design (MW)", value=P_design, step=50.0)
-    N        = st.number_input("Number of Units N", value=N, step=1, min_value=1)
-    turbine_abs = st.number_input("Turbine Centre Line Elevation z_TCL (m)", value=turbine_abs, step=1.0)
-
-P_unit = P_design / N
-st.write(f"**Design Power:** {P_design:.0f} MW")
-st.write(f"**Units:** {N} × {P_unit:.0f} MW each")
-st.metric("Calculated Turbine CL elevation", f"{turbine_abs:.2f} m")
-
-# ---------- Machine Hall ----------
-shape = st.selectbox("Select Machine Hall Shape:", ["Mushroom-Shaped", "Horseshoe-Shaped", "Elliptical"])
-shape_factor = {"Mushroom-Shaped": 0.95, "Horseshoe-Shaped": 1.00, "Elliptical": 1.10}
-adj = shape_factor[shape]
-
-unit_width   = 25.0     # m per unit incl. walkway/clearances
-erection_bay = 30.0     # m
-B_h = 25.0 * adj        # width
-H_h = 55.0 * adj        # height above TCL
-L_h = (N * unit_width + erection_bay) * adj
-crown_elev = turbine_abs + H_h
-
-# ---------- IPB Gallery (simple default) ----------
-B_i, H_i = 6.0, 6.0
-L_i = L_h
-sep_ipb = 12.0   # rock pillar to machine hall centerlines
-
-# ---------- Transformer Hall (derived with clear equations) ----------
-st.subheader("Transformer Hall Inputs")
-# Default: 1 transformer per unit (students may change)
-n_tr = st.number_input("Transformers (per hall)", min_value=1, max_value=20, value=N, step=1)
-tr_w = st.number_input("Transformer width b_tr (m)",  value=7.0, step=0.5)
-tr_h = st.number_input("Transformer height h_tr (m)", value=7.0, step=0.5)
-tr_l = st.number_input("Transformer length l_tr (m)", value=7.0, step=0.5)
-side_cl   = st.number_input("Side clearance c_side (m)", min_value=2.0, value=3.0, step=0.5)
-spacing   = st.number_input("Spacing between transformers s (m)", min_value=4.0, value=6.0, step=0.5)
-service_bay = st.number_input("Service bay length l_svc (m)", min_value=10.0, value=20.0, step=1.0)
-crane_clear = st.number_input("Crane clearance c_crane (m)", min_value=4.0, value=6.0, step=0.5)
-
-# Equations (shown to students)
-st.caption(r"""Geometry used:
-$B_t = b_{tr} + 2\,c_{side}$, 
-$H_t = h_{tr} + c_{crane}$, 
-$L_t = n_{tr} (l_{tr} + s) + l_{svc}$.
-""")
-
-B_t = tr_w + 2.0 * side_cl
-H_t = tr_h + crane_clear
-L_t = n_tr * (tr_l + spacing) + service_bay
-
-# Rock pillar between halls (teaching rule of thumb)
-sep_tf = max(0.8 * max(B_h, B_t), 10.0)
-
-# ---------- Cover & Vertical Stress ----------
-cover_depth = st.number_input("Cavern cover depth above crown (m)", value=300.0, step=10.0)
-gamma = st.number_input("Rock unit weight γ (kN/m³)", value=27.0, step=0.5)
-sigma_v = gamma * cover_depth / 1000.0  # MPa
-
-# ---------- Quick QA / Teaching warnings ----------
-st.subheader("Quick QA Warnings")
-if n_tr != N:
-    st.warning("Transformers per hall ≠ number of units. Ensure electrical philosophy (1:1, standby, or shared banks) is intentional.")
-if B_t < tr_w + 2*side_cl - 1e-6:
-    st.error("Transformer hall width Bₜ is less than equipment + side clearances.")
-if H_t < tr_h + crane_clear - 1e-6:
-    st.error("Transformer hall height Hₜ is less than transformer + crane clearance.")
-if sep_tf < 0.8 * max(B_h, B_t) - 1e-6:
-    st.error("Rock pillar between halls < 0.8 × larger cavern width (teaching guideline).")
-if cover_depth < 2.0 * max(B_h, B_t):
-    st.warning("Crown cover < 2.0 × larger cavern width. Consider ≥ 2–3 × width for robustness (then verify with FEA).")
-
-# ---------- Outputs ----------
-st.subheader("Machine Hall Dimensions")
-st.write(f"- **Width (Bₕ):** {B_h:.1f} m")
-st.write(f"- **Height (Hₕ):** {H_h:.1f} m")
-st.write(f"- **Length (Lₕ):** {L_h:.1f} m")
-st.write(f"- **Shape:** {shape}")
-st.write(f"- **Crown Elevation:** {crown_elev:.2f} m")
-
-st.subheader("IPB Gallery Dimensions")
-st.write(f"- **Width (Bᵢ):** {B_i:.1f} m")
-st.write(f"- **Height (Hᵢ):** {H_i:.1f} m")
-st.write(f"- **Length (Lᵢ):** {L_i:.1f} m")
-st.write(f"- **Separation from Machine Hall (pillar):** {sep_ipb:.1f} m")
-
-st.subheader("Transformer Hall Dimensions")
-st.write(f"- **Width (Bₜ):** {B_t:.1f} m")
-st.write(f"- **Height (Hₜ):** {H_t:.1f} m")
-st.write(f"- **Length (Lₜ):** {L_t:.1f} m")
-st.write(f"- **Separation from Machine Hall (pillar):** {sep_tf:.1f} m")
-
-st.subheader("In-Situ Vertical Stress (1-D estimate)")
-st.write(f"- **Cover depth above crown:** {cover_depth:.1f} m")
-st.write(f"- **Rock unit weight γ:** {gamma:.1f} kN/m³")
-st.metric("σᵥ (vertical) ≈ γ·cover", f"{sigma_v:.2f} MPa")
-
-with st.expander("📘 Design Instructions (why these choices)"):
-    st.markdown("""
-**Machine Hall**
-- Length ≈ `N × 20–25 m + 30 m` (erection bay).
-- Width 18–25 m + side clearances (2–3 m). Height 40–55 m above TCL.
-- Prefer crown cover ≥ 2–3× hall width; verify with FEA.
-
-**IPB Gallery**
-- 5–8 m wide; same length as machine hall; pillar 10–15 m.
-
-**Transformer Hall**
-- Start with one transformer per unit (editable).
-- Width = equipment width + 2× side clearance (3–5 m typical).
-- Height = equipment height + crane clearance (5–7 m).
-- Length = `n_tr × (length + spacing) + service bay`.
-- Provide ≥ one escape/egress, drainage & oil containment.
-
-**Rock Pillars**
-- Teaching rule: ≥ 0.8 × larger cavern width (target ~1.0×); confirm with FEA/FDM.
-
-**Next step**
-- Use FEA to refine stresses, displacements, and support (bolts, mesh, shotcrete, ribs).
-""")
-
-# ---------- Schematic (scaled reasonably) ----------
+import numpy as np
 import matplotlib.pyplot as plt
-plt.rcParams.update({"figure.figsize": (6, 3.8), "figure.dpi": 110})
-fig, ax = plt.subplots()
 
-# Machine Hall (origin)
-ax.add_patch(plt.Rectangle((0, 0), L_h, B_h, fill=False, lw=2, ec="C0", label="Machine Hall"))
+# ---------- Minimal inputs students keep ----------
+st.subheader("Cavern Layout Parameters")
+unit_spacing = st.number_input("Unit centre-to-centre spacing (m)", 10.0, 60.0, 30.0, 1.0)
+left_margin  = st.number_input("Left end clearance (m)", 0.0, 50.0, 10.0, 1.0)
+right_margin = st.number_input("Right end clearance (m)", 0.0, 50.0, 10.0, 1.0)
+S_mt         = st.number_input("Separation between halls S_mt (m)", 12.0, 60.0, 22.0, 1.0)
+ipb_w        = st.number_input("IPB gallery width (m)", 1.5, 6.0, 2.5, 0.1)
+ipb_h        = st.number_input("IPB gallery height (m)", 1.5, 5.0, 3.0, 0.1)
 
-# IPB (to the right, aligned to mid-height)
-ax.add_patch(plt.Rectangle((L_h + sep_ipb, (B_h - B_i)/2), L_i, B_i, fill=False, lw=2, ec="C2", label="IPB"))
+# ---------- Machine hall dimensions you already computed earlier ----------
+B_m, H_m, L_m = B_hall, H_hall, L_hall  # keep your existing values
 
-# Transformer Hall (below Machine Hall)
-ax.add_patch(plt.Rectangle((0, -(B_t + sep_tf)), L_t, B_t, fill=False, lw=2, ec="C3", label="Transformer Hall"))
+# Make machine-hall length consistent with unit spacing (optional but nice)
+L_m = left_margin + (N_units - 1) * unit_spacing + right_margin
 
-ax.set_xlim(-10, max(L_h, L_t) + sep_ipb + 20)
-ax.set_ylim(-(B_t + sep_tf + 10), B_h + 10)
-ax.set_aspect("equal")
+# ---------- Generic transformer hall (no detailed design) ----------
+# • Width/height scaled off machine hall with sensible floors
+# • Length a fraction of machine-hall length (editable knob)
+L_t_ratio = st.slider("Transformer hall length ratio  (L_t = ratio × L_m)", 0.50, 0.80, 0.60, 0.05)
+B_t = max(12.0, 0.60 * B_m)      # ≥ ~12 m or 60% of machine-hall width
+H_t = max(12.0, 0.60 * H_m)      # ≥ ~12 m or 60% of machine-hall height
+L_t = L_t_ratio * L_m
+
+# ---------- IPB centres (one per unit) ----------
+x_centres = np.linspace(left_margin, L_m - right_margin, N_units) if N_units > 1 else np.array([L_m/2])
+
+# ---------- Coordinates for rectangles ----------
+# Machine Hall: from y=0 to +H_m
+mh_x0, mh_y0 = 0.0, 0.0
+mh_w, mh_h   = L_m, H_m
+
+# Transformer Hall: same x span origin, placed below machine hall by S_mt
+th_x0, th_y_top = 0.0, -S_mt
+th_w, th_h      = L_t, H_t
+th_y0           = th_y_top - th_h
+
+# IPBs: vertical ducts between halls
+ipb_y0 = th_y_top
+ipb_h_eff = 0.0 - ipb_y0  # should equal S_mt
+
+# ---------- Plot (kept compact) ----------
+def add_rect(ax, x0, y0, w, h, **kwargs):
+    ax.add_patch(plt.Rectangle((x0, y0), w, h, fill=False, **kwargs))
+
+st.subheader("Cavern Layout (schematic)")
+fig, ax = plt.subplots(figsize=(7.2, 4.2), dpi=120)
+
+# Machine Hall
+add_rect(ax, mh_x0, mh_y0, mh_w, mh_h, linewidth=2.2, edgecolor="#1f77b4", label="Machine Hall")
+
+# Transformer Hall (generic)
+add_rect(ax, th_x0, th_y0, th_w, th_h, linewidth=2.0, edgecolor="#d62728", label="Transformer Hall (generic)")
+
+# IPB galleries
+for xc in x_centres:
+    x0 = xc - ipb_w/2
+    add_rect(ax, x0, ipb_y0, ipb_w, ipb_h_eff, linewidth=2.0, edgecolor="#2ca02c")
+
+# Legend & cosmetics
+mh_leg, = ax.plot([], [], color="#1f77b4", lw=3, label="Machine Hall")
+ipb_leg, = ax.plot([], [], color="#2ca02c", lw=3, label="IPB")
+th_leg, = ax.plot([], [], color="#d62728", lw=3, label="Transformer Hall")
+ax.legend(handles=[mh_leg, ipb_leg, th_leg], loc="lower right")
+
 ax.set_title("Underground Caverns Layout (schematic)")
-ax.legend()
-st.pyplot(fig, use_container_width=False)
+ax.set_aspect("equal", adjustable="box")
+xmax = max(L_m, L_t)
+ax.set_xlim(-5, xmax + 5)
+ax.set_ylim(th_y0 - 5, H_m + 5)
+ax.set_xlabel("Longitudinal direction (m)")
+ax.set_ylabel("Vertical (m)")
+ax.grid(True, alpha=0.25, linestyle="--")
 
+st.pyplot(fig, use_container_width=False, clear_figure=True)
 
+# Quick read-out
+st.caption(
+    f"IPBs: {N_units} (one per unit), centred along Machine Hall. "
+    f"Separation S_mt = {S_mt:.1f} m. "
+    f"Transformer Hall shown as generic placeholder (no detailed design)."
+)
 
 
 st.header("10) Core Equations")
