@@ -1997,8 +1997,6 @@ st.info(
     "support needs, and long-term performance."
 )
 
-)
-
 st.header("10) Core Equations")
 
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining & Rock)", "Surge/Waterhammer"])
