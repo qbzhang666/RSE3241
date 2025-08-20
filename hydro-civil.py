@@ -2041,6 +2041,53 @@ ax.set_title("Underground Caverns Layout (schematic)")
 ax.legend()
 st.pyplot(fig, use_container_width=False)
 
+# ---------------- Layout inputs (expose a few for students) ----------------
+st.subheader("Cavern Layout Parameters")
+unit_spacing = st.number_input("Unit centre-to-centre spacing (m)", 10.0, 60.0, 30.0, 1.0)
+left_margin  = st.number_input("Left end clearance (m)", 0.0, 50.0, 10.0, 1.0)
+right_margin = st.number_input("Right end clearance (m)", 0.0, 50.0, 10.0, 1.0)
+
+# Separation between Machine & Transformer halls (to fit IPBs + fire separation)
+S_mt = st.number_input("Separation between halls S_mt (m)", 12.0, 60.0, 22.0, 1.0)
+
+# IPB gallery size (typical 2–4 m wide, 2–3 m high)
+ipb_w = st.number_input("IPB gallery width (m)", 1.5, 6.0, 2.5, 0.1)
+ipb_h = st.number_input("IPB gallery height (m)", 1.5, 5.0, 3.0, 0.1)
+
+# If you already computed these elsewhere, keep them;
+# otherwise retain the earlier defaults and scaling you applied:
+B_m, H_m, L_m = B_hall, H_hall, L_hall               # Machine Hall (from your Step 9)
+B_t = st.number_input("Transformer Hall Width B_t (m)", 8.0, 30.0, 15.0, 0.5)
+H_t = st.number_input("Transformer Hall Height H_t (m)", 8.0, 30.0, 15.0, 0.5)
+L_t = st.number_input("Transformer Hall Length L_t (m)", 20.0, 250.0, max(60.0, L_m*0.6), 1.0)
+
+# Compute hall lengths more explicitly from unit spacing (Machine Hall):
+L_m = left_margin + (N_units - 1) * unit_spacing + right_margin
+# Keep Transformer Hall not shorter than needed to host N_units transformers
+L_t = max(L_t, left_margin + (N_units - 1) * unit_spacing + right_margin)
+
+# ---------------- Schematic: coordinates ----------------
+# Machine Hall rectangle: starts at x=0, y from 0 to +H_m
+mh_x0, mh_y0 = 0.0, 0.0
+mh_w, mh_h   = L_m, H_m
+
+# Transformer Hall rectangle: same x-span (you can offset if you want),
+# placed below by S_mt gap. Top of TH is at y = -(S_mt)
+th_x0, th_y_top = 0.0, -S_mt
+th_w, th_h      = L_t, H_t
+th_y0           = th_y_top - th_h  # bottom y of Transformer Hall
+
+# IPB vertical galleries in the gap, aligned at unit centres
+x_centres = np.linspace(left_margin, L_m - right_margin, N_units) if N_units > 1 else np.array([L_m/2])
+ipb_y0    = th_y_top                # top y of TH (upper bound of gap)
+ipb_y1    = 0.0                     # bottom y of MH (lower bound of gap)
+ipb_h_eff = ipb_y1 - ipb_y0         # should be S_mt
+
+# ---------------- Plot ----------------
+def add_rect(ax, x0, y0, w, h, **kwargs):
+    ax.add_patch(plt.Rectangle((x0, y0), w, h, fill=False, **kwargs))
+
+
 
 st.header("10) Core Equations")
 
