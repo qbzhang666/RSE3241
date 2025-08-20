@@ -1890,7 +1890,116 @@ st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 
 
-st.header("9) Core Equations")
+
+# ---------------- Step 9: Underground Machine Hall & Transformer Hall ----------------
+
+st.header("9) Underground Power Station Caverns")
+
+# --- Mode Selection ---
+input_mode = st.radio(
+    "Choose input mode:",
+    ["Use Preset (from Step 1 & 2)", "Enter manually"]
+)
+
+# --- Case 1: Use Preset ---
+if input_mode == "Use Preset (from Step 1 & 2)":
+    P_design = st.session_state.get("P_design", 500.0)      # MW
+    N_units  = st.session_state.get("N", 2)                 # units
+    turbine_abs = st.session_state.get("turbine_abs", 180.0)
+
+# --- Case 2: Manual Input ---
+else:
+    P_design = st.number_input("Design Power P_design (MW)", value=500.0, step=50.0)
+    N_units  = st.number_input("Number of Units N", value=2, step=1, min_value=1)
+    turbine_abs = st.number_input("Turbine Centre Line Elevation (m)", value=180.0, step=1.0)
+
+# Per-unit capacity
+P_unit = P_design / N_units if N_units > 0 else 0
+
+# --- Display key project data ---
+st.write(f"**Design Power:** {P_design:.0f} MW")
+st.write(f"**Units:** {N_units} × {P_unit:.0f} MW each")
+st.metric("Calculated Turbine CL elevation", f"{turbine_abs:.2f} m")
+
+# Cavern Shape Options
+shape = st.selectbox(
+    "Select Machine Hall Shape:",
+    ["Mushroom-Shaped", "Horseshoe-Shaped", "Elliptical"]
+)
+
+# --- Example dimensions (Machine Hall) ---
+unit_width   = 25.0   # m per unit (incl. clearance)
+erection_bay = 30.0   # m
+B_hall = 25.0
+H_hall = 55.0
+L_hall = N_units * unit_width + erection_bay
+
+# Apply shape scaling factor
+shape_factor = {"Mushroom-Shaped": 0.95, "Horseshoe-Shaped": 1.00, "Elliptical": 1.10}
+adj = shape_factor[shape]
+B_hall *= adj
+H_hall *= adj
+L_hall *= adj
+
+# Crown elevation
+crown_elev = turbine_abs + H_hall
+
+# --- User input: Cover depth ---
+cover_depth = st.number_input("Cavern cover depth above crown (m)", value=300.0, step=10.0)
+
+# Vertical stress
+gamma = st.number_input("Rock unit weight γ (kN/m³)", value=27.0, step=0.5)  
+sigma_v = gamma * cover_depth / 1000.0  # MPa
+
+# ---------------- Machine Hall Output ----------------
+st.subheader("Machine Hall Dimensions (Reference only)")
+st.write(f"- **Width (B):** {B_hall:.1f} m")
+st.write(f"- **Height (H):** {H_hall:.1f} m")
+st.write(f"- **Length (L):** {L_hall:.1f} m")
+st.write(f"- **Shape:** {shape}")
+st.write(f"- **Crown Elevation:** {crown_elev:.2f} m")
+
+st.subheader("In-Situ Stress Estimate")
+st.write(f"- **Cover depth above crown:** {cover_depth:.1f} m")
+st.write(f"- **Unit weight γ:** {gamma:.1f} kN/m³")
+st.metric("Vertical In-Situ Stress σᵥ", f"{sigma_v:.2f} MPa")
+
+# ---------------- Transformer Hall ----------------
+st.subheader("Transformer Hall Dimensions")
+
+B_trans = st.number_input("Transformer Hall Width Bₜ (m)", value=15.0, step=1.0)
+H_trans = st.number_input("Transformer Hall Height Hₜ (m)", value=15.0, step=1.0)
+L_trans = st.number_input("Transformer Hall Length Lₜ (m)", value=60.0, step=5.0)
+
+st.write(f"- **Width (Bₜ):** {B_trans:.1f} m")
+st.write(f"- **Height (Hₜ):** {H_trans:.1f} m")
+st.write(f"- **Length (Lₜ):** {L_trans:.1f} m")
+
+# ---------------- Pillar Thickness Check ----------------
+st.subheader("Pillar Thickness Recommendation")
+
+rock_quality = st.selectbox("Select Rock Mass Quality:", ["Good", "Fair", "Poor"])
+
+if rock_quality == "Good":
+    t_p = max(25.0, 0.8 * B_hall)
+elif rock_quality == "Fair":
+    t_p = max(35.0, B_hall)
+else:  # Poor
+    t_p = max(45.0, 1.5 * B_hall)
+
+st.metric("Recommended Pillar Thickness", f"{t_p:.1f} m")
+st.info(f"Rock quality: {rock_quality} — pillar spacing should be verified by FEA and stability analysis.")
+
+# ---------------- Guidance ----------------
+st.info(
+    "👉 At this stage, both caverns are dimensioned. "
+    "Carry out **numerical modelling** to verify rock-pillar stability, "
+    "support needs, and long-term performance."
+)
+
+)
+
+st.header("10) Core Equations")
 
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining & Rock)", "Surge/Waterhammer"])
 
@@ -1929,86 +2038,7 @@ with tabS:
     st.latex(r"\frac{A_s}{A_p} \;\geq\; \frac{L}{H}")
     st.caption("⚠️ Teaching approximations only — detailed design needs transient surge analysis (e.g., Method of Characteristics).")
 
-# ---------------- Step 9: Underground Machine Hall Design ----------------
-
-st.header("Step 9 · Underground Power Station")
-
-# --- Mode Selection ---
-input_mode = st.radio(
-    "Choose input mode:",
-    ["Use Preset (from Step 1 & 2)", "Enter manually"]
-)
-
-# --- Case 1: Use Preset ---
-if input_mode == "Use Preset (from Step 1 & 2)":
-    P_design = st.session_state.get("P_design", 500.0)      # MW
-    N_units  = st.session_state.get("N", 2)                 # units
-    turbine_abs = st.session_state.get("turbine_abs", 180.0)
-
-# --- Case 2: Manual Input ---
-else:
-    P_design = st.number_input("Design Power P_design (MW)", value=500.0, step=50.0)
-    N_units  = st.number_input("Number of Units N", value=2, step=1, min_value=1)
-    turbine_abs = st.number_input("Turbine Centre Line Elevation (m)", value=180.0, step=1.0)
-
-# Per-unit capacity
-P_unit = P_design / N_units if N_units > 0 else 0
-
-# --- Display key project data ---
-st.write(f"**Design Power:** {P_design:.0f} MW")
-st.write(f"**Units:** {N_units} × {P_unit:.0f} MW each")
-st.metric("Calculated Turbine CL elevation", f"{turbine_abs:.2f} m")
-
-# Cavern Shape Options
-shape = st.selectbox(
-    "Select Machine Hall Shape:",
-    ["Mushroom-Shaped", "Horseshoe-Shaped", "Elliptical"]
-)
-
-# --- Example dimensions ---
-unit_width   = 25.0   # m per unit (incl. clearance)
-erection_bay = 30.0   # m
-B_hall = 25.0
-H_hall = 55.0
-L_hall = N_units * unit_width + erection_bay
-
-# Apply shape scaling factor
-shape_factor = {"Mushroom-Shaped": 0.95, "Horseshoe-Shaped": 1.00, "Elliptical": 1.10}
-adj = shape_factor[shape]
-B_hall *= adj
-H_hall *= adj
-L_hall *= adj
-
-# Crown elevation
-crown_elev = turbine_abs + H_hall
-
-# --- User input: Cover depth ---
-cover_depth = st.number_input("Cavern cover depth above crown (m)", value=300.0, step=10.0)
-
-# Vertical stress
-gamma = st.number_input("Rock unit weight γ (kN/m³)", value=27.0, step=0.5)  
-sigma_v = gamma * cover_depth / 1000.0  # MPa
-
-# ---------------- Output ----------------
-st.subheader("Machine Hall Dimensions (Example)")
-st.write(f"- **Width (B):** {B_hall:.1f} m")
-st.write(f"- **Height (H):** {H_hall:.1f} m")
-st.write(f"- **Length (L):** {L_hall:.1f} m")
-st.write(f"- **Shape:** {shape}")
-st.write(f"- **Crown Elevation:** {crown_elev:.2f} m")
-
-st.subheader("In-Situ Stress Estimate")
-st.write(f"- **Cover depth above crown:** {cover_depth:.1f} m")
-st.write(f"- **Unit weight γ:** {gamma:.1f} kN/m³")
-st.metric("Vertical In-Situ Stress σᵥ", f"{sigma_v:.2f} MPa")
-
-st.info(
-    "👉 You should now carry out **Finite Element Analysis (FEA)** to "
-    "verify stress distribution, cavern deformation, and support design."
-)
-
-
-st.subheader("9) Reference Tables")
+st.subheader("11) Reference Tables")
 
 with st.expander("📘 Typical Darcy Friction Factors (f)", expanded=False):
     df_f = pd.DataFrame({
@@ -2038,7 +2068,7 @@ with st.expander("📘 Rock & Concrete Properties (for lining checks)", expanded
     st.table(df_mat)
 
 
-st.header("10) Bibliography")
+st.header("12) Bibliography")
 st.markdown("### 📚 Bibliography (Teaching References)")
 st.markdown("""
 - USBR (1987). *Design of Small Dams*. 3rd ed. — Penstocks & hydraulics guidance  
