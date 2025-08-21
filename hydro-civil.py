@@ -1895,16 +1895,6 @@ st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 st.header("9) Underground Power Station Caverns")
 
-# ===========================
-# Case Study Presets
-# ===========================
-preset = st.selectbox("Load Case Study Preset:", ["None", "Snowy 2.0", "Kidston", "Tehri"])
-if preset == "Snowy 2.0":
-    B_hall, H_hall, L_hall = 24, 54, 220
-elif preset == "Kidston":
-    B_hall, H_hall, L_hall = 20, 48, 200
-elif preset == "Tehri":
-    B_hall, H_hall, L_hall = 26, 60, 240
 
 # ===========================
 # Machine Hall Section
