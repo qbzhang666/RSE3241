@@ -1890,132 +1890,104 @@ st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 
 # ----------------------------
-# Step 9: Underground Cavern Layout (Machine Hall + Transformer Hall + IPB)
+# Step 9: Underground Cavern Layout (Machine Hall + Transformer Hall + IPB Gallery)
 # ----------------------------
 
 st.header("9) Underground Power Station Caverns")
 
-# ===========================
-# Machine Hall Section
-# ===========================
-st.subheader("Machine Hall Dimensions")
+# ======================================================
+# Machine Hall
+# ======================================================
+st.subheader("Machine Hall")
 
-mh_mode = st.radio(
-    "Machine Hall Input Mode:",
-    ["Use Preset (from Step 1 & 2)", "Enter manually"]
-)
+mh_mode = st.radio("Machine Hall Input Mode:", ["Use Preset (from Step 1 & 2)", "Enter manually"])
 
 if mh_mode == "Use Preset (from Step 1 & 2)":
-    P_design = st.session_state.get("P_design", 500.0)      # MW
-    N_units  = st.session_state.get("N", 2)                 # units
+    P_design = st.session_state.get("P_design", 500.0)    # MW
+    N_units  = st.session_state.get("N", 2)               # units
     turbine_abs = st.session_state.get("turbine_abs", 180.0)
 else:
     P_design = st.number_input("Design Power P_design (MW)", value=500.0, step=50.0)
     N_units  = st.number_input("Number of Units N", value=2, step=1, min_value=1)
     turbine_abs = st.number_input("Turbine Centre Line Elevation (m)", value=180.0, step=1.0)
 
-# Per-unit capacity
+# Derived values
 P_unit = P_design / N_units if N_units > 0 else 0
-st.write(f"**Design Power:** {P_design:.0f} MW")
-st.write(f"**Units:** {N_units} × {P_unit:.0f} MW each")
-st.metric("Calculated Turbine CL elevation", f"{turbine_abs:.2f} m")
+st.write(f"**Design Power:** {P_design:.0f} MW  ({N_units} × {P_unit:.0f} MW each)")
+st.metric("Turbine Centreline Elevation", f"{turbine_abs:.2f} m")
 
-# Shape selection
-shape = st.selectbox(
-    "Select Machine Hall Shape:",
-    ["Mushroom-Shaped", "Horseshoe-Shaped", "Elliptical"]
-)
+# Cavern geometry
+shape = st.selectbox("Machine Hall Shape:", ["Mushroom", "Horseshoe", "Elliptical"])
+shape_factor = {"Mushroom": 0.95, "Horseshoe": 1.00, "Elliptical": 1.10}[shape]
 
-# Default reference dimensions
-unit_width   = 25.0   # m per unit (incl. clearance)
-erection_bay = 30.0   # m
-B_hall = 25.0
-H_hall = 55.0
-L_hall = N_units * unit_width + erection_bay
+unit_width   = 25.0
+erection_bay = 30.0
+B_hall = 25.0 * shape_factor
+H_hall = 55.0 * shape_factor
+L_hall = (N_units * unit_width + erection_bay) * shape_factor
 
-# Apply shape factor
-shape_factor = {"Mushroom-Shaped": 0.95, "Horseshoe-Shaped": 1.00, "Elliptical": 1.10}
-adj = shape_factor[shape]
-B_hall *= adj
-H_hall *= adj
-L_hall *= adj
+# Allow override
+B_hall = st.number_input("Width B (m)", value=B_hall, step=1.0)
+H_hall = st.number_input("Height H (m)", value=H_hall, step=1.0)
+L_hall = st.number_input("Length L (m)", value=L_hall, step=5.0)
 
-# Allow students to override dimensions
-B_hall = st.number_input("Machine Hall Width B (m)", value=B_hall, step=1.0)
-H_hall = st.number_input("Machine Hall Height H (m)", value=H_hall, step=1.0)
-L_hall = st.number_input("Machine Hall Length L (m)", value=L_hall, step=5.0)
+# Stress check
+crown_elev   = turbine_abs + H_hall
+cover_depth  = st.number_input("Cover depth above crown (m)", value=300.0, step=10.0)
+gamma        = st.number_input("Rock unit weight γ (kN/m³)", value=27.0, step=0.5)
+sigma_v      = gamma * cover_depth / 1000.0  # MPa
 
-# Crown elevation
-crown_elev = turbine_abs + H_hall
+st.write(f"- Width: **{B_hall:.1f} m**")
+st.write(f"- Height: **{H_hall:.1f} m**")
+st.write(f"- Length: **{L_hall:.1f} m**")
+st.write(f"- Shape: **{shape}**")
+st.write(f"- Crown Elevation: **{crown_elev:.1f} m**")
+st.metric("Vertical Stress σᵥ", f"{sigma_v:.2f} MPa")
 
-# Cover depth and stress
-cover_depth = st.number_input("Cavern cover depth above crown (m)", value=300.0, step=10.0)
-gamma = st.number_input("Rock unit weight γ (kN/m³)", value=27.0, step=0.5)  
-sigma_v = gamma * cover_depth / 1000.0  # MPa
+# ======================================================
+# Transformer Hall (simplified)
+# ======================================================
+st.subheader("Transformer Hall (Simplified Defaults)")
 
-# Output
-st.write(f"- **Width (B):** {B_hall:.1f} m")
-st.write(f"- **Height (H):** {H_hall:.1f} m")
-st.write(f"- **Length (L):** {L_hall:.1f} m")
-st.write(f"- **Shape:** {shape}")
-st.write(f"- **Crown Elevation:** {crown_elev:.2f} m")
-st.write(f"- **Cover depth above crown:** {cover_depth:.1f} m")
-st.write(f"- **Unit weight γ:** {gamma:.1f} kN/m³")
-st.metric("Vertical In-Situ Stress σᵥ", f"{sigma_v:.2f} MPa")
-
-# ===========================
-# Transformer Hall Section
-# ===========================
-st.subheader("Transformer Hall Dimensions")
-
-th_mode = st.radio(
-    "Transformer Hall Input Mode:",
-    ["Use Reference Defaults", "Enter manually"]
-)
+th_mode = st.radio("Transformer Hall Mode:", ["Use Reference Defaults", "Enter manually"])
 
 if th_mode == "Use Reference Defaults":
     B_trans, H_trans, L_trans = 15.0, 15.0, 60.0
 else:
-    B_trans = st.number_input("Transformer Hall Width Bₜ (m)", value=15.0, step=1.0)
-    H_trans = st.number_input("Transformer Hall Height Hₜ (m)", value=15.0, step=1.0)
-    L_trans = st.number_input("Transformer Hall Length Lₜ (m)", value=60.0, step=5.0)
+    B_trans = st.number_input("Width Bₜ (m)", value=15.0, step=1.0)
+    H_trans = st.number_input("Height Hₜ (m)", value=15.0, step=1.0)
+    L_trans = st.number_input("Length Lₜ (m)", value=60.0, step=5.0)
 
-st.write(f"- **Width (Bₜ):** {B_trans:.1f} m")
-st.write(f"- **Height (Hₜ):** {H_trans:.1f} m")
-st.write(f"- **Length (Lₜ):** {L_trans:.1f} m")
+st.write(f"- Width: **{B_trans:.1f} m**")
+st.write(f"- Height: **{H_trans:.1f} m**")
+st.write(f"- Length: **{L_trans:.1f} m**")
 
-# ===========================
-# IP Gallery & Pillar Design
-# ===========================
-st.subheader("Insulated Phase Bus (IPB) Gallery & Pillar Thickness")
+# ======================================================
+# IPB Gallery & Pillar
+# ======================================================
+st.subheader("IPB Gallery & Pillar")
 
-st.write("The IPB Gallery runs between the Machine Hall and Transformer Hall. "
-         "Its spacing defines the pillar thickness and stability.")
-
-# Pillar thickness selection based on rock quality
-rock_quality = st.selectbox("Select Rock Mass Quality:", ["Good", "Fair", "Poor"])
+rock_quality = st.selectbox("Rock Mass Quality:", ["Good", "Fair", "Poor"])
 
 if rock_quality == "Good":
     t_pillar = max(25.0, 0.8 * B_hall)
 elif rock_quality == "Fair":
-    t_pillar = max(35.0, B_hall)
+    t_pillar = max(35.0, 1.0 * B_hall)
 else:  # Poor
     t_pillar = max(45.0, 1.5 * B_hall)
 
-st.metric("Recommended Pillar Thickness between Halls", f"{t_pillar:.1f} m")
-st.info(
-    f"Rock quality: {rock_quality}. The pillar must be checked by **numerical modelling** "
-    f"(e.g. FEM/DEM) for stress distribution, yielding, and interaction between halls."
-)
+st.metric("Recommended Pillar Thickness", f"{t_pillar:.1f} m")
+st.info("Pillar thickness must be checked by numerical modelling (FEM/DEM) for stress and stability.")
 
-# IP Gallery dimensions (optional student input)
+# IPB Gallery
 B_ip = st.number_input("IPB Gallery Width (m)", value=8.0, step=1.0)
 H_ip = st.number_input("IPB Gallery Height (m)", value=10.0, step=1.0)
 L_ip = st.number_input("IPB Gallery Length (m)", value=L_trans, step=5.0)
 
-st.write(f"- **IPB Gallery Width:** {B_ip:.1f} m")
-st.write(f"- **IPB Gallery Height:** {H_ip:.1f} m")
-st.write(f"- **IPB Gallery Length:** {L_ip:.1f} m")
+st.write(f"- Width: **{B_ip:.1f} m**")
+st.write(f"- Height: **{H_ip:.1f} m**")
+st.write(f"- Length: **{L_ip:.1f} m**")
+
 
 
 
