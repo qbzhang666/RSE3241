@@ -1889,16 +1889,11 @@ st.write(f"Area Ratio (Aₛ / Aₚ): {A_s / A_p_total:.2f}")
 st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 
-# ----------------------------
-# Step 9: Underground Cavern Layout (Machine Hall + Transformer Hall + IPB)
-# ----------------------------
-
 st.header("9) Underground Power Station Caverns")
 
-
-# ===========================
+# =====================
 # Machine Hall Section
-# ===========================
+# =====================
 st.subheader("Machine Hall Dimensions")
 
 mh_mode = st.radio(
@@ -1907,13 +1902,17 @@ mh_mode = st.radio(
 )
 
 if mh_mode == "Use Preset (from Step 1 & 2)":
-    P_design = st.session_state.get("P_design", 500.0)      # MW
-    N_units  = st.session_state.get("N", 2)                 # units
-    turbine_abs = st.session_state.get("turbine_abs", 180.0)
+    P_design = st.session_state.get("P_design", 500.0)  # MW
+    N_units = st.session_state.get("N_units", 2)        # units
+    Turbine_abs = st.session_state.get("Turbine_abs", 180.0)
+
+    st.write(f"Using preset values from Step 1 & 2: "
+             f"P = {P_design} MW, Units = {N_units}, Turbine abs = {Turbine_abs}")
+
 else:
-    P_design = st.number_input("Design Power P_design (MW)", value=500.0, step=50.0)
-    N_units  = st.number_input("Number of Units N", value=2, step=1, min_value=1)
-    turbine_abs = st.number_input("Turbine Centre Line Elevation (m)", value=180.0, step=1.0)
+    B_hall = st.number_input("Machine Hall Width (m)", value=20.0, step=1.0)
+    H_hall = st.number_input("Machine Hall Height (m)", value=40.0, step=1.0)
+    L_hall = st.number_input("Machine Hall Length (m)", value=120.0, step=5.0)
 
 # Per-unit capacity
 P_unit = P_design / N_units if N_units > 0 else 0
