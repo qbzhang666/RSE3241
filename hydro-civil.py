@@ -2012,38 +2012,47 @@ st.subheader("Insulated Phase Bus (IPB) Gallery & Pillar Thickness")
 st.write("The IPB Gallery runs between the Machine Hall and Transformer Hall. "
          "Its spacing defines the pillar thickness and stability.")
 
-# Pillar thickness based on rock quality
+# ---------------------------
+# Recommended pillar thickness from rock quality
+# ---------------------------
 rock_quality = st.selectbox("Select Rock Mass Quality:", ["Good", "Fair", "Poor"])
 
 if rock_quality == "Good":
-    t_pillar = max(20.0, 0.5 * B_hall)
+    t_pillar_rec = max(20.0, 0.5 * B_hall)
 elif rock_quality == "Fair":
-    t_pillar = max(30.0, 0.8 * B_hall)
+    t_pillar_rec = max(30.0, 0.8 * B_hall)
 else:  # Poor
-    t_pillar = max(40.0, 1.0 * B_hall)
+    t_pillar_rec = max(40.0, 1.0 * B_hall)
 
-st.metric("Recommended Pillar Thickness between Halls", f"{t_pillar:.1f} m")
+st.metric("Recommended Pillar Thickness between Halls", f"{t_pillar_rec:.1f} m")
 st.info(
     f"Rock quality: {rock_quality}. Pillar must be checked by **numerical modelling** "
     f"(FEM/DEM) for stress distribution, yielding, and interaction between halls."
 )
 
-# IPB Gallery dimensions
+# ---------------------------
+# IPB Gallery geometry inputs
+# ---------------------------
 B_ip = st.number_input("IPB Gallery Width (m)", value=3.0, step=0.1, format="%.1f")
 H_ip = st.number_input("IPB Gallery Height (m)", value=3.0, step=0.1, format="%.1f")
 
-# Pillar thickness (default from L_trans if defined)
+# User-defined pillar thickness (default from L_trans if available)
 try:
     default_t_pillar = float(L_trans)
 except NameError:
-    default_t_pillar = 60.0   # fallback value
+    default_t_pillar = t_pillar_rec  # use recommended value if no L_trans
 
-t_pillar = st.number_input("Pillar Thickness (m)", value=default_t_pillar, step=1.0, format="%.1f")
+t_pillar_user = st.number_input("User-defined Pillar Thickness (m)", value=default_t_pillar, step=1.0, format="%.1f")
 
+# ---------------------------
+# Display geometry summary
+# ---------------------------
 st.write("### Geometry Inputs")
 st.write(f"- **IPB Gallery Width:** {B_ip:.1f} m")
 st.write(f"- **IPB Gallery Height:** {H_ip:.1f} m")
-st.write(f"- **Pillar Thickness:** {t_pillar:.1f} m")
+st.write(f"- **Recommended Pillar Thickness:** {t_pillar_rec:.1f} m")
+st.write(f"- **User-defined Pillar Thickness:** {t_pillar_user:.1f} m")
+
 
 
 st.header("10) Core Equations")
