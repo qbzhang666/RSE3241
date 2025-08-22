@@ -329,24 +329,38 @@ V_req_GL = V_req / 1e6           # GL
 
 st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³  ({V_req_GL:,.2f} GL)")
 
+# ------------------------------- Discharge Calculations -------------------------------
+# From power equation
+Q_power = P_design * 1e6 / (RHO * G * H * eta)   # m³/s
+
+# From reservoir volume/time
+Q_volume = V_req / (t_op * 3600)                 # m³/s
+
+st.metric("Design Discharge Q (from Power)", f"{Q_power:,.1f} m³/s")
+st.metric("Design Discharge Q (from Volume/Time)", f"{Q_volume:,.1f} m³/s")
 
 # ------------------------------- Equations (Teaching) -------------------------------
 with st.expander("Show equations used"):
     st.markdown("**1. Energy Requirement (MWh):**")
     st.latex(r"E_{req} = P_{design} \times t_{op}")
-    st.markdown("Where $P_{design}$ is the design/target power (MW), and $t_{op}$ is the operation time (hours).")
 
     st.markdown("**2. Required Reservoir Volume (m³):**")
     st.latex(r"V_{req} = \frac{E_{req} \times 3.6 \times 10^9}{\rho g H \eta}")
-    st.markdown("Where $\\rho$ is water density (kg/m³), $g$ is gravity (m/s²), $H$ is effective head (m), and $\\eta$ is efficiency.")
 
     st.markdown("**3. Power from Flow (MW):**")
     st.latex(r"P = \frac{\rho g Q H \eta}{10^6}")
-    st.markdown("Where $Q$ is the discharge flow rate (m³/s). Division by $10^6$ converts W → MW.")
 
-    st.markdown("**4. Operating Time from Storage (hours):**")
+    st.markdown("**4. Discharge from Power (m³/s):**")
+    st.latex(r"Q_{power} = \frac{P_{design} \times 10^6}{\rho g H \eta}")
+
+    st.markdown("**5. Discharge from Reservoir Volume & Time (m³/s):**")
+    st.latex(r"Q_{volume} = \frac{V_{req}}{t_{op} \times 3600}")
+
+    st.markdown("**6. Operating Time from Storage (hours):**")
     st.latex(r"T = \frac{V_{req}}{Q \times 3600}")
-    st.markdown("Where $3600$ converts seconds to hours.")
+
+    st.info("⚠️ In practice, both methods should give consistent results. "
+            "Minor differences may occur due to rounding and efficiency assumptions.")
 
 # ------------------------------- Reservoir Volume–Discharge–Power Relationships -------------------------------
 st.subheader("Reservoir Volume–Discharge–Power Relationships")
@@ -357,16 +371,21 @@ T_curve = V_req / (Q_range * 3600)            # [hours]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
 ax1.plot(Q_range, T_curve, 'o-')
+ax1.axhline(y=t_op, color='r', linestyle='--', label="Target Operation Time")
 ax1.set_xlabel("Discharge Q (m³/s)")
 ax1.set_ylabel("Operation Time (hours)")
+ax1.legend()
 ax1.grid(True)
 
 ax2.plot(Q_range, P_curve, 's-')
+ax2.axhline(y=P_design, color='r', linestyle='--', label="Target Power")
 ax2.set_xlabel("Discharge Q (m³/s)")
 ax2.set_ylabel("Power (MW)")
+ax2.legend()
 ax2.grid(True)
 
 st.pyplot(fig)
+
 
 # ------------------------------- Dam Type Suggestion -------------------------------
 st.subheader("Dam Type Suggestion")
@@ -395,7 +414,7 @@ dam_suggestion = dam_type(H, V_req)
 st.success(f"Suggested Dam Type: {dam_suggestion}")
 
 # Show the selection logic for teaching
-with st.expander("Show dam type selection conditions and real-world examples (for students)"):
+with st.expander("Show dam type selection conditions and real-world examples"):
 
     st.markdown(f"""
     **Your Project Case:**  
