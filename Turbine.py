@@ -123,9 +123,9 @@ with col4:
     st.metric("Pumping Energy Required", f"{pumping_energy/1e6:.2f} MWh")
 
 # ---------------- Case Study: Kidston PHES ----------------
-st.header("Case Study: Kidston Pumped Hydro Energy Storage")
+st.header("Case Study: Snowy 2.0 Pumped Hydro Energy Storage")
 st.markdown("""
-**Kidston PHES (Queensland, Australia)**  
+**Snowy 2.0 PHES (NSW, Australia)**  
 - Head: ~700 m  
 - Discharge: ~400 m³/s  
 - Capacity: ~2000 MW  
