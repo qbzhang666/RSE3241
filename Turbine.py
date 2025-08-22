@@ -1,33 +1,20 @@
-# streamlit_turbine_selection_overlay_embedded.py
+# streamlit_turbine_selection_overlay.py
 
-import os
 import math
 import streamlit as st
 import plotly.graph_objects as go
-from PIL import Image
 
 # -------------------------------
 # Constants
 # -------------------------------
-g = 9.81       # m/s²
-rho = 1000.0   # kg/m³
+g = 9.81
+rho = 1000.0
 
-st.title("🌊 Turbine Selection & Energy Generation")
-st.markdown("This app overlays the turbine selection chart with your design operating point.")
-
-# ---------------------------------------------------
-# STEP 1: Load Embedded Chart
-# ---------------------------------------------------
-# Place your turbine chart image inside /assets/ in your repo
-chart_path = os.path.join("assets", "turbine_chart.png")
-
-if not os.path.exists(chart_path):
-    st.error(f"❌ Could not find {chart_path}. Please check that the file exists in your repo.")
-else:
-    img = Image.open(chart_path)
+st.title("🌊 Turbine Selection with Interactive Overlay")
+st.markdown("Move the sliders to place your operating point on the turbine selection chart (Q–H).")
 
 # ---------------------------------------------------
-# STEP 2: User Inputs
+# STEP 1: User Inputs
 # ---------------------------------------------------
 st.header("1. Define Inputs")
 
@@ -41,62 +28,61 @@ eta_generator = st.slider("Generator Efficiency (η_generator)", 0.90, 0.99, 0.9
 eta_transformer = st.slider("Transformer Efficiency (η_transformer)", 0.98, 0.995, 0.99)
 
 # ---------------------------------------------------
-# STEP 3: Efficiency & Power
+# STEP 2: Overall Efficiency & Power
 # ---------------------------------------------------
-st.header("2. Efficiency and Power")
 eta_total = eta_turbine * eta_generator * eta_transformer
 P = rho * g * Q_design * H_effective * eta_total
 P_MW = P / 1e6
-st.write(f"⚙️ **Overall Efficiency η_total = {eta_total:.3f}**")
-st.success(f"Net Power Output = {P_MW:.1f} MW")
 
 # ---------------------------------------------------
-# STEP 4: Turbine Selection Chart Overlay
+# STEP 3: Turbine Selection Chart Overlay
 # ---------------------------------------------------
-st.header("3. Turbine Selection Chart (Overlay)")
+st.header("2. Turbine Selection Chart Overlay")
 
-if os.path.exists(chart_path):
-    fig = go.Figure()
+# Background image (uploaded slide)
+img_path = "turbine_chart.png"  # <-- rename your uploaded file to this
 
-    # Add chart image as background aligned with log-log axes
-    fig.add_layout_image(
-        dict(
-            source=img,
-            xref="x", yref="y",
-            x=0.1, y=2000,          # bottom-left of chart
-            sizex=1000, sizey=2000, # covers Q=0.1–1000, H=1–2000
-            sizing="stretch",
-            opacity=1,
-            layer="below"
-        )
+fig = go.Figure()
+
+# Add background image
+fig.add_layout_image(
+    dict(
+        source="turbine_chart.png",   # will be served from local file
+        xref="x", yref="y",
+        x=0.1, y=2000,  # bottom-left (Q min, H max)
+        sizex=1000, sizey=2000,  # axis span
+        sizing="stretch",
+        opacity=1,
+        layer="below"
     )
+)
 
-    # Log scale axes
-    fig.update_xaxes(type="log", range=[-1, 3], title="Discharge Q (m³/s)")
-    fig.update_yaxes(type="log", range=[0, 3.3], title="Head h (m)")
+# Set log-log axes same as the chart
+fig.update_xaxes(type="log", range=[-1, 3], title="Discharge Q (m³/s)")
+fig.update_yaxes(type="log", range=[0, 3.3], title="Head h (m)")
 
-    # Add operating point
-    fig.add_trace(go.Scatter(
-        x=[Q_design], y=[H_effective],
-        mode="markers+text",
-        text=[f"{P_MW:.1f} MW"],
-        textposition="top center",
-        marker=dict(size=14, color="red", symbol="circle"),
-        name="Operating Point"
-    ))
+# Plot student's operating point
+fig.add_trace(go.Scatter(
+    x=[Q_design], y=[H_effective],
+    mode="markers+text",
+    text=[f"{P_MW:.1f} MW"],
+    textposition="top center",
+    marker=dict(size=14, color="red", symbol="circle"),
+    name="Operating Point"
+))
 
-    fig.update_layout(
-        width=800, height=600,
-        title="Interactive Turbine Selection Map",
-        template="plotly_white"
-    )
+fig.update_layout(
+    width=800, height=600,
+    title="Interactive Turbine Selection Map (Overlay on Chart)",
+    template="plotly_white"
+)
 
-    st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------
-# STEP 5: Summary
+# STEP 4: Summary
 # ---------------------------------------------------
-st.header("4. Summary")
+st.header("3. Summary")
 st.markdown(f"""
 - **Effective Head (H):** {H_effective:.1f} m  
 - **Discharge Q:** {Q_design:.1f} m³/s  
