@@ -253,26 +253,29 @@ P_design = st.number_input("Target Power P_design (MW)",
 H = st.number_input("Effective Head H (m)", 
                     value=float(st.session_state.get("gross_head", 300.0)), step=10.0)
 t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
-eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01)
+eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01,
+                      help="Overall cycle efficiency (pump → turbine → grid).")
 
-# Required storage volume
-E_req = P_design * t_op          # MWh
-V_req = E_req * 3.6e9 / (RHO * G * H * eta)  # m³
+# Required storage volume (accounts for η)
+E_req = P_design * t_op                     # MWh
+E_input = E_req / eta                       # MWh input required for cycle
+V_req = E_input * 3.6e9 / (RHO * G * H)     # m³
 
-st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³")
+st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³", 
+          help="Volume accounts for losses through round-trip efficiency.")
 
 # Reservoir volume–discharge–power relationships
 st.subheader("Reservoir Volume–Discharge–Power Relationships")
 
-Q_range = np.linspace(50, 500, 10)  # discharge range [m³/s]
-P_curve = RHO * G * Q_range * H * eta / 1e6   # MW
-T_curve = V_req / (Q_range * 3600)            # hours
+Q_range = np.linspace(50, 500, 10)           # discharge range [m³/s]
+P_curve = RHO * G * Q_range * H * eta / 1e6 # MW (output, with η)
+T_curve = V_req / (Q_range * 3600)           # hours
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
 ax1.plot(Q_range, T_curve, 'o-')
 ax1.set_xlabel("Discharge Q (m³/s)"); ax1.set_ylabel("Operation Time (hours)"); ax1.grid(True)
 ax2.plot(Q_range, P_curve, 's-')
-ax2.set_xlabel("Discharge Q (m³/s)"); ax2.set_ylabel("Power (MW)"); ax2.grid(True)
+ax2.set_xlabel("Discharge Q (m³/s)"); ax2.set_ylabel("Power Output (MW)"); ax2.grid(True)
 st.pyplot(fig)
 
 # Dam type suggestion with criteria
@@ -299,9 +302,11 @@ st.success(f"Suggested Dam Type: {dam_suggestion}")
 # Equations (for teaching)
 with st.expander("Show equations used"):
     st.latex(r"E_{req} = P_{design} \times t_{op}")
-    st.latex(r"V_{req} = \frac{E_{req} \times 3.6 \times 10^9}{\rho g H \eta}")
+    st.latex(r"E_{input} = \frac{E_{req}}{\eta}")
+    st.latex(r"V_{req} = \frac{E_{input} \times 3.6 \times 10^9}{\rho g H}")
     st.latex(r"P = \frac{\rho g Q H \eta}{10^6} \;\; \text{[MW]}")
     st.latex(r"T = \frac{V_{req}}{Q \times 3600} \;\; \text{[hours]}")
+
 
 # ------------------------------- Step 2: Reservoir Levels, NWL & Rating Head -------------------------------
 st.header("2) Reservoir Levels, NWL & Rating Head")
