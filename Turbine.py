@@ -147,7 +147,7 @@ with col4:
 # Additional information
 st.header("Additional Information")
 with st.expander("Turbine Efficiency Curves"):
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Turbine_efficiency_curves.svg/1200px-Turbine_efficiency_curves.svg.png", 
+    st.image("https://github.com/qbzhang666/RSE3241/blob/main/Turbine%20Selection.png", 
              caption="Typical turbine efficiency curves (Source: Wikipedia)")
 
 with st.expander("Formulas Used"):
