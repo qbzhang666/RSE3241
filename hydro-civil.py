@@ -1,4 +1,4 @@
-# PHES Design Teaching App — with Moody helper (Swamee–Jain) for f(Re, ε/D)
+ste# PHES Design Teaching App — with Moody helper (Swamee–Jain) for f(Re, ε/D)
 # Reservoir head, penstock hydraulics, lining stress (modular), losses, surge tanks
 # Classroom-friendly; robust on Streamlit Cloud; no Styler usage
 
@@ -244,68 +244,92 @@ plt.rcParams.update({
     "legend.fontsize": 9
 })
 
-# ------------------------------- Step 1: Reservoir & Dam Design -------------------------------
-st.header("1) Reservoir & Dam Design")
+# ---------------- Step 1: Reservoir Selection & Dam Design ----------------
+import itertools
+import math
+import pandas as pd
 
-st.subheader("Inputs")
-P_design = st.number_input("Target Power P_design (MW)", 
-                           value=float(st.session_state.get("P_design", 500.0)), step=10.0)
-H = st.number_input("Effective Head H (m)", 
-                    value=float(st.session_state.get("gross_head", 300.0)), step=10.0)
-t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
-eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01,
-                      help="Overall cycle efficiency (pump → turbine → grid).")
+# ---------------- Constants ----------------
+G = 9.81        # m/s²
+RHO = 1000.0    # kg/m³
+ETA_RT = 0.75   # default round-trip efficiency
+F_LOSS = 0.05   # default hydraulic loss fraction (5%)
 
-# Required storage volume (accounts for η)
-E_req = P_design * t_op                     # MWh
-E_input = E_req / eta                       # MWh input required for cycle
-V_req = E_input * 3.6e9 / (RHO * G * H)     # m³
+def evaluate_reservoir_pairs(reservoirs, eta_rt=ETA_RT, f_loss=F_LOSS, top_n=5):
+    """
+    Evaluate all possible upper–lower reservoir pairs for PHES screening.
+    Uses gross head with optional % head-loss correction.
+    
+    Parameters
+    ----------
+    reservoirs : list of dict
+        Each reservoir must include:
+        {
+          "name": str,
+          "elev": float,      # elevation (m)
+          "volume": float,    # useful storage volume (m³)
+          "coords": (x,y)     # coordinates (m or km, consistent units)
+        }
+    eta_rt : float
+        Round-trip efficiency (default 0.75).
+    f_loss : float
+        Fraction of gross head lost to hydraulic/frictional effects (default 0.05).
+    top_n : int
+        Number of best pairs to return (ranked by storable energy).
+    
+    Returns
+    -------
+    DataFrame sorted by potential energy (MWh).
+    """
+    results = []
+    
+    for upper, lower in itertools.permutations(reservoirs, 2):
+        if upper["elev"] <= lower["elev"]:
+            continue  # skip invalid (upper must be higher than lower)
+        
+        # gross head
+        H_gross = upper["elev"] - lower["elev"]
+        
+        # effective head (accounting for loss)
+        H_loss = f_loss * H_gross
+        H_eff = H_gross - H_loss
+        
+        # penstock length (3D distance, just for reference)
+        dx = upper["coords"][0] - lower["coords"][0]
+        dy = upper["coords"][1] - lower["coords"][1]
+        dz = upper["elev"] - lower["elev"]
+        penstock_len = math.sqrt(dx**2 + dy**2 + dz**2)
+        
+        # usable volume (limited by smaller reservoir)
+        V_use = min(upper["volume"], lower["volume"])
+        
+        # storable energy (J → MWh)
+        E_J = RHO * G * V_use * H_eff * eta_rt
+        E_MWh = E_J / 3.6e9
+        
+        results.append({
+            "Upper": upper["name"],
+            "Lower": lower["name"],
+            "Gross Head (m)": round(H_gross, 1),
+            "Effective Head (m)": round(H_eff, 1),
+            "Usable Vol (10^6 m³)": round(V_use / 1e6, 2),
+            "Energy (MWh)": round(E_MWh, 1),
+            "Penstock Length (km)": round(penstock_len/1000, 2),
+        })
+    
+    df = pd.DataFrame(results)
+    return df.sort_values(by="Energy (MWh)", ascending=False).head(top_n)
 
-st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³", 
-          help="Volume accounts for losses through round-trip efficiency.")
-
-# Reservoir volume–discharge–power relationships
-st.subheader("Reservoir Volume–Discharge–Power Relationships")
-
-Q_range = np.linspace(50, 500, 10)           # discharge range [m³/s]
-P_curve = RHO * G * Q_range * H * eta / 1e6 # MW (output, with η)
-T_curve = V_req / (Q_range * 3600)           # hours
-
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
-ax1.plot(Q_range, T_curve, 'o-')
-ax1.set_xlabel("Discharge Q (m³/s)"); ax1.set_ylabel("Operation Time (hours)"); ax1.grid(True)
-ax2.plot(Q_range, P_curve, 's-')
-ax2.set_xlabel("Discharge Q (m³/s)"); ax2.set_ylabel("Power Output (MW)"); ax2.grid(True)
-st.pyplot(fig)
-
-# Dam type suggestion with criteria
-st.subheader("Dam Type Suggestion")
-
-st.markdown("""
-**Typical selection criteria:**
-- **Concrete Gravity Dam**: Preferred for **high heads (>150 m)** and **moderate storage volumes (<20 million m³)**.
-- **Rockfill Dam**: Suitable for **very large storage volumes (>50 million m³)**, even with medium heads.
-- **Embankment Dam**: Often selected for **moderate heads and moderate storage volumes**.
-""")
-
-def dam_type(H, V):
-    if H > 150 and V < 20e6:
-        return "Concrete Gravity Dam"
-    elif V > 50e6:
-        return "Rockfill Dam"
-    else:
-        return "Embankment Dam"
-
-dam_suggestion = dam_type(H, V_req)
-st.success(f"Suggested Dam Type: {dam_suggestion}")
-
-# Equations (for teaching)
-with st.expander("Show equations used"):
-    st.latex(r"E_{req} = P_{design} \times t_{op}")
-    st.latex(r"E_{input} = \frac{E_{req}}{\eta}")
-    st.latex(r"V_{req} = \frac{E_{input} \times 3.6 \times 10^9}{\rho g H}")
-    st.latex(r"P = \frac{\rho g Q H \eta}{10^6} \;\; \text{[MW]}")
-    st.latex(r"T = \frac{V_{req}}{Q \times 3600} \;\; \text{[hours]}")
+# ------------------ Example ------------------
+if __name__ == "__main__":
+    reservoirs = [
+        {"name": "ResA", "elev": 850, "volume": 5e6, "coords": (1000, 2000)},
+        {"name": "ResB", "elev": 450, "volume": 8e6, "coords": (1200, 2200)},
+        {"name": "ResC", "elev": 600, "volume": 3e6, "coords": (1300, 2100)},
+    ]
+    
+    top_pairs = evaluate_reservoir_pairs(reservoirs, eta_rt=0.78, f_loss=0.05, top_n=5)
+    print(top_pairs)
 
 
 # ------------------------------- Step 2: Reservoir Levels, NWL & Rating Head -------------------------------
