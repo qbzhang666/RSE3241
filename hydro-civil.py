@@ -309,9 +309,6 @@ def evaluate_reservoir_pairs(reservoirs, eta_rt=ETA_RT, f_loss=F_LOSS, top_n=5):
 def swamee_jain(Re, e_D):
     return 0.25 / (np.log10(e_D/3.7 + 5.74/(Re**0.9)))**2
 
-# ---------------- Streamlit UI ----------------
-st.title("PHES Civil Design Teaching App")
-
 # ================================================================
 # Step 1. Reservoir Selection & Dam Design (with Map)
 # ================================================================
