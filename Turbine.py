@@ -21,7 +21,7 @@ We also use **Kidston PHES** as a case study.
 # ---------------------------------------------------
 # STEP 1: Load Embedded Chart
 # ---------------------------------------------------
-chart_path = os.path.join("assets", "turbine_chart.png")  # store the image in /assets/
+chart_path = os.path.join("assets", "Turbine Selection.png")  # store the image in /assets/
 
 if not os.path.exists(chart_path):
     st.error("❌ Could not find turbine chart image. Please add it to /assets/ in your repo.")
