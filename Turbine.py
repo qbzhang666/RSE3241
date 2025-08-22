@@ -1,16 +1,17 @@
-# streamlit_turbine_selection_clean.py
+# streamlit_turbine_selection_overlay.py
 
 import math
 import streamlit as st
+import plotly.graph_objects as go
 
 # -------------------------------
 # Constants
 # -------------------------------
-g = 9.81       # m/s²
-rho = 1000.0   # kg/m³
+g = 9.81
+rho = 1000.0
 
-st.title("🌊 Turbine Selection & Energy Generation")
-st.markdown("Teaching tool for turbine selection, efficiency, and energy balance.")
+st.title("🌊 Turbine Selection with Interactive Overlay")
+st.markdown("Move the sliders to place your operating point on the turbine selection chart (Q–H).")
 
 # ---------------------------------------------------
 # STEP 1: User Inputs
@@ -18,8 +19,8 @@ st.markdown("Teaching tool for turbine selection, efficiency, and energy balance
 st.header("1. Define Inputs")
 
 P_target_MW = st.number_input("Power per Turbine (MW)", value=125.0, step=5.0)
-H_effective = st.number_input("Effective Head Hₑ (m)", value=218.0, step=1.0)
-Q_design = st.number_input("Design Discharge Q (m³/s)", value=240.0, step=10.0)
+H_effective = st.slider("Effective Head H (m)", 1, 2000, 218)
+Q_design = st.slider("Design Discharge Q (m³/s)", 1, 1000, 240)
 
 # efficiencies
 eta_turbine = st.slider("Turbine Efficiency (η_turbine)", 0.70, 0.98, 0.90)
@@ -27,67 +28,64 @@ eta_generator = st.slider("Generator Efficiency (η_generator)", 0.90, 0.99, 0.9
 eta_transformer = st.slider("Transformer Efficiency (η_transformer)", 0.98, 0.995, 0.99)
 
 # ---------------------------------------------------
-# STEP 2: Overall Efficiency
+# STEP 2: Overall Efficiency & Power
 # ---------------------------------------------------
-st.header("2. Overall Efficiency")
 eta_total = eta_turbine * eta_generator * eta_transformer
-st.write(f"⚙️ **Overall Efficiency η_total = {eta_total:.3f}**")
-
-# ---------------------------------------------------
-# STEP 3: Power Generation
-# ---------------------------------------------------
-st.header("3. Power Generation")
 P = rho * g * Q_design * H_effective * eta_total
 P_MW = P / 1e6
-st.success(f"Net Power Output = {P_MW:.1f} MW")
 
 # ---------------------------------------------------
-# STEP 4: Pumping Power (Reverse Mode)
+# STEP 3: Turbine Selection Chart Overlay
 # ---------------------------------------------------
-st.header("4. Pumping Power")
-eta_pump = st.slider("Pumping Efficiency η_pump", 0.7, 0.9, 0.8)
-P_pump = (rho * g * Q_design * H_effective) / eta_pump
-st.write(f"Required Pumping Power = {P_pump/1e6:.1f} MW")
+st.header("2. Turbine Selection Chart Overlay")
+
+# Background image (uploaded slide)
+img_path = "turbine_chart.png"  # <-- rename your uploaded file to this
+
+fig = go.Figure()
+
+# Add background image
+fig.add_layout_image(
+    dict(
+        source="turbine_chart.png",   # will be served from local file
+        xref="x", yref="y",
+        x=0.1, y=2000,  # bottom-left (Q min, H max)
+        sizex=1000, sizey=2000,  # axis span
+        sizing="stretch",
+        opacity=1,
+        layer="below"
+    )
+)
+
+# Set log-log axes same as the chart
+fig.update_xaxes(type="log", range=[-1, 3], title="Discharge Q (m³/s)")
+fig.update_yaxes(type="log", range=[0, 3.3], title="Head h (m)")
+
+# Plot student's operating point
+fig.add_trace(go.Scatter(
+    x=[Q_design], y=[H_effective],
+    mode="markers+text",
+    text=[f"{P_MW:.1f} MW"],
+    textposition="top center",
+    marker=dict(size=14, color="red", symbol="circle"),
+    name="Operating Point"
+))
+
+fig.update_layout(
+    width=800, height=600,
+    title="Interactive Turbine Selection Map (Overlay on Chart)",
+    template="plotly_white"
+)
+
+st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------
-# STEP 5: Minimum Flow Condition
+# STEP 4: Summary
 # ---------------------------------------------------
-st.header("5. Minimum Flow Check")
-turbine_choice = st.selectbox("Choose Turbine Type", ["Francis", "Kaplan", "Pelton"])
-
-if turbine_choice == "Francis":
-    Q_min = 0.4 * Q_design
-elif turbine_choice == "Kaplan":
-    Q_min = 0.2 * Q_design
-elif turbine_choice == "Pelton":
-    Q_min = 0.1 * Q_design
-else:
-    Q_min = 0.0
-
-st.write(f"Minimum Flow for {turbine_choice} ≈ {Q_min:.1f} m³/s")
-if Q_design < Q_min:
-    st.error("❌ Flow below minimum – turbine shutdown required!")
-else:
-    st.success("✅ Flow is above minimum – safe operation.")
-
-# ---------------------------------------------------
-# STEP 6: Specific Speed (nq)
-# ---------------------------------------------------
-st.header("6. Specific Speed")
-N_rpm = st.number_input("Runner Speed N (rpm)", value=375, step=25)
-nq = N_rpm * (Q_design**0.5) / (H_effective**0.75)
-st.write(f"Specific Speed n_q = {nq:.1f}")
-
-# ---------------------------------------------------
-# STEP 7: Summary
-# ---------------------------------------------------
-st.header("7. Summary")
+st.header("3. Summary")
 st.markdown(f"""
-- **Effective Head (Hₑ):** {H_effective:.2f} m  
+- **Effective Head (H):** {H_effective:.1f} m  
 - **Discharge Q:** {Q_design:.1f} m³/s  
 - **Net Power Output:** {P_MW:.1f} MW  
-- **Pumping Power:** {P_pump/1e6:.1f} MW  
-- **Selected Turbine:** {turbine_choice}  
-- **Minimum Flow Requirement:** {Q_min:.1f} m³/s  
-- **Specific Speed (nq):** {nq:.1f}  
+- **Overall Efficiency η_total:** {eta_total:.3f}  
 """)
