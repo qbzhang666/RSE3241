@@ -314,60 +314,54 @@ st.header("1) Reservoir & Dam Design")
 
 # ------------------------------- Inputs -------------------------------
 st.subheader("Inputs")
-P_design = st.number_input("Target Power P_design (MW)", 
-                           value=float(st.session_state.get("P_design", 500.0)), step=10.0)
 H = st.number_input("Gross Head H (m)", 
                     value=float(st.session_state.get("gross_head", 300.0)), step=10.0)
+V_input = st.number_input("Reservoir Useful Volume (m³)", 
+                          value=50e6, step=1e6, format="%.0f")
 t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
 eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01)
 
-# ------------------------------- Required Storage Volume -------------------------------
-# Required storage volume
-E_req = P_design * t_op          # MWh
-V_req = E_req * 3.6e9 / (RHO * G * H * eta)  # m³
-V_req_GL = V_req / 1e6           # GL
+# Convert to GL for display
+V_input_GL = V_input / 1e9
 
-st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³  ({V_req_GL:,.2f} GL)")
+st.metric("Reservoir Volume Provided", f"{V_input:,.0f} m³  ({V_input_GL:,.2f} GL)")
 
-# ------------------------------- Discharge Calculations -------------------------------
-# From power equation
-Q_power = P_design * 1e6 / (RHO * G * H * eta)   # m³/s
+# ------------------------------- Energy & Power Calculations -------------------------------
+# Storable energy
+E_stored_J = RHO * G * V_input * H * eta
+E_stored_MWh = E_stored_J / 3.6e9
 
-# From reservoir volume/time
-Q_volume = V_req / (t_op * 3600)                 # m³/s
+# Average discharge to empty reservoir in t_op hours
+Q_volume = V_input / (t_op * 3600)  # m³/s
 
-st.metric("Design Discharge Q (from Power)", f"{Q_power:,.1f} m³/s")
-st.metric("Design Discharge Q (from Volume/Time)", f"{Q_volume:,.1f} m³/s")
+# Average power output achievable
+P_avg = RHO * G * Q_volume * H * eta / 1e6  # MW
+
+st.metric("Storable Energy", f"{E_stored_MWh:,.0f} MWh")
+st.metric("Average Discharge Q", f"{Q_volume:,.1f} m³/s")
+st.metric("Average Power (for given t_op)", f"{P_avg:,.1f} MW")
 
 # ------------------------------- Equations (Teaching) -------------------------------
 with st.expander("Show equations used"):
-    st.markdown("**1. Energy Requirement (MWh):**")
-    st.latex(r"E_{req} = P_{design} \times t_{op}")
+    st.markdown("**1. Stored Energy in Reservoir (MWh):**")
+    st.latex(r"E_{stored} = \frac{\rho g V H \eta}{3.6 \times 10^9}")
+    st.markdown("Where $V$ is useful storage volume (m³), $H$ is head (m).")
 
-    st.markdown("**2. Required Reservoir Volume (m³):**")
-    st.latex(r"V_{req} = \frac{E_{req} \times 3.6 \times 10^9}{\rho g H \eta}")
+    st.markdown("**2. Average Discharge from Volume (m³/s):**")
+    st.latex(r"Q = \frac{V}{t_{op} \times 3600}")
 
-    st.markdown("**3. Power from Flow (MW):**")
-    st.latex(r"P = \frac{\rho g Q H \eta}{10^6}")
+    st.markdown("**3. Average Power Output (MW):**")
+    st.latex(r"P_{avg} = \frac{\rho g Q H \eta}{10^6}")
 
-    st.markdown("**4. Discharge from Power (m³/s):**")
-    st.latex(r"Q_{power} = \frac{P_{design} \times 10^6}{\rho g H \eta}")
-
-    st.markdown("**5. Discharge from Reservoir Volume & Time (m³/s):**")
-    st.latex(r"Q_{volume} = \frac{V_{req}}{t_{op} \times 3600}")
-
-    st.markdown("**6. Operating Time from Storage (hours):**")
-    st.latex(r"T = \frac{V_{req}}{Q \times 3600}")
-
-    st.info("⚠️ In practice, both methods should give consistent results. "
-            "Minor differences may occur due to rounding and efficiency assumptions.")
+    st.info("⚠️ With reservoir volume and gross head known, "
+            "we can directly estimate energy storage, discharge, and power output.")
 
 # ------------------------------- Reservoir Volume–Discharge–Power Relationships -------------------------------
 st.subheader("Reservoir Volume–Discharge–Power Relationships")
 
-Q_range = np.linspace(50, 500, 10)  # discharge range [m³/s]
+Q_range = np.linspace(max(10, Q_volume/2), Q_volume*2, 10)  # discharge range around design Q
 P_curve = RHO * G * Q_range * H * eta / 1e6   # [MW]
-T_curve = V_req / (Q_range * 3600)            # [hours]
+T_curve = V_input / (Q_range * 3600)          # [hours]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
 ax1.plot(Q_range, T_curve, 'o-')
@@ -378,7 +372,7 @@ ax1.legend()
 ax1.grid(True)
 
 ax2.plot(Q_range, P_curve, 's-')
-ax2.axhline(y=P_design, color='r', linestyle='--', label="Target Power")
+ax2.axhline(y=P_avg, color='r', linestyle='--', label="Achieved Power")
 ax2.set_xlabel("Discharge Q (m³/s)")
 ax2.set_ylabel("Power (MW)")
 ax2.legend()
@@ -410,7 +404,7 @@ def dam_type(H, V):
     else:
         return "General Embankment Dam"
 
-dam_suggestion = dam_type(H, V_req)
+dam_suggestion = dam_type(H, V_input)
 st.success(f"Suggested Dam Type: {dam_suggestion}")
 
 # Show the selection logic for teaching
@@ -419,9 +413,9 @@ with st.expander("Show dam type selection conditions and real-world examples"):
     st.markdown(f"""
     **Your Project Case:**  
     • Gross Head = **{H:.1f} m**  
-    • Required Reservoir Volume = **{V_req:,.0f} m³** (~ {V_req/1e9:.2f} GL)  
+    • Reservoir Volume Provided = **{V_input:,.0f} m³** (~ {V_input/1e9:.2f} GL)  
 
-    ---
+    ---  
 
     **Decision Rules (Simplified Teaching Heuristics with Examples):**  
 
@@ -434,7 +428,7 @@ with st.expander("Show dam type selection conditions and real-world examples"):
       - *International Example*: **Hoover Dam (USA, 221 m, concrete gravity-arch)**  
 
     - **Rockfill (Embankment) Dam** → Volume > 50 million m³  
-      - *Australian Examples*: **Talbingo Dam (Snowy 2.0, 162 m high rockfill, ~930 GL) ‘For Snowy 2.0, the very large storage volumes dictated embankment dams (Talbingo, Tantangara), even though head is high.’ **;  
+      - *Australian Examples*: **Talbingo Dam (Snowy 2.0, 162 m high rockfill, ~930 GL)**;  
         **Kidston Upper Reservoir (Queensland, ~300 GL, rockfill)**  
       - *International Example*: **Oroville Dam (USA, 235 m, ~4,364 GL)**  
 
@@ -447,14 +441,11 @@ with st.expander("Show dam type selection conditions and real-world examples"):
         **Wivenhoe Dam (Queensland, 59 m earthfill, ~3,400 GL flood storage)**  
       - *International Example*: **Aswan High Dam (Egypt, 111 m earthfill, ~132,000 GL)**  
 
-    ---
+    ---  
 
     ⚠️ *Note: These are simplified teaching rules of thumb, not design standards.  
     Actual dam selection depends on geology, topography, foundation strength, hydrology, construction material availability, and economics.*  
     """)
-
-
-
 
 
 # ------------------------------- Step 2: Reservoir Levels, NWL & Rating Head -------------------------------
