@@ -2031,11 +2031,19 @@ st.info(
 # IP Gallery dimensions
 B_ip = st.number_input("IPB Gallery Width (m)", value=3.0, step=0.1)
 H_ip = st.number_input("IPB Gallery Height (m)", value=3.0, step=0.1)
-L_ip = st.number_input("IPB Gallery Length (m)", value=L_trans, step=5.0)
+
+# Use L_trans if it exists, otherwise fall back to 60.0
+try:
+    default_L_ip = L_trans
+except NameError:
+    default_L_ip = 60.0
+
+L_ip = st.number_input("IPB Gallery Length (m)", value=default_L_ip, step=5.0)
 
 st.write(f"- **IPB Gallery Width:** {B_ip:.1f} m")
 st.write(f"- **IPB Gallery Height:** {H_ip:.1f} m")
 st.write(f"- **IPB Gallery Length:** {L_ip:.1f} m")
+
 
 
 
