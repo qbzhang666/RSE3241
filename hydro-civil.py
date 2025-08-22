@@ -1,4 +1,4 @@
-ste# PHES Design Teaching App — with Moody helper (Swamee–Jain) for f(Re, ε/D)
+# PHES Design Teaching App — with Moody helper (Swamee–Jain) for f(Re, ε/D)
 # Reservoir head, penstock hydraulics, lining stress (modular), losses, surge tanks
 # Classroom-friendly; robust on Streamlit Cloud; no Styler usage
 
