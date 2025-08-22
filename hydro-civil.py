@@ -322,12 +322,13 @@ t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
 eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01)
 
 # ------------------------------- Required Storage Volume -------------------------------
-# Energy requirement
-E_req = P_design * t_op          # [MWh]
-# Volume requirement (converted to Joules then divided by potential energy per m³)
-V_req = E_req * 3.6e9 / (RHO * G * H * eta)  # [m³]
+# Required storage volume
+E_req = P_design * t_op          # MWh
+V_req = E_req * 3.6e9 / (RHO * G * H * eta)  # m³
+V_req_GL = V_req / 1e6           # GL
 
-st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³")
+st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³  ({V_req_GL:,.2f} GL)")
+
 
 # ------------------------------- Equations (Teaching) -------------------------------
 with st.expander("Show equations used"):
@@ -371,19 +372,24 @@ st.pyplot(fig)
 st.subheader("Dam Type Suggestion")
 
 st.markdown("""
-**Typical selection criteria:**
-- **Concrete Gravity Dam**: Preferred for **high heads (>150 m)** and **moderate storage volumes (<20 million m³)**.
-- **Rockfill Dam**: Suitable for **very large storage volumes (>50 million m³)**, even with medium heads.
-- **Embankment Dam**: Often selected for **moderate heads and moderate storage volumes**.
+**Classification of Hydropower Schemes**  
+1. **Embankment Dams** – Built with earth or rock fill, economical where large material is available.  
+2. **Gravity Dams** – Rely on their own weight (mass concrete or roller-compacted concrete).  
+3. **Arch Dams** – Curved concrete dams, efficient in narrow canyons with strong rock foundations.  
+4. **Buttress Dams** – Supported by vertical buttresses, reducing concrete usage on the downstream side.  
 """)
 
 def dam_type(H, V):
-    if H > 150 and V < 20e6:
+    if H > 200 and V < 20e6:
+        return "Arch Dam"
+    elif H > 150 and V < 20e6:
         return "Concrete Gravity Dam"
     elif V > 50e6:
-        return "Rockfill Dam"
+        return "Rockfill (Embankment) Dam"
+    elif H < 100 and V < 20e6:
+        return "Buttress Dam"
     else:
-        return "Embankment Dam"
+        return "General Embankment Dam"
 
 dam_suggestion = dam_type(H, V_req)
 st.success(f"Suggested Dam Type: {dam_suggestion}")
