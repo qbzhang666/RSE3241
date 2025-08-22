@@ -415,7 +415,7 @@ with st.expander("Show dam type selection conditions and real-world examples (fo
       - *International Example*: **Hoover Dam (USA, 221 m, concrete gravity-arch)**  
 
     - **Rockfill (Embankment) Dam** → Volume > 50 million m³  
-      - *Australian Examples*: **Talbingo Dam (Snowy 2.0, 162 m high rockfill, ~930 GL)**;  
+      - *Australian Examples*: **Talbingo Dam (Snowy 2.0, 162 m high rockfill, ~930 GL) ‘For Snowy 2.0, the very large storage volumes dictated embankment dams (Talbingo, Tantangara), even though head is high.’ **;  
         **Kidston Upper Reservoir (Queensland, ~300 GL, rockfill)**  
       - *International Example*: **Oroville Dam (USA, 235 m, ~4,364 GL)**  
 
