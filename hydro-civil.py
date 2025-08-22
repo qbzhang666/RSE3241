@@ -2028,24 +2028,22 @@ st.info(
     f"(FEM/DEM) for stress distribution, yielding, and interaction between halls."
 )
 
-# IP Gallery dimensions
-B_ip = st.number_input("IPB Gallery Width (m)", value=3.0, step=0.1)
-H_ip = st.number_input("IPB Gallery Height (m)", value=3.0, step=0.1)
+# IPB Gallery dimensions
+B_ip = st.number_input("IPB Gallery Width (m)", value=3.0, step=0.1, format="%.1f")
+H_ip = st.number_input("IPB Gallery Height (m)", value=3.0, step=0.1, format="%.1f")
 
-# Use L_trans if it exists, otherwise fall back to 60.0
+# Pillar thickness (default from L_trans if defined)
 try:
-    default_L_ip = L_trans
+    default_t_pillar = float(L_trans)
 except NameError:
-    default_L_ip = 60.0
+    default_t_pillar = 60.0   # fallback value
 
-L_ip = st.number_input("IPB Gallery Length (m)", value=default_L_ip, step=5.0)
+t_pillar = st.number_input("Pillar Thickness (m)", value=default_t_pillar, step=1.0, format="%.1f")
 
+st.write("### Geometry Inputs")
 st.write(f"- **IPB Gallery Width:** {B_ip:.1f} m")
 st.write(f"- **IPB Gallery Height:** {H_ip:.1f} m")
-st.write(f"- **IPB Gallery Length:** {L_ip:.1f} m")
-
-
-
+st.write(f"- **Pillar Thickness:** {t_pillar:.1f} m")
 
 
 st.header("10) Core Equations")
