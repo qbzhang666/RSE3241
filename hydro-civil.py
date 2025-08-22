@@ -885,7 +885,7 @@ ax2.legend(loc='upper right')
 st.pyplot(fig2)
     
 # ------------------------------- Section 3: Penstock & Moody -------------------------
-st.header("3) Head Loss of Hydraulic System")
+st.header("4) Head Loss of Hydraulic System")
 st.subheader("Major Water Loss (with Moody)")
 c1, c2 = st.columns(2)
 with c1:
@@ -1556,7 +1556,7 @@ st.dataframe(
     }
 )
 
-st.header("4) Effective Net Head")
+st.header("5) Effective Net Head")
 
 with st.expander("Head Loss & Net Head Equations (click to expand)"):
 
@@ -1596,7 +1596,7 @@ c6.metric("Net head (m)", f"{H_net:.2f}")
 
 
 # ---------------- Diameter Estimator and Verification ----------------
-st.header("5) Penstock Diameter and velocity Verification")
+st.header("6) Penstock Diameter and velocity Verification")
 
 # Velocity checks
 st.subheader("Velocity checks (USBR guidance)")
@@ -1814,7 +1814,7 @@ st.plotly_chart(fig_power, use_container_width=True)
 # ===============================================
 # 6) Confinement Check (Norwegian Confinement Criteria)
 # ===============================================
-st.header("6) Confinement Check (Norwegian Criteria)")
+st.header("7) Confinement Check (Norwegian Criteria)")
 
 st.markdown(
     "This section checks tunnel confinement stability using the Norwegian criteria. "
@@ -1891,7 +1891,7 @@ else:
 
 # ===============================
 # --- Section 7: Pressure Tunnel Lining Stress ---
-st.header("7) Pressure Tunnel: Lining Stress")
+st.header("8) Pressure Tunnel: Lining Stress")
 
 gamma_w = 9800.0  # N/m³ (unit weight of water)
 
@@ -2023,7 +2023,7 @@ except Exception as e:
     st.error(f"Error in stress calculation: {e}")
 
 # ------------------ Section 8: Surge Tank ------------------ 
-st.header("8) Surge Tank Design")
+st.header("9) Surge Tank Design")
 
 with st.expander("Input Parameters for Surge Tank", expanded=True):
     # Penstock setup
@@ -2111,7 +2111,7 @@ st.write(f"Area Ratio (Aₛ / Aₚ): {A_s / A_p_total:.2f}")
 st.write(f"Equivalent Surge Tank Diameter: {D_s:.2f} m")
 
 
-st.header("9) Underground Power Station Caverns")
+st.header("10) Underground Power Station Caverns")
 
 # =====================
 # Machine Hall Section
@@ -2276,7 +2276,7 @@ st.write(f"- **IPB Gallery Length (Recommended Pillar Thickness):** {t_pillar_re
 st.write(f"- **IPB Gallery Length (User-defined Pillar Thickness):** {t_pillar_user:.1f} m")
 
 
-st.header("10) Core Equations")
+st.header("11) Core Equations")
 
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining & Rock)", "Surge/Waterhammer"])
 
