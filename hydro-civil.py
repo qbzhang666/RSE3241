@@ -312,74 +312,73 @@ def swamee_jain(Re, e_D):
 # ------------------------------- Step 1: Reservoir & Dam Design -------------------------------
 st.header("1) Reservoir & Dam Design")
 
-# ------------------------------- Inputs -------------------------------
+# ------------------------------- Presets -------------------------------
+presets = {
+    "Snowy 2.0 (Plateau)": {"P_design": 2000, "H": 673.33, "V_res": 5e7},
+    "Kidston PHES": {"P_design": 250, "H": 200, "V_res": 3e7},
+    "Wivenhoe": {"P_design": 500, "H": 76, "V_res": 2.2e8},
+    "Tumut 3 (Snowy)": {"P_design": 1800, "H": 150, "V_res": 3.5e8},
+    "Custom": {}
+}
+
 st.subheader("Inputs")
-H = st.number_input("Gross Head H (m)", 
-                    value=float(st.session_state.get("gross_head", 300.0)), step=10.0)
-V_input = st.number_input("Reservoir Useful Volume (m³)", 
-                          value=50e6, step=1e6, format="%.0f")
+
+choice = st.selectbox("Select Preset (Australian Focus):", list(presets.keys()))
+
+if choice != "Custom":
+    preset = presets[choice]
+    P_design = st.number_input("Design Power: P_design (MW)", 
+                               value=float(preset["P_design"]), step=10.0)
+    H = st.number_input("Gross Head H (m)", 
+                        value=float(preset["H"]), step=10.0)
+    V_res = st.number_input("Reservoir Useful Volume (m³)", 
+                            value=float(preset["V_res"]), step=1e6, format="%.0f")
+else:
+    # manual entry if "Custom"
+    P_design = st.number_input("Design Power: P_design (MW)", 
+                               value=float(st.session_state.get("P_design", 500.0)), step=10.0)
+    H = st.number_input("Gross Head H (m)", 
+                        value=float(st.session_state.get("gross_head", 300.0)), step=10.0)
+    V_res = st.number_input("Reservoir Useful Volume (m³)", 
+                            value=5e7, step=1e6, format="%.0f")
+
+# Other universal inputs
 t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
 eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01)
 
-# Convert to GL for display
-V_input_GL = V_input / 1e9
+# ------------------------------- Required Flow -------------------------------
+Q_req = (P_design * 1e6) / (RHO * G * H * eta)   # [m³/s]
 
-st.metric("Reservoir Volume Provided", f"{V_input:,.0f} m³  ({V_input_GL:,.2f} GL)")
+# ------------------------------- Reservoir Duration -------------------------------
+T_res = V_res / (Q_req * 3600)   # hours of operation with available volume
 
-# ------------------------------- Energy & Power Calculations -------------------------------
-# Storable energy
-E_stored_J = RHO * G * V_input * H * eta
-E_stored_MWh = E_stored_J / 3.6e9
-
-# Average discharge to empty reservoir in t_op hours
-Q_volume = V_input / (t_op * 3600)  # m³/s
-
-# Average power output achievable
-P_avg = RHO * G * Q_volume * H * eta / 1e6  # MW
-
-st.metric("Storable Energy", f"{E_stored_MWh:,.0f} MWh")
-st.metric("Average Discharge Q", f"{Q_volume:,.1f} m³/s")
-st.metric("Average Power (for given t_op)", f"{P_avg:,.1f} MW")
+# Display with GL
+st.metric("Required Discharge Flow Q", f"{Q_req:,.1f} m³/s")
+st.metric("Operation Time with Provided Reservoir", f"{T_res:.1f} hours")
+st.metric("Reservoir Volume Provided", f"{V_res/1e9:.2f} GL")
 
 # ------------------------------- Equations (Teaching) -------------------------------
 with st.expander("Show equations used"):
-    st.markdown("**1. Stored Energy in Reservoir (MWh):**")
-    st.latex(r"E_{stored} = \frac{\rho g V H \eta}{3.6 \times 10^9}")
-    st.markdown("Where $V$ is useful storage volume (m³), $H$ is head (m).")
+    st.markdown("**1. Power from Flow (MW):**")
+    st.latex(r"P = \frac{\rho g Q H \eta}{10^6}")
+    st.markdown("Rearranged to calculate discharge $Q$:")    
+    st.latex(r"Q = \frac{P \times 10^6}{\rho g H \eta}")
+    st.markdown("**2. Operating Time with Provided Reservoir (hours):**")
+    st.latex(r"T = \frac{V_{res}}{Q \times 3600}")
 
-    st.markdown("**2. Average Discharge from Volume (m³/s):**")
-    st.latex(r"Q = \frac{V}{t_{op} \times 3600}")
+# ------------------------------- Flow–Volume Relationship -------------------------------
+st.subheader("Reservoir Volume–Flow Relationships")
 
-    st.markdown("**3. Average Power Output (MW):**")
-    st.latex(r"P_{avg} = \frac{\rho g Q H \eta}{10^6}")
+V_range = np.linspace(V_res*0.5, V_res*1.5, 10)   # vary reservoir size
+T_curve = V_range / (Q_req * 3600)
 
-    st.info("⚠️ With reservoir volume and gross head known, "
-            "we can directly estimate energy storage, discharge, and power output.")
-
-# ------------------------------- Reservoir Volume–Discharge–Power Relationships -------------------------------
-st.subheader("Reservoir Volume–Discharge–Power Relationships")
-
-Q_range = np.linspace(max(10, Q_volume/2), Q_volume*2, 10)  # discharge range around design Q
-P_curve = RHO * G * Q_range * H * eta / 1e6   # [MW]
-T_curve = V_input / (Q_range * 3600)          # [hours]
-
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
-ax1.plot(Q_range, T_curve, 'o-')
-ax1.axhline(y=t_op, color='r', linestyle='--', label="Target Operation Time")
-ax1.set_xlabel("Discharge Q (m³/s)")
-ax1.set_ylabel("Operation Time (hours)")
-ax1.legend()
-ax1.grid(True)
-
-ax2.plot(Q_range, P_curve, 's-')
-ax2.axhline(y=P_avg, color='r', linestyle='--', label="Achieved Power")
-ax2.set_xlabel("Discharge Q (m³/s)")
-ax2.set_ylabel("Power (MW)")
-ax2.legend()
-ax2.grid(True)
+fig, ax = plt.subplots(figsize=(6,4))
+ax.plot(V_range/1e9, T_curve, 'o-')
+ax.set_xlabel("Reservoir Volume (GL)")
+ax.set_ylabel("Operation Time (hours)")
+ax.grid(True)
 
 st.pyplot(fig)
-
 
 # ------------------------------- Dam Type Suggestion -------------------------------
 st.subheader("Dam Type Suggestion")
