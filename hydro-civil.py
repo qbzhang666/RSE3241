@@ -399,7 +399,7 @@ with st.expander("Show dam type selection conditions (for students)"):
     st.markdown(f"""
     **Your Project Case:**  
     - Gross Head = **{H:.1f} m**  
-    - Required Reservoir Volume = **{V_req:,.0f} m³** (~ **{V_req/1e9:.2f} GL**)  
+    - Required Reservoir Volume = **{V_req:,.0f} m³** (~ **{V_req_GL:,.2f} GL**)
 
     **Decision Rules:**  
     - **Arch Dam** → Head > 200 m and Volume < 20 million m³  
