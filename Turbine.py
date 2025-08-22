@@ -7,7 +7,7 @@ st.set_page_config(page_title="Hydropower Turbine Selection", layout="wide")
 st.title("Hydropower Turbine Selection Tool")
 st.markdown("### Based on RSE3241 Week 8: Turbine Selection and Energy\n"
             "This app overlays the classical turbine selection chart with your design point. "
-            "We also use **Kidston Pumped Hydro Energy Storage (PHES)** as a case study.")
+            "We also use **Snowy 2.0 Hydro Energy Storage (PHES)** as a case study.")
 
 # ---------------- Sidebar Inputs ----------------
 st.sidebar.header("Project Parameters")
