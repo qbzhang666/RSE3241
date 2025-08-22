@@ -14,7 +14,7 @@ st.sidebar.header("Project Parameters")
 # Input parameters
 h = st.sidebar.number_input("Head (m)", min_value=1.0, max_value=2000.0, value=100.0, step=1.0)
 Q = st.sidebar.number_input("Discharge (m³/s)", min_value=0.1, max_value=1000.0, value=10.0, step=0.1)
-power_req = st.sidebar.number_input("Required Power Output (MW)", min_value=0.1, max_value=1000.0, value=10.0, step=0.1)
+power_req = st.sidebar.number_input("Required Power Output (MW)", min_value=0.1, max_value=5000.0, value=50.0, step=0.1)
 efficiency = st.sidebar.slider("Expected Efficiency (η)", min_value=0.1, max_value=0.95, value=0.85, step=0.01)
 
 # Constants
