@@ -366,19 +366,36 @@ with st.expander("Show equations used"):
     st.markdown("**2. Operating Time with Provided Reservoir (hours):**")
     st.latex(r"T = \frac{V_{res}}{Q \times 3600}")
 
-# ------------------------------- Flow–Volume Relationship -------------------------------
-st.subheader("Reservoir Volume–Flow Relationships")
+# ------------------------------- Reservoir Volume–Discharge–Power Relationships -------------------------------
+st.subheader("Reservoir Volume–Discharge–Power Relationships")
 
-V_range = np.linspace(V_res*0.5, V_res*1.5, 10)   # vary reservoir size
-T_curve = V_range / (Q_req * 3600)
+# Use reservoir size selected by user
+V_req = V_res  # [m³] from earlier (converted from GL)
 
-fig, ax = plt.subplots(figsize=(6,4))
-ax.plot(V_range/1e9, T_curve, 'o-')
-ax.set_xlabel("Reservoir Volume (GL)")
-ax.set_ylabel("Operation Time (hours)")
-ax.grid(True)
+# Discharge range for exploration
+Q_range = np.linspace(50, 500, 10)   # [m³/s]
+
+# Corresponding power and operation time
+P_curve = RHO * G * Q_range * H * eta / 1e6   # [MW]
+T_curve = V_req / (Q_range * 3600)            # [hours]
+
+# Create side-by-side plots
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
+
+# Left: Discharge vs Operation Time
+ax1.plot(Q_range, T_curve, 'o-')
+ax1.set_xlabel("Discharge Q (m³/s)")
+ax1.set_ylabel("Operation Time (hours)")
+ax1.grid(True)
+
+# Right: Discharge vs Power
+ax2.plot(Q_range, P_curve, 's-')
+ax2.set_xlabel("Discharge Q (m³/s)")
+ax2.set_ylabel("Power (MW)")
+ax2.grid(True)
 
 st.pyplot(fig)
+
 
 # ------------------------------- Dam Type Suggestion -------------------------------
 st.subheader("Dam Type Suggestion")
@@ -403,7 +420,8 @@ def dam_type(H, V):
     else:
         return "General Embankment Dam"
 
-dam_suggestion = dam_type(H, V_input)
+# ✅ FIX: use V_res instead of V_input
+dam_suggestion = dam_type(H, V_res)
 st.success(f"Suggested Dam Type: {dam_suggestion}")
 
 # Show the selection logic for teaching
@@ -412,7 +430,7 @@ with st.expander("Show dam type selection conditions and real-world examples"):
     st.markdown(f"""
     **Your Project Case:**  
     • Gross Head = **{H:.1f} m**  
-    • Reservoir Volume Provided = **{V_input:,.0f} m³** (~ {V_input/1e9:.2f} GL)  
+    • Reservoir Volume Provided = **{V_res:,.0f} m³** (~ {V_res/1e9:.2f} GL)  
 
     ---  
 
