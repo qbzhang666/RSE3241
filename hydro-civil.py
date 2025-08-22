@@ -244,8 +244,67 @@ plt.rcParams.update({
     "legend.fontsize": 9
 })
 
-# ------------------------------- Section 1: Reservoirs -------------------------------
-st.header("1) Reservoir Levels, NWL & Rating Head")
+# ------------------------------- Step 1: Reservoir & Dam Design -------------------------------
+st.header("1) Reservoir & Dam Design")
+
+st.subheader("Inputs")
+P_design = st.number_input("Target Power P_design (MW)", 
+                           value=float(st.session_state.get("P_design", 500.0)), step=10.0)
+H = st.number_input("Effective Head H (m)", 
+                    value=float(st.session_state.get("gross_head", 300.0)), step=10.0)
+t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
+eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01)
+
+# Required storage volume
+E_req = P_design * t_op          # MWh
+V_req = E_req * 3.6e9 / (RHO * G * H * eta)  # m³
+
+st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³")
+
+# Reservoir volume–discharge–power relationships
+st.subheader("Reservoir Volume–Discharge–Power Relationships")
+
+Q_range = np.linspace(50, 500, 10)  # discharge range [m³/s]
+P_curve = RHO * G * Q_range * H * eta / 1e6   # MW
+T_curve = V_req / (Q_range * 3600)            # hours
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
+ax1.plot(Q_range, T_curve, 'o-')
+ax1.set_xlabel("Discharge Q (m³/s)"); ax1.set_ylabel("Operation Time (hours)"); ax1.grid(True)
+ax2.plot(Q_range, P_curve, 's-')
+ax2.set_xlabel("Discharge Q (m³/s)"); ax2.set_ylabel("Power (MW)"); ax2.grid(True)
+st.pyplot(fig)
+
+# Dam type suggestion with criteria
+st.subheader("Dam Type Suggestion")
+
+st.markdown("""
+**Typical selection criteria:**
+- **Concrete Gravity Dam**: Preferred for **high heads (>150 m)** and **moderate storage volumes (<20 million m³)**.
+- **Rockfill Dam**: Suitable for **very large storage volumes (>50 million m³)**, even with medium heads.
+- **Embankment Dam**: Often selected for **moderate heads and moderate storage volumes**.
+""")
+
+def dam_type(H, V):
+    if H > 150 and V < 20e6:
+        return "Concrete Gravity Dam"
+    elif V > 50e6:
+        return "Rockfill Dam"
+    else:
+        return "Embankment Dam"
+
+dam_suggestion = dam_type(H, V_req)
+st.success(f"Suggested Dam Type: {dam_suggestion}")
+
+# Equations (for teaching)
+with st.expander("Show equations used"):
+    st.latex(r"E_{req} = P_{design} \times t_{op}")
+    st.latex(r"V_{req} = \frac{E_{req} \times 3.6 \times 10^9}{\rho g H \eta}")
+    st.latex(r"P = \frac{\rho g Q H \eta}{10^6} \;\; \text{[MW]}")
+    st.latex(r"T = \frac{V_{req}}{Q \times 3600} \;\; \text{[hours]}")
+
+# ------------------------------- Step 2: Reservoir Levels, NWL & Rating Head -------------------------------
+st.header("2) Reservoir Levels, NWL & Rating Head")
 
 c1, c2 = st.columns(2)
 with c1:
@@ -270,7 +329,7 @@ gross_head = NWL_u - TWL_l            # H_g = NWL − TWL
 min_head   = LWL_u - HWL_l            # worst case
 head_fluct_ratio = safe_div((LWL_u - TWL_l), (HWL_u - TWL_l))  # (LWL − TWL)/(HWL − TWL)
 
-# --- Save outputs so other sections can access ---
+# --- Save outputs ---
 st.session_state["gross_head"] = gross_head
 st.session_state["NWL_u"] = NWL_u
 st.session_state["Ha_u"] = Ha_u
@@ -307,48 +366,6 @@ m2.metric("NWL (m)", f"{NWL_u:.1f}")
 m3.metric("Gross head H_g = NWL−TWL (m)", f"{gross_head:.1f}")
 m4.metric("Head fluctuation ratio (HFR)", f"{head_fluct_ratio:.3f}")
 
-# ------------------------------- Step 2: Reservoir & Dam Design -------------------------------
-st.header("2) Reservoir & Dam Design")
-
-st.subheader("Inputs")
-P_design = st.number_input("Target Power P_design (MW)", value=float(st.session_state.get("P_design", 500.0)), step=10.0)
-H = st.number_input("Effective Head H (m)", value=float(st.session_state.get("gross_head", 300.0)), step=10.0)
-t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
-eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01)
-
-# Required storage volume
-E_req = P_design * t_op          # MWh
-V_req = E_req * 3.6e9 / (RHO * G * H * eta)  # m³
-
-st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³")
-
-# Reservoir volume–discharge–power relationships
-st.subheader("Reservoir Volume–Discharge–Power Relationships")
-
-Q_range = np.linspace(50, 500, 10)  # discharge range [m³/s]
-P_curve = RHO * G * Q_range * H * eta / 1e6   # MW
-T_curve = V_req / (Q_range * 3600)            # hours
-
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
-ax1.plot(Q_range, T_curve, 'o-')
-ax1.set_xlabel("Discharge Q (m³/s)"); ax1.set_ylabel("Operation Time (hours)"); ax1.grid(True)
-ax2.plot(Q_range, P_curve, 's-')
-ax2.set_xlabel("Discharge Q (m³/s)"); ax2.set_ylabel("Power (MW)"); ax2.grid(True)
-st.pyplot(fig)
-
-# Dam type suggestion
-st.subheader("Dam Type Suggestion")
-
-def dam_type(H, V):
-    if H > 150 and V < 20e6:
-        return "Concrete Gravity Dam"
-    elif V > 50e6:
-        return "Rockfill Dam"
-    else:
-        return "Embankment Dam"
-
-dam_suggestion = dam_type(H, V_req)
-st.success(f"Suggested Dam Type: {dam_suggestion}")
 
 
 # ---------------------------- Section 3: Waterway profile & L estimator ----------------------------
