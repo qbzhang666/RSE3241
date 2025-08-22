@@ -245,9 +245,8 @@ plt.rcParams.update({
 })
 
 # ---------------- Step 1: Reservoir Selection & Dam Design ----------------
-import itertools
-import math
-import pandas as pd
+st.header("1) Reservoir Selection & Dam Design")
+
 
 # ---------------- Constants ----------------
 G = 9.81        # m/s²
