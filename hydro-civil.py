@@ -316,7 +316,7 @@ st.header("1) Reservoir & Dam Design")
 st.subheader("Inputs")
 P_design = st.number_input("Target Power P_design (MW)", 
                            value=float(st.session_state.get("P_design", 500.0)), step=10.0)
-H = st.number_input("Effective Head H (m)", 
+H = st.number_input("Gross Head H (m)", 
                     value=float(st.session_state.get("gross_head", 300.0)), step=10.0)
 t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
 eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01)
