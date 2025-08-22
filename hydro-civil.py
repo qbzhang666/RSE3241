@@ -309,62 +309,85 @@ def evaluate_reservoir_pairs(reservoirs, eta_rt=ETA_RT, f_loss=F_LOSS, top_n=5):
 def swamee_jain(Re, e_D):
     return 0.25 / (np.log10(e_D/3.7 + 5.74/(Re**0.9)))**2
 
-# ================================================================
-# Step 1. Reservoir Selection & Dam Design (with Map)
-# ================================================================
-st.header("Step 1: Reservoir Selection & Dam Design (with Map)")
+# ------------------------------- Step 1: Reservoir & Dam Design -------------------------------
+st.header("1) Reservoir & Dam Design")
 
-n_res = st.number_input("Number of reservoirs", min_value=2, max_value=10, value=3, step=1)
+# ------------------------------- Inputs -------------------------------
+st.subheader("Inputs")
+P_design = st.number_input("Target Power P_design (MW)", 
+                           value=float(st.session_state.get("P_design", 500.0)), step=10.0)
+H = st.number_input("Effective Head H (m)", 
+                    value=float(st.session_state.get("gross_head", 300.0)), step=10.0)
+t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
+eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01)
 
-reservoirs = []
-for i in range(n_res):
-    st.subheader(f"Reservoir {i+1}")
-    name = st.text_input(f"Name {i+1}", value=f"Res{i+1}", key=f"name{i}")
-    elev = st.number_input(f"Elevation {i+1} (m)", value=500 + i*100.0, step=10.0, key=f"elev{i}")
-    volume = st.number_input(f"Useful Storage Volume {i+1} (m³)", value=5e6, step=1e5, format="%.0f", key=f"vol{i}")
-    lat = st.number_input(f"Latitude {i+1}", value=-37.8 + i*0.05, step=0.01, key=f"lat{i}")
-    lon = st.number_input(f"Longitude {i+1}", value=145.0 + i*0.05, step=0.01, key=f"lon{i}")
-    reservoirs.append({"name": name, "elev": elev, "volume": volume, "lat": lat, "lon": lon})
+# ------------------------------- Required Storage Volume -------------------------------
+# Energy requirement
+E_req = P_design * t_op          # [MWh]
+# Volume requirement (converted to Joules then divided by potential energy per m³)
+V_req = E_req * 3.6e9 / (RHO * G * H * eta)  # [m³]
 
-eta_rt = st.slider("Round-trip efficiency ηrt", 0.5, 0.9, ETA_RT, 0.01)
-f_loss = st.slider("Head loss fraction", 0.0, 0.2, F_LOSS, 0.01)
-top_n = st.slider("Number of top pairs to display", min_value=1, max_value=20, value=5, step=1)
-show_labels = st.checkbox("Show energy labels on map", value=True)
+st.metric("Required Reservoir Volume", f"{V_req:,.0f} m³")
 
-if st.button("Evaluate Reservoir Pairs"):
-    df = evaluate_reservoir_pairs(reservoirs, eta_rt=eta_rt, f_loss=f_loss, top_n=top_n)
+# ------------------------------- Equations (Teaching) -------------------------------
+with st.expander("Show equations used"):
+    st.markdown("**1. Energy Requirement (MWh):**")
+    st.latex(r"E_{req} = P_{design} \times t_{op}")
+    st.markdown("Where $P_{design}$ is the design/target power (MW), and $t_{op}$ is the operation time (hours).")
 
-    st.subheader("Top Reservoir Pairs")
-    st.dataframe(df[["Upper","Lower","Gross Head (m)","Effective Head (m)","Energy (MWh)","Penstock Length (km)"]])
+    st.markdown("**2. Required Reservoir Volume (m³):**")
+    st.latex(r"V_{req} = \frac{E_{req} \times 3.6 \times 10^9}{\rho g H \eta}")
+    st.markdown("Where $\\rho$ is water density (kg/m³), $g$ is gravity (m/s²), $H$ is effective head (m), and $\\eta$ is efficiency.")
 
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("Download CSV", csv, "reservoir_pairs.csv", "text/csv")
+    st.markdown("**3. Power from Flow (MW):**")
+    st.latex(r"P = \frac{\rho g Q H \eta}{10^6}")
+    st.markdown("Where $Q$ is the discharge flow rate (m³/s). Division by $10^6$ converts W → MW.")
 
-    # Folium map
-    mid_lat = sum([r["lat"] for r in reservoirs]) / len(reservoirs)
-    mid_lon = sum([r["lon"] for r in reservoirs]) / len(reservoirs)
-    fmap = folium.Map(location=[mid_lat, mid_lon], zoom_start=9, tiles="OpenStreetMap")
+    st.markdown("**4. Operating Time from Storage (hours):**")
+    st.latex(r"T = \frac{V_{req}}{Q \times 3600}")
+    st.markdown("Where $3600$ converts seconds to hours.")
 
-    for res in reservoirs:
-        folium.Marker([res["lat"], res["lon"]],
-                      popup=f"{res['name']} ({res['elev']} m)").add_to(fmap)
+# ------------------------------- Reservoir Volume–Discharge–Power Relationships -------------------------------
+st.subheader("Reservoir Volume–Discharge–Power Relationships")
 
-    max_energy = df["Energy (MWh)"].max()
-    norm = mcolors.Normalize(vmin=0, vmax=max_energy)
-    cmap = cm.get_cmap("viridis")
+Q_range = np.linspace(50, 500, 10)  # discharge range [m³/s]
+P_curve = RHO * G * Q_range * H * eta / 1e6   # [MW]
+T_curve = V_req / (Q_range * 3600)            # [hours]
 
-    for _, row in df.iterrows():
-        color = mcolors.to_hex(cmap(norm(row["Energy (MWh)"])))
-        folium.PolyLine([(row["Upper_lat"], row["Upper_lon"]),
-                         (row["Lower_lat"], row["Lower_lon"])],
-                        color=color, weight=4, opacity=0.8).add_to(fmap)
-        if show_labels:
-            folium.Marker([(row["Upper_lat"]+row["Lower_lat"])/2,
-                           (row["Upper_lon"]+row["Lower_lon"])/2],
-                          icon=folium.DivIcon(html=f"<div style='font-size:8pt;color:black;background:white;padding:2px;border-radius:3px'>{row['Energy (MWh)']:.0f} MWh</div>")
-                         ).add_to(fmap)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,4))
+ax1.plot(Q_range, T_curve, 'o-')
+ax1.set_xlabel("Discharge Q (m³/s)")
+ax1.set_ylabel("Operation Time (hours)")
+ax1.grid(True)
 
-    st_folium(fmap, width=700, height=500)
+ax2.plot(Q_range, P_curve, 's-')
+ax2.set_xlabel("Discharge Q (m³/s)")
+ax2.set_ylabel("Power (MW)")
+ax2.grid(True)
+
+st.pyplot(fig)
+
+# ------------------------------- Dam Type Suggestion -------------------------------
+st.subheader("Dam Type Suggestion")
+
+st.markdown("""
+**Typical selection criteria:**
+- **Concrete Gravity Dam**: Preferred for **high heads (>150 m)** and **moderate storage volumes (<20 million m³)**.
+- **Rockfill Dam**: Suitable for **very large storage volumes (>50 million m³)**, even with medium heads.
+- **Embankment Dam**: Often selected for **moderate heads and moderate storage volumes**.
+""")
+
+def dam_type(H, V):
+    if H > 150 and V < 20e6:
+        return "Concrete Gravity Dam"
+    elif V > 50e6:
+        return "Rockfill Dam"
+    else:
+        return "Embankment Dam"
+
+dam_suggestion = dam_type(H, V_req)
+st.success(f"Suggested Dam Type: {dam_suggestion}")
+
 
 
 # ------------------------------- Step 2: Reservoir Levels, NWL & Rating Head -------------------------------
