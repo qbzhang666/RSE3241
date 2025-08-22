@@ -394,6 +394,22 @@ def dam_type(H, V):
 dam_suggestion = dam_type(H, V_req)
 st.success(f"Suggested Dam Type: {dam_suggestion}")
 
+# Show the selection logic for teaching
+with st.expander("Show dam type selection conditions (for students)"):
+    st.markdown(f"""
+    **Your Project Case:**  
+    - Gross Head = **{H:.1f} m**  
+    - Required Reservoir Volume = **{V_req:,.0f} m³** (~ **{V_req/1e9:.2f} GL**)  
+
+    **Decision Rules:**  
+    - **Arch Dam** → Head > 200 m and Volume < 20 million m³  
+    - **Concrete Gravity Dam** → Head > 150 m and Volume < 20 million m³  
+    - **Rockfill (Embankment) Dam** → Volume > 50 million m³  
+    - **Buttress Dam** → Head < 100 m and Volume < 20 million m³  
+    - **General Embankment Dam** → All other cases  
+    """)
+
+
 
 
 # ------------------------------- Step 2: Reservoir Levels, NWL & Rating Head -------------------------------
