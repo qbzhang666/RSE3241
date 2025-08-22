@@ -1901,18 +1901,21 @@ mh_mode = st.radio(
     ["Use Preset (from Step 1 & 2)", "Enter manually"]
 )
 
+# -----------------------------------
+# Initialise defaults (avoid NameError)
+# -----------------------------------
+B_hall, H_hall, L_hall = 20.0, 40.0, 120.0
+P_design = st.session_state.get("P_design", 500.0)  # MW
+N_units  = st.session_state.get("N_units", 2)
+turbine_abs = st.session_state.get("Turbine_abs", 180.0)
+
 if mh_mode == "Use Preset (from Step 1 & 2)":
-    P_design = st.session_state.get("P_design", 500.0)  # MW
-    N_units = st.session_state.get("N_units", 2)        # units
-    Turbine_abs = st.session_state.get("Turbine_abs", 180.0)
-
     st.write(f"Using preset values from Step 1 & 2: "
-             f"P = {P_design} MW, Units = {N_units}, Turbine abs = {Turbine_abs}")
-
+             f"P = {P_design} MW, Units = {N_units}, Turbine abs = {turbine_abs}")
 else:
-    B_hall = st.number_input("Machine Hall Width (m)", value=20.0, step=1.0)
-    H_hall = st.number_input("Machine Hall Height (m)", value=40.0, step=1.0)
-    L_hall = st.number_input("Machine Hall Length (m)", value=120.0, step=5.0)
+    B_hall = st.number_input("Machine Hall Width (m)", value=B_hall, step=1.0)
+    H_hall = st.number_input("Machine Hall Height (m)", value=H_hall, step=1.0)
+    L_hall = st.number_input("Machine Hall Length (m)", value=L_hall, step=5.0)
 
 # Per-unit capacity
 P_unit = P_design / N_units if N_units > 0 else 0
@@ -1926,7 +1929,9 @@ shape = st.selectbox(
     ["Mushroom-Shaped", "Horseshoe-Shaped", "Elliptical"]
 )
 
-# Base values if not preset-loaded
+# -------------------------------
+# Extra logic if preset == "None"
+# -------------------------------
 if preset == "None":
     unit_width   = 25.0   # m per unit (incl. clearance)
     erection_bay = 30.0   # m
@@ -1941,7 +1946,9 @@ if preset == "None":
     elif shape == "Elliptical":
         H_hall = 2.5 * B_hall
 
-# Allow student override
+# -----------------------------------
+# Final override for student inputs
+# -----------------------------------
 B_hall = st.number_input("Machine Hall Width B (m)", value=B_hall, step=1.0)
 H_hall = st.number_input("Machine Hall Height H (m)", value=H_hall, step=1.0)
 L_hall = st.number_input("Machine Hall Length L (m)", value=L_hall, step=5.0)
