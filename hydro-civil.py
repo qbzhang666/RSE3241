@@ -2054,7 +2054,6 @@ st.write(f"- **Recommended Pillar Thickness:** {t_pillar_rec:.1f} m")
 st.write(f"- **User-defined Pillar Thickness:** {t_pillar_user:.1f} m")
 
 
-
 st.header("10) Core Equations")
 
 tabH, tabM, tabS = st.tabs(["Hydraulics", "Mechanics (Lining & Rock)", "Surge/Waterhammer"])
