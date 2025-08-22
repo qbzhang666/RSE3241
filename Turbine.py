@@ -1,10 +1,9 @@
-# streamlit_turbine_selection_overlay_fixed.py
+# streamlit_turbine_selection_overlay_embedded.py
 
 import math
 import streamlit as st
 import plotly.graph_objects as go
 from PIL import Image
-import io
 
 # -------------------------------
 # Constants
@@ -13,12 +12,15 @@ g = 9.81       # m/s²
 rho = 1000.0   # kg/m³
 
 st.title("🌊 Turbine Selection & Energy Generation")
-st.markdown("Upload the turbine chart, then move the operating point interactively.")
+st.markdown("This app overlays the turbine selection chart with your design operating point.")
 
 # ---------------------------------------------------
-# STEP 1: Upload Chart Image
+# STEP 1: Load Embedded Chart
 # ---------------------------------------------------
-uploaded_img = st.file_uploader("Upload Turbine Selection Chart (PNG/JPG)", type=["png", "jpg", "jpeg"])
+# Make sure the PNG file is inside your repo (e.g., "turbine_chart.png")
+# Replace with the correct filename in your /src folder or working directory
+chart_path = "66a71bbc-7083-4c5a-b5f8-1885a40896f4.png"
+img = Image.open(chart_path)
 
 # ---------------------------------------------------
 # STEP 2: User Inputs
@@ -51,22 +53,18 @@ st.header("3. Turbine Selection Chart (Overlay)")
 
 fig = go.Figure()
 
-if uploaded_img is not None:
-    # Load uploaded image
-    img = Image.open(uploaded_img)
-
-    # Add chart image as background
-    fig.add_layout_image(
-        dict(
-            source=img,
-            xref="x", yref="y",
-            x=0.1, y=2000,   # bottom-left alignment (Q min, H max)
-            sizex=1000, sizey=2000,
-            sizing="stretch",
-            opacity=1,
-            layer="below"
-        )
+# Add chart image as background
+fig.add_layout_image(
+    dict(
+        source=img,
+        xref="x", yref="y",
+        x=0.1, y=2000,    # Align bottom-left of image
+        sizex=1000, sizey=2000,
+        sizing="stretch",
+        opacity=1,
+        layer="below"
     )
+)
 
 # Log scale axes to match chart
 fig.update_xaxes(type="log", range=[-1, 3], title="Discharge Q (m³/s)")
