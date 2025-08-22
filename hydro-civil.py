@@ -2050,8 +2050,8 @@ t_pillar_user = st.number_input("User-defined Pillar Thickness (m)", value=defau
 st.write("### Geometry Inputs")
 st.write(f"- **IPB Gallery Width:** {B_ip:.1f} m")
 st.write(f"- **IPB Gallery Height:** {H_ip:.1f} m")
-st.write(f"- **Recommended Pillar Thickness:** {t_pillar_rec:.1f} m")
-st.write(f"- **User-defined Pillar Thickness:** {t_pillar_user:.1f} m")
+st.write(f"- **IPB Gallery Length (Recommended Pillar Thickness):** {t_pillar_rec:.1f} m")
+st.write(f"- **IPB Gallery Length (User-defined Pillar Thickness):** {t_pillar_user:.1f} m")
 
 
 st.header("10) Core Equations")
