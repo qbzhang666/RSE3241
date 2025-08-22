@@ -395,19 +395,45 @@ dam_suggestion = dam_type(H, V_req)
 st.success(f"Suggested Dam Type: {dam_suggestion}")
 
 # Show the selection logic for teaching
-with st.expander("Show dam type selection conditions (for students)"):
+with st.expander("Show dam type selection conditions and real-world examples (for students)"):
+
     st.markdown(f"""
     **Your Project Case:**  
-    - Gross Head = **{H:.1f} m**  
-    - Required Reservoir Volume = **{V_req:,.0f} m³** (~ **{V_req_GL:,.2f} GL**)
+    • Gross Head = **{H:.1f} m**  
+    • Required Reservoir Volume = **{V_req:,.0f} m³** (~ {V_req/1e9:.2f} GL)  
 
-    **Decision Rules:**  
+    ---
+
+    **Decision Rules (Simplified Teaching Heuristics with Examples):**  
+
     - **Arch Dam** → Head > 200 m and Volume < 20 million m³  
+      - *Australian Example*: **Tumut 3 Upper Reservoir (Snowy Scheme, ~151 m arch-gravity dam, 20 GL)**  
+      - *International Example*: **El Atazar Dam (Spain, 134 m high arch dam)**  
+
     - **Concrete Gravity Dam** → Head > 150 m and Volume < 20 million m³  
+      - *Australian Example*: **Eildon Dam (Victoria, upgraded with concrete gravity sections)**  
+      - *International Example*: **Hoover Dam (USA, 221 m, concrete gravity-arch)**  
+
     - **Rockfill (Embankment) Dam** → Volume > 50 million m³  
+      - *Australian Examples*: **Talbingo Dam (Snowy 2.0, 162 m high rockfill, ~930 GL)**;  
+        **Kidston Upper Reservoir (Queensland, ~300 GL, rockfill)**  
+      - *International Example*: **Oroville Dam (USA, 235 m, ~4,364 GL)**  
+
     - **Buttress Dam** → Head < 100 m and Volume < 20 million m³  
+      - *Australian Example*: **Kangaroo Creek Dam (South Australia, 65 m high concrete buttress)**  
+      - *International Example*: **Monticello Dam (USA, 97 m high concrete buttress)**  
+
     - **General Embankment Dam** → All other cases  
+      - *Australian Examples*: **Tantangara Dam (Snowy 2.0, 45 m earthfill, ~254 GL)**;  
+        **Wivenhoe Dam (Queensland, 59 m earthfill, ~3,400 GL flood storage)**  
+      - *International Example*: **Aswan High Dam (Egypt, 111 m earthfill, ~132,000 GL)**  
+
+    ---
+
+    ⚠️ *Note: These are simplified teaching rules of thumb, not design standards.  
+    Actual dam selection depends on geology, topography, foundation strength, hydrology, construction material availability, and economics.*  
     """)
+
 
 
 
