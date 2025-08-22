@@ -1,9 +1,10 @@
-# streamlit_turbine_selection_overlay.py
+# streamlit_turbine_selection_overlay_fixed.py
 
 import math
 import streamlit as st
 import plotly.graph_objects as go
 from PIL import Image
+import io
 
 # -------------------------------
 # Constants
@@ -12,10 +13,15 @@ g = 9.81       # m/s²
 rho = 1000.0   # kg/m³
 
 st.title("🌊 Turbine Selection & Energy Generation")
-st.markdown("Interactive teaching tool: move the operating point on the turbine selection chart.")
+st.markdown("Upload the turbine chart, then move the operating point interactively.")
 
 # ---------------------------------------------------
-# STEP 1: User Inputs
+# STEP 1: Upload Chart Image
+# ---------------------------------------------------
+uploaded_img = st.file_uploader("Upload Turbine Selection Chart (PNG/JPG)", type=["png", "jpg", "jpeg"])
+
+# ---------------------------------------------------
+# STEP 2: User Inputs
 # ---------------------------------------------------
 st.header("1. Define Inputs")
 
@@ -29,7 +35,7 @@ eta_generator = st.slider("Generator Efficiency (η_generator)", 0.90, 0.99, 0.9
 eta_transformer = st.slider("Transformer Efficiency (η_transformer)", 0.98, 0.995, 0.99)
 
 # ---------------------------------------------------
-# STEP 2: Overall Efficiency & Power
+# STEP 3: Efficiency & Power
 # ---------------------------------------------------
 st.header("2. Efficiency and Power")
 eta_total = eta_turbine * eta_generator * eta_transformer
@@ -39,33 +45,34 @@ st.write(f"⚙️ **Overall Efficiency η_total = {eta_total:.3f}**")
 st.success(f"Net Power Output = {P_MW:.1f} MW")
 
 # ---------------------------------------------------
-# STEP 3: Turbine Selection Chart Overlay
+# STEP 4: Turbine Selection Chart Overlay
 # ---------------------------------------------------
 st.header("3. Turbine Selection Chart (Overlay)")
 
-# Load uploaded image
-img = Image.open("ae944a59-2c80-48aa-bef6-1cbe307a3d9e.png")
-
 fig = go.Figure()
 
-# Add chart image as background
-fig.add_layout_image(
-    dict(
-        source=img,
-        xref="x", yref="y",
-        x=0.1, y=2000,   # bottom-left alignment (Q min, H max)
-        sizex=1000, sizey=2000,
-        sizing="stretch",
-        opacity=1,
-        layer="below"
+if uploaded_img is not None:
+    # Load uploaded image
+    img = Image.open(uploaded_img)
+
+    # Add chart image as background
+    fig.add_layout_image(
+        dict(
+            source=img,
+            xref="x", yref="y",
+            x=0.1, y=2000,   # bottom-left alignment (Q min, H max)
+            sizex=1000, sizey=2000,
+            sizing="stretch",
+            opacity=1,
+            layer="below"
+        )
     )
-)
 
 # Log scale axes to match chart
 fig.update_xaxes(type="log", range=[-1, 3], title="Discharge Q (m³/s)")
 fig.update_yaxes(type="log", range=[0, 3.3], title="Head h (m)")
 
-# Add interactive operating point
+# Add operating point
 fig.add_trace(go.Scatter(
     x=[Q_design], y=[H_effective],
     mode="markers+text",
@@ -84,7 +91,7 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------
-# STEP 4: Summary
+# STEP 5: Summary
 # ---------------------------------------------------
 st.header("4. Summary")
 st.markdown(f"""
