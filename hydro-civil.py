@@ -244,7 +244,9 @@ plt.rcParams.update({
     "legend.fontsize": 9
 })
 
-# ---------------- Step 1: Reservoir Selection & Dam Design (with map) ----------------
+# ================================================================
+# PHES Teaching App — Reservoir Selection + Civil Design Modules
+# ================================================================
 import streamlit as st
 import pandas as pd
 import itertools
@@ -253,6 +255,8 @@ import folium
 from streamlit_folium import st_folium
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
+import numpy as np
+import matplotlib.pyplot as plt
 
 # ---------------- Constants ----------------
 G = 9.81        # m/s²
@@ -260,30 +264,30 @@ RHO = 1000.0    # kg/m³
 ETA_RT = 0.75   # default round-trip efficiency
 F_LOSS = 0.05   # default hydraulic loss fraction (5%)
 
-# ---------------- Function ----------------
+# ---------------- Helper Functions ----------------
 def evaluate_reservoir_pairs(reservoirs, eta_rt=ETA_RT, f_loss=F_LOSS, top_n=5):
     results = []
     for upper, lower in itertools.permutations(reservoirs, 2):
         if upper["elev"] <= lower["elev"]:
             continue
-        
+
         # gross & effective head
         H_gross = upper["elev"] - lower["elev"]
         H_eff = H_gross * (1 - f_loss)
-        
+
         # horizontal distance (approx)
         dx = upper["lon"] - lower["lon"]
         dy = upper["lat"] - lower["lat"]
         dz = upper["elev"] - lower["elev"]
         penstock_len = math.sqrt(dx**2 + dy**2 + dz**2) * 111e3  # ~111 km per degree lat/lon
-        
+
         # usable volume
         V_use = min(upper["volume"], lower["volume"])
-        
+
         # energy storage
         E_J = RHO * G * V_use * H_eff * eta_rt
         E_MWh = E_J / 3.6e9
-        
+
         results.append({
             "Upper": upper["name"],
             "Lower": lower["name"],
@@ -297,14 +301,22 @@ def evaluate_reservoir_pairs(reservoirs, eta_rt=ETA_RT, f_loss=F_LOSS, top_n=5):
             "Lower_lat": lower["lat"],
             "Lower_lon": lower["lon"],
         })
-    
+
     df = pd.DataFrame(results)
     return df.sort_values(by="Energy (MWh)", ascending=False).head(top_n)
 
-# ---------------- Streamlit UI ----------------
-st.header("1) Reservoir Selection & Dam Design (with Map)")
+# Moody friction factor (Swamee–Jain)
+def swamee_jain(Re, e_D):
+    return 0.25 / (np.log10(e_D/3.7 + 5.74/(Re**0.9)))**2
 
-# Number of reservoirs
+# ---------------- Streamlit UI ----------------
+st.title("PHES Civil Design Teaching App")
+
+# ================================================================
+# Step 1. Reservoir Selection & Dam Design (with Map)
+# ================================================================
+st.header("Step 1: Reservoir Selection & Dam Design (with Map)")
+
 n_res = st.number_input("Number of reservoirs", min_value=2, max_value=10, value=3, step=1)
 
 reservoirs = []
@@ -317,108 +329,45 @@ for i in range(n_res):
     lon = st.number_input(f"Longitude {i+1}", value=145.0 + i*0.05, step=0.01, key=f"lon{i}")
     reservoirs.append({"name": name, "elev": elev, "volume": volume, "lat": lat, "lon": lon})
 
-# Parameters
 eta_rt = st.slider("Round-trip efficiency ηrt", 0.5, 0.9, ETA_RT, 0.01)
 f_loss = st.slider("Head loss fraction", 0.0, 0.2, F_LOSS, 0.01)
 top_n = st.slider("Number of top pairs to display", min_value=1, max_value=20, value=5, step=1)
 show_labels = st.checkbox("Show energy labels on map", value=True)
 
-# Run evaluation
 if st.button("Evaluate Reservoir Pairs"):
     df = evaluate_reservoir_pairs(reservoirs, eta_rt=eta_rt, f_loss=f_loss, top_n=top_n)
-    
+
     st.subheader("Top Reservoir Pairs")
     st.dataframe(df[["Upper","Lower","Gross Head (m)","Effective Head (m)","Energy (MWh)","Penstock Length (km)"]])
-    
-    # Download option
+
     csv = df.to_csv(index=False).encode('utf-8')
     st.download_button("Download CSV", csv, "reservoir_pairs.csv", "text/csv")
-    
-    # -------- Folium Map --------
+
+    # Folium map
     mid_lat = sum([r["lat"] for r in reservoirs]) / len(reservoirs)
     mid_lon = sum([r["lon"] for r in reservoirs]) / len(reservoirs)
     fmap = folium.Map(location=[mid_lat, mid_lon], zoom_start=9, tiles="OpenStreetMap")
-    
-    # Add reservoirs
+
     for res in reservoirs:
-        folium.Marker([res["lat"], res["lon"]], 
+        folium.Marker([res["lat"], res["lon"]],
                       popup=f"{res['name']} ({res['elev']} m)").add_to(fmap)
-    
-    # Normalise energy for colors
+
     max_energy = df["Energy (MWh)"].max()
     norm = mcolors.Normalize(vmin=0, vmax=max_energy)
     cmap = cm.get_cmap("viridis")
-    
-    # Add top pairs as arrows
+
     for _, row in df.iterrows():
         color = mcolors.to_hex(cmap(norm(row["Energy (MWh)"])))
-        line = folium.PolyLine([(row["Upper_lat"], row["Upper_lon"]),
-                                (row["Lower_lat"], row["Lower_lon"])],
-                               color=color, weight=4, opacity=0.8)
-        line.add_to(fmap)
+        folium.PolyLine([(row["Upper_lat"], row["Upper_lon"]),
+                         (row["Lower_lat"], row["Lower_lon"])],
+                        color=color, weight=4, opacity=0.8).add_to(fmap)
         if show_labels:
             folium.Marker([(row["Upper_lat"]+row["Lower_lat"])/2,
                            (row["Upper_lon"]+row["Lower_lon"])/2],
                           icon=folium.DivIcon(html=f"<div style='font-size:8pt;color:black;background:white;padding:2px;border-radius:3px'>{row['Energy (MWh)']:.0f} MWh</div>")
                          ).add_to(fmap)
-    
+
     st_folium(fmap, width=700, height=500)
-
-from folium.plugins import PolyLineDecorator
-
-# -------- Folium Map --------
-mid_lat = sum([r["lat"] for r in reservoirs]) / len(reservoirs)
-mid_lon = sum([r["lon"] for r in reservoirs]) / len(reservoirs)
-fmap = folium.Map(location=[mid_lat, mid_lon], zoom_start=9, tiles="OpenStreetMap")
-
-# Add reservoirs
-for res in reservoirs:
-    folium.Marker([res["lat"], res["lon"]], 
-                  popup=f"{res['name']} ({res['elev']} m)").add_to(fmap)
-
-# Normalise energy for colors
-max_energy = df["Energy (MWh)"].max()
-norm = mcolors.Normalize(vmin=0, vmax=max_energy)
-cmap = cm.get_cmap("viridis")
-
-# Add top pairs as arrows
-for _, row in df.iterrows():
-    color = mcolors.to_hex(cmap(norm(row["Energy (MWh)"])))
-    line = folium.PolyLine(
-        [(row["Upper_lat"], row["Upper_lon"]),
-         (row["Lower_lat"], row["Lower_lon"])],
-        color=color, weight=4, opacity=0.8
-    ).add_to(fmap)
-    
-    # Add arrowhead along the line
-    PolyLineDecorator(
-        line,
-        {
-            "patterns": [
-                {
-                    "offset": "50%",
-                    "repeat": 0,
-                    "symbol": folium.plugins.PolyLineDecorator.Symbol(
-                        "arrowHead", 
-                        pixelSize=10, 
-                        polygon=True, 
-                        pathOptions={"fillOpacity": 1, "weight": 0, "color": color}
-                    )
-                }
-            ]
-        }
-    ).add_to(fmap)
-    
-    # Optional labels
-    if show_labels:
-        folium.Marker(
-            [(row["Upper_lat"]+row["Lower_lat"])/2,
-             (row["Upper_lon"]+row["Lower_lon"])/2],
-            icon=folium.DivIcon(html=f"<div style='font-size:8pt;color:black;background:white;padding:2px;border-radius:3px'>{row['Energy (MWh)']:.0f} MWh</div>")
-        ).add_to(fmap)
-
-st_folium(fmap, width=700, height=500)
-
 
 
 # ------------------------------- Step 2: Reservoir Levels, NWL & Rating Head -------------------------------
