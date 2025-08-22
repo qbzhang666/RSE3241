@@ -1,5 +1,6 @@
 # streamlit_turbine_selection_overlay_embedded.py
 
+import os
 import math
 import streamlit as st
 import plotly.graph_objects as go
@@ -17,10 +18,13 @@ st.markdown("This app overlays the turbine selection chart with your design oper
 # ---------------------------------------------------
 # STEP 1: Load Embedded Chart
 # ---------------------------------------------------
-# Make sure the PNG file is inside your repo (e.g., "turbine_chart.png")
-# Replace with the correct filename in your /src folder or working directory
-chart_path = "66a71bbc-7083-4c5a-b5f8-1885a40896f4.png"
-img = Image.open(chart_path)
+# Place your turbine chart image inside /assets/ in your repo
+chart_path = os.path.join("assets", "turbine_chart.png")
+
+if not os.path.exists(chart_path):
+    st.error(f"❌ Could not find {chart_path}. Please check that the file exists in your repo.")
+else:
+    img = Image.open(chart_path)
 
 # ---------------------------------------------------
 # STEP 2: User Inputs
@@ -51,42 +55,43 @@ st.success(f"Net Power Output = {P_MW:.1f} MW")
 # ---------------------------------------------------
 st.header("3. Turbine Selection Chart (Overlay)")
 
-fig = go.Figure()
+if os.path.exists(chart_path):
+    fig = go.Figure()
 
-# Add chart image as background
-fig.add_layout_image(
-    dict(
-        source=img,
-        xref="x", yref="y",
-        x=0.1, y=2000,    # Align bottom-left of image
-        sizex=1000, sizey=2000,
-        sizing="stretch",
-        opacity=1,
-        layer="below"
+    # Add chart image as background aligned with log-log axes
+    fig.add_layout_image(
+        dict(
+            source=img,
+            xref="x", yref="y",
+            x=0.1, y=2000,          # bottom-left of chart
+            sizex=1000, sizey=2000, # covers Q=0.1–1000, H=1–2000
+            sizing="stretch",
+            opacity=1,
+            layer="below"
+        )
     )
-)
 
-# Log scale axes to match chart
-fig.update_xaxes(type="log", range=[-1, 3], title="Discharge Q (m³/s)")
-fig.update_yaxes(type="log", range=[0, 3.3], title="Head h (m)")
+    # Log scale axes
+    fig.update_xaxes(type="log", range=[-1, 3], title="Discharge Q (m³/s)")
+    fig.update_yaxes(type="log", range=[0, 3.3], title="Head h (m)")
 
-# Add operating point
-fig.add_trace(go.Scatter(
-    x=[Q_design], y=[H_effective],
-    mode="markers+text",
-    text=[f"{P_MW:.1f} MW"],
-    textposition="top center",
-    marker=dict(size=14, color="red", symbol="circle"),
-    name="Operating Point"
-))
+    # Add operating point
+    fig.add_trace(go.Scatter(
+        x=[Q_design], y=[H_effective],
+        mode="markers+text",
+        text=[f"{P_MW:.1f} MW"],
+        textposition="top center",
+        marker=dict(size=14, color="red", symbol="circle"),
+        name="Operating Point"
+    ))
 
-fig.update_layout(
-    width=800, height=600,
-    title="Interactive Turbine Selection Map",
-    template="plotly_white"
-)
+    fig.update_layout(
+        width=800, height=600,
+        title="Interactive Turbine Selection Map",
+        template="plotly_white"
+    )
 
-st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------------
 # STEP 5: Summary
