@@ -3,15 +3,16 @@
 import math
 import streamlit as st
 import plotly.graph_objects as go
+from PIL import Image
 
 # -------------------------------
 # Constants
 # -------------------------------
-g = 9.81
-rho = 1000.0
+g = 9.81       # m/s²
+rho = 1000.0   # kg/m³
 
-st.title("🌊 Turbine Selection with Interactive Overlay")
-st.markdown("Move the sliders to place your operating point on the turbine selection chart (Q–H).")
+st.title("🌊 Turbine Selection & Energy Generation")
+st.markdown("Interactive teaching tool: move the operating point on the turbine selection chart.")
 
 # ---------------------------------------------------
 # STEP 1: User Inputs
@@ -30,38 +31,41 @@ eta_transformer = st.slider("Transformer Efficiency (η_transformer)", 0.98, 0.9
 # ---------------------------------------------------
 # STEP 2: Overall Efficiency & Power
 # ---------------------------------------------------
+st.header("2. Efficiency and Power")
 eta_total = eta_turbine * eta_generator * eta_transformer
 P = rho * g * Q_design * H_effective * eta_total
 P_MW = P / 1e6
+st.write(f"⚙️ **Overall Efficiency η_total = {eta_total:.3f}**")
+st.success(f"Net Power Output = {P_MW:.1f} MW")
 
 # ---------------------------------------------------
 # STEP 3: Turbine Selection Chart Overlay
 # ---------------------------------------------------
-st.header("2. Turbine Selection Chart Overlay")
+st.header("3. Turbine Selection Chart (Overlay)")
 
-# Background image (uploaded slide)
-img_path = "turbine_chart.png"  # <-- rename your uploaded file to this
+# Load uploaded image
+img = Image.open("ae944a59-2c80-48aa-bef6-1cbe307a3d9e.png")
 
 fig = go.Figure()
 
-# Add background image
+# Add chart image as background
 fig.add_layout_image(
     dict(
-        source="turbine_chart.png",   # will be served from local file
+        source=img,
         xref="x", yref="y",
-        x=0.1, y=2000,  # bottom-left (Q min, H max)
-        sizex=1000, sizey=2000,  # axis span
+        x=0.1, y=2000,   # bottom-left alignment (Q min, H max)
+        sizex=1000, sizey=2000,
         sizing="stretch",
         opacity=1,
         layer="below"
     )
 )
 
-# Set log-log axes same as the chart
+# Log scale axes to match chart
 fig.update_xaxes(type="log", range=[-1, 3], title="Discharge Q (m³/s)")
 fig.update_yaxes(type="log", range=[0, 3.3], title="Head h (m)")
 
-# Plot student's operating point
+# Add interactive operating point
 fig.add_trace(go.Scatter(
     x=[Q_design], y=[H_effective],
     mode="markers+text",
@@ -73,7 +77,7 @@ fig.add_trace(go.Scatter(
 
 fig.update_layout(
     width=800, height=600,
-    title="Interactive Turbine Selection Map (Overlay on Chart)",
+    title="Interactive Turbine Selection Map",
     template="plotly_white"
 )
 
@@ -82,7 +86,7 @@ st.plotly_chart(fig, use_container_width=True)
 # ---------------------------------------------------
 # STEP 4: Summary
 # ---------------------------------------------------
-st.header("3. Summary")
+st.header("4. Summary")
 st.markdown(f"""
 - **Effective Head (H):** {H_effective:.1f} m  
 - **Discharge Q:** {Q_design:.1f} m³/s  
