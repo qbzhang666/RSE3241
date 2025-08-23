@@ -85,61 +85,81 @@ with col1:
         - Compact design for low-head applications
         """)
 
-with col2:
-    st.header("Turbine Application Ranges")
-    
-    # Create a more accurate visualization based on the reference image
-    fig, ax = plt.subplots(figsize=(10, 8))
-    
-    # Define turbine application areas based on the reference image
-    # Pelton turbine range
-    pelton_x = [0.1, 50, 50, 0.1]
-    pelton_y = [50, 50, 2000, 2000]
-    ax.fill(pelton_x, pelton_y, alpha=0.3, color='red', label='Pelton')
-    
-    # Francis turbine range
-    francis_x = [0.5, 100, 200, 10, 0.5]
-    francis_y = [20, 20, 100, 700, 700]
-    ax.fill(francis_x, francis_y, alpha=0.3, color='blue', label='Francis')
-    
-    # Kaplan turbine range
-    kaplan_x = [10, 1000, 1000, 10]
-    kaplan_y = [5, 5, 100, 100]
-    ax.fill(kaplan_x, kaplan_y, alpha=0.3, color='green', label='Kaplan')
-    
-    # Bulb turbine range
-    bulb_x = [50, 1000, 1000, 50]
-    bulb_y = [5, 5, 20, 20]
-    ax.fill(bulb_x, bulb_y, alpha=0.3, color='purple', label='Bulb')
-    
-    # Plot current point
-    ax.plot(Q, h, 'ko', markersize=10, label='Your Project')
-    
-    # Set axis scales and limits to match reference
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_xlim(0.1, 1000)
-    ax.set_ylim(5, 2000)
-    
-    # Set axis labels and title
-    ax.set_xlabel('Discharge Q (m³/s)')
-    ax.set_ylabel('Head h (m)')
-    ax.set_title('Turbine Selection Chart')
-    
-    # Add grid
-    ax.grid(True, which="both", ls="-", alpha=0.3)
-    
-    # Add legend
-    ax.legend()
-    
-    # Add specific values on axes to match reference
-    ax.set_xticks([0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000])
-    ax.set_xticklabels(['0.1', '0.2', '0.5', '1', '2', '5', '10', '20', '50', '100', '200', '500', '1000'])
-    
-    ax.set_yticks([5, 10, 20, 50, 100, 200, 500, 1000, 2000])
-    ax.set_yticklabels(['5', '10', '20', '50', '100', '200', '500', '1000', '2000'])
-    
-    st.pyplot(fig)
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import numpy as np
+
+st.header("Turbine Application Ranges")
+
+fig, ax = plt.subplots(figsize=(10, 8))
+
+# -----------------------
+# Pelton (red polygon)
+# -----------------------
+pelton_coords = [
+    (0.1, 2000), (0.2, 1000), (0.5, 500), (2, 200), (5, 100), (10, 80),
+    (20, 60), (50, 50), (0.1, 50)  # back to base
+]
+pelton_poly = patches.Polygon(pelton_coords, closed=True, color='red', alpha=0.3, label="Pelton")
+ax.add_patch(pelton_poly)
+
+# -----------------------
+# Francis (blue polygon)
+# -----------------------
+francis_coords = [
+    (0.5, 700), (5, 700), (20, 600), (50, 500), (100, 400), (200, 300),
+    (400, 200), (500, 150), (200, 50), (50, 50), (5, 100), (0.5, 200)
+]
+francis_poly = patches.Polygon(francis_coords, closed=True, color='blue', alpha=0.3, label="Francis")
+ax.add_patch(francis_poly)
+
+# -----------------------
+# Kaplan (green polygon)
+# -----------------------
+kaplan_coords = [
+    (5, 50), (20, 40), (50, 30), (200, 20), (1000, 10), (1000, 5),
+    (5, 5)
+]
+kaplan_poly = patches.Polygon(kaplan_coords, closed=True, color='green', alpha=0.3, label="Kaplan")
+ax.add_patch(kaplan_poly)
+
+# -----------------------
+# Bulb (purple polygon)
+# -----------------------
+bulb_coords = [
+    (20, 20), (100, 20), (500, 15), (1000, 10), (1000, 5), (20, 5)
+]
+bulb_poly = patches.Polygon(bulb_coords, closed=True, color='purple', alpha=0.3, label="Bulb")
+ax.add_patch(bulb_poly)
+
+# -----------------------
+# Design Point
+# -----------------------
+ax.plot(Q, h, 'ko', markersize=10, label='Your Project')
+
+# -----------------------
+# Formatting
+# -----------------------
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_xlim(0.1, 1000)
+ax.set_ylim(5, 2000)
+
+ax.set_xlabel("Discharge Q (m³/s)")
+ax.set_ylabel("Head h (m)")
+ax.set_title("Turbine Selection Chart")
+
+# Labels inside zones
+ax.text(0.2, 800, "Pelton", color="red", fontsize=12)
+ax.text(30, 300, "Francis", color="blue", fontsize=12)
+ax.text(100, 15, "Kaplan", color="green", fontsize=12)
+ax.text(400, 8, "Bulb", color="purple", fontsize=12)
+
+ax.grid(True, which="both", ls="-", alpha=0.3)
+ax.legend()
+
+st.pyplot(fig)
+
 
 # Energy calculation section
 st.header("Energy Calculations")
