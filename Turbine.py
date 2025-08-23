@@ -148,3 +148,12 @@ st.markdown("""
 
 ✅ Matches real project → validates workflow
 """)
+# ---------------- Equations ----------------
+st.header("📐 Reference Equations")
+with st.expander("Show Equations Used"):
+    st.latex(r"P_{hydraulic} = \rho g Q H \quad \text{(Hydraulic Power, W)}")
+    st.latex(r"P_{gen} = \rho g Q H \eta_{total} \,/\, 10^6 \quad \text{(Power Generation, MW)}")
+    st.latex(r"\eta_{total} = \eta_{turbine} \cdot \eta_{generator} \cdot \eta_{transformer}")
+    st.latex(r"N_s = \frac{N \sqrt{P}}{H^{5/4}} \quad \text{(Specific Speed, metric)}")
+    st.latex(r"E_{annual} = P_{gen} \cdot T \quad \text{(Annual Energy, MWh)}")
+    st.latex(r"P_{pump} = \frac{\rho g Q H}{\eta_{pump} \cdot 10^6} \quad \text{(Pumping Power, MW)}")
