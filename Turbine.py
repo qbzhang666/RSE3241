@@ -7,7 +7,6 @@ from matplotlib.patches import Polygon
 # Set up the page
 st.set_page_config(page_title="Hydropower Turbine Selection", layout="wide")
 st.title("Hydropower Turbine Selection Tool")
-st.markdown("Based on RSE3241 Week 8: Turbine Selection and Energy")
 
 # Sidebar for user inputs
 st.sidebar.header("Project Parameters")
