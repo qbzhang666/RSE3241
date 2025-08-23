@@ -885,9 +885,9 @@ ax2.legend(loc='upper right')
 st.pyplot(fig2)
 
 # ===============================================
-# 6) Confinement Check (Norwegian Confinement Criteria)
+# 4) Confinement Check (Norwegian Confinement Criteria)
 # ===============================================
-st.header("7) Confinement Check (Norwegian Criteria)")
+st.header("4) Confinement Check (Norwegian Criteria)")
 
 st.markdown(
     "This section checks tunnel confinement stability using the Norwegian criteria. "
