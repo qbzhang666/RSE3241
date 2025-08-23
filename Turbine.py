@@ -43,7 +43,7 @@ recommended_turbine = select_turbine(h, Q)
 col1, col2 = st.columns(2)
 
 with col1:
-    st.header("Step 1: Turbine Recommendation")
+    st.header("10) Turbine Recommendation")
     st.metric("Recommended Turbine Type", recommended_turbine)
 
     if recommended_turbine == "Pelton":
@@ -71,8 +71,8 @@ with col2:
     ax.legend()
     st.pyplot(fig)
 
-# ---------------- Step 2–3: Efficiency from Ns or Q/Qmax ----------------
-st.header("Step 2–3: Turbine Efficiency")
+# ---------------- Step 11: Efficiency from Ns or Q/Qmax ----------------
+st.header("11) Turbine Efficiency")
 
 eta_turbine = efficiency_guess
 
@@ -120,15 +120,15 @@ else:
     ax3.set_title(label); ax3.legend(); ax3.grid(True, ls="--", alpha=0.5)
     st.pyplot(fig3)
 
-# ---------------- Step 4: Overall Efficiency ----------------
-st.header("Step 4: Overall Efficiency")
+# ---------------- Overall Efficiency ----------------
+st.subheader("Overall Efficiency")
 eta_gen = st.slider("Generator Efficiency η_G", 0.90, 0.98, 0.96)
 eta_tr = st.slider("Transformer Efficiency η_T", 0.98, 0.995, 0.99)
 eta_total = eta_turbine * eta_gen * eta_tr
 st.success(f"Overall Efficiency η_total = {eta_total*100:.1f}%")
 
-# ---------------- Step 5: Power Generation & Pumping ----------------
-st.header("Step 5: Power Generation and Pumping")
+# ---------------- Step 12: Power Generation & Pumping ----------------
+st.header("12) Power Generation and Pumping")
 P_gen = Q * h * g * rho * eta_total / 1e6
 eta_pump = st.slider("Pumping Efficiency η_Pump", 0.70, 0.90, 0.80)
 P_pump = (Q * h * g * rho) / (eta_pump*1e6)
