@@ -1,3 +1,4 @@
+
 # PHES Design Teaching App — with Moody helper (Swamee–Jain) for f(Re, ε/D)
 # Reservoir head, penstock hydraulics, lining stress (modular), losses, surge tanks
 # Classroom-friendly; robust on Streamlit Cloud; no Styler usage
@@ -177,7 +178,7 @@ with st.sidebar:
     st.header("Presets & Settings")
     preset = st.selectbox(
         "Preset", 
-        ["Select Project", "Snowy 2.0 · Ravine", "Kidston"]
+        ["Select Project", "Snowy 2.0 · Ravine", "Snowy 2.0 · Plateau", "Kidston"]
     )
 
     # Show warning if a preset is chosen but not yet applied
@@ -185,10 +186,17 @@ with st.sidebar:
         st.warning("Click **Apply preset** to confirm this preset before continuing.")
 
     if st.button("Apply preset"):
-        if preset == "Snowy 2.0":
+        if preset == "Snowy 2.0 · Ravine":
             st.session_state.update(dict(
-                HWL_u=1228.7, LWL_u=1205.8, HWL_l=543.2, TWL_l=534.4,
+                HWL_u=1100.0, LWL_u=1000.0, HWL_l=450.0, TWL_l=410.0,
                 eta_t=0.90, N=6, hf1=28.0, hf2=70.0, 
+                P1=1000.0, P2=2000.0,
+                P_design=2000.0, N_pen=6
+            ))
+        elif preset == "Snowy 2.0 · Plateau":
+            st.session_state.update(dict(
+                HWL_u=1100.0, LWL_u=1080.0, HWL_l=450.0, TWL_l=420.0,
+                eta_t=0.90, N=6, hf1=30.0, hf2=106.0, 
                 P1=1000.0, P2=2000.0,
                 P_design=2000.0, N_pen=6
             ))
@@ -307,8 +315,7 @@ st.header("1) Reservoir & Dam Design")
 
 # ------------------------------- Presets -------------------------------
 presets = {
-    "Snowy 2.0 (Ravine Max)": {"P_design": 2000, "H": 694.3, "V_res": 5e7},
-    "Snowy 2.0 (Ravine Min)": {"P_design": 2000, "H": 662.6, "V_res": 5e7},
+    "Snowy 2.0 (Plateau)": {"P_design": 2000, "H": 673.33, "V_res": 5e7},
     "Kidston PHES": {"P_design": 250, "H": 200, "V_res": 3e7},
     "Wivenhoe": {"P_design": 500, "H": 76, "V_res": 2.2e8},
     "Tumut 3 (Snowy)": {"P_design": 1800, "H": 150, "V_res": 3.5e8},
@@ -338,7 +345,7 @@ else:
 
 # Other universal inputs
 t_op = st.number_input("Operation Time (hours)", value=6.0, step=1.0)
-eta = st.number_input("Round-trip Efficiency η", value=0.67, step=0.01)
+eta = st.number_input("Round-trip Efficiency η", value=0.85, step=0.01)
 
 # ------------------------------- Required Flow -------------------------------
 Q_req = (P_design * 1e6) / (RHO * G * H * eta)   # [m³/s]
@@ -466,15 +473,15 @@ c1, c2 = st.columns(2)
 with c1:
     st.markdown("**Upper reservoir**")
     HWL_u = st.number_input("Upper HWL (m)", 0.0, 3000.0,
-                            float(st.session_state.get("HWL_u", 1228.7)), 1.0)
+                            float(st.session_state.get("HWL_u", 1100.0)), 1.0)
     LWL_u = st.number_input("Upper LWL (m)", 0.0, 3000.0,
-                            float(st.session_state.get("LWL_u", 1205.8)), 1.0)
+                            float(st.session_state.get("LWL_u", 1080.0)), 1.0)
 with c2:
     st.markdown("**Lower reservoir**")
     HWL_l = st.number_input("Lower HWL (m)", 0.0, 3000.0,
-                            float(st.session_state.get("HWL_l", 543.2)), 1.0)
+                            float(st.session_state.get("HWL_l", 450.0)), 1.0)
     TWL_l = st.number_input("Lower TWL (m)", 0.0, 3000.0,
-                            float(st.session_state.get("TWL_l", 534.4)), 1.0)
+                            float(st.session_state.get("TWL_l", 420.0)), 1.0)
 
 # Drawdown & NWL (upper pond)
 Ha_u  = HWL_u - LWL_u                 # available drawdown
@@ -537,8 +544,8 @@ with left:
     else:
         st.caption("No CSV? Edit a small table below (chainage increasing):")
         df_profile = pd.DataFrame({
-            "Chainage_m": [0, 500, 1000, 17500, 18700],           # demo values
-            "Elevation_m": [NWL_u, NWL_u-1, NWL_u-3, NWL_u-8, 440],
+            "Chainage_m": [0, 500, 1000, 1500, 2300],           # demo values
+            "Elevation_m": [NWL_u, NWL_u-1, NWL_u-3, NWL_u-8, 450],
         })
         df_profile = st.data_editor(df_profile, num_rows="dynamic", use_container_width=True)
 
@@ -896,8 +903,8 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     hs = st.number_input("Hydrostatic head h_s (m)", value=300.0, min_value=0.0)
-    alpha = st.number_input("Tunnel inclination α (degrees)", value=25.0, min_value=0.0, max_value=90.0)
-    beta = st.number_input("Slope angle β (degrees)", value=30.0, min_value=0.0, max_value=90.0)
+    alpha = st.number_input("Tunnel inclination α (degrees)", value=20.0, min_value=0.0, max_value=90.0)
+    beta = st.number_input("Slope angle β (degrees)", value=40.0, min_value=0.0, max_value=90.0)
 
 with col2:
     gamma_w = st.number_input("Unit weight of water γ_w (kN/m³)", value=9.81, min_value=0.0)
