@@ -2406,7 +2406,7 @@ STEP_GUIDANCE = {
             ("Relative roughness", r"\epsilon_r=\frac{\epsilon}{D}"),
             ("Darcy friction", r"f=\frac{0.25}{\left[\log_{10}\left(\epsilon_r/3.7+5.74/Re^{0.9}\right)\right]^2}"),
             ("Major and minor losses", r"h_{major}=f\frac{L}{D}\frac{v^2}{2g},\qquad h_{minor}=\Sigma K\frac{v^2}{2g}"),
-            ("Net head", r"H_n=H_{selected}-h_{major}-h_{minor}-h_{other}"),
+            ("Net head", r"H_e=H_{sel}-h_{major}-h_{minor}-h_{other}"),
         ],
         "symbols": [
             ("D", "Shared conduit diameter", "m"),
@@ -2833,7 +2833,7 @@ REPORT_LOGIC_EQUATIONS = {
     "Step 5": (
         [
             r"A=\frac{\pi D^2}{4},\qquad v=\frac{Q_v}{A},\qquad Re=\frac{vD}{\nu}",
-            r"h_{major}=f\frac{L}{D}\frac{v^2}{2g},\quad h_{minor}=\Sigma K\frac{v^2}{2g},\quad H_n=H_{selected}-h_{major}-h_{minor}-h_{other}",
+            r"h_{major}=f\frac{L}{D}\frac{v^2}{2g},\quad h_{minor}=\Sigma K\frac{v^2}{2g},\quad H_e=H_{sel}-h_{major}-h_{minor}-h_{other}",
         ],
         "",
     ),
@@ -3418,7 +3418,7 @@ def build_extended_report_sections(
                 r"v=\frac{Q_v}{A}",
                 r"Re=\frac{vD}{\nu}",
                 r"h_{major}=f\frac{L}{D}\frac{v^2}{2g},\qquad h_{minor}=\Sigma K\frac{v^2}{2g}",
-                r"H_n=H_{selected}-h_{major}-h_{minor}-h_{other}",
+                r"H_e=H_{sel}-h_{major}-h_{minor}-h_{other}",
             ],
             [
                 ("Shared conduit diameter", metric_value(fnum('penstock_diameter_m'), " m", 2)),
@@ -7130,7 +7130,7 @@ def page_equations_references(levels: dict[str, float], design_case: dict[str, f
         st.latex(r"A = \frac{\pi D^2}{4}")
         st.latex(r"v = \frac{Q_v}{A}")
         st.latex(r"h_f = \left(f\frac{L}{D} + \Sigma K\right)\frac{v^2}{2g}")
-        st.latex(r"H_n = H_{selected} - h_{major} - h_{minor} - h_{other}")
+        st.latex(r"H_e = H_{sel} - h_{major} - h_{minor} - h_{other}")
         st.latex(r"Re = \frac{vD}{\nu}")
         st.latex(r"H_{g,max}=HWL_u-LWL_l,\qquad H_{g,min}=LWL_u-HWL_l")
     with tab_t:
